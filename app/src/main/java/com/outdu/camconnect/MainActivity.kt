@@ -68,5 +68,6 @@ fun CamConnectTabletPreview() {
             .background(Color(0xFFF5F5F5))
     ) {
         AdaptiveStreamLayout()
+        
     }
 }
