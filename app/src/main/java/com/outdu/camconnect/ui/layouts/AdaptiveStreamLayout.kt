@@ -154,7 +154,7 @@ fun AdaptiveStreamLayout(
                 cameraName = "Camera ${cameraState.currentCamera + 1}"
             )
         }
-
+        
         HorizontalDivider(
             modifier = Modifier
                 .fillMaxHeight()

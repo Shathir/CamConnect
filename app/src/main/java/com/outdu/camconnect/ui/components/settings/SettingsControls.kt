@@ -326,6 +326,7 @@ fun ControlTabSwitcher(
                         fontSize = 12.sp
                     )
                 }
+
             }
         }
     }

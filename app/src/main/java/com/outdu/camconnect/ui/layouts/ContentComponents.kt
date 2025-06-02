@@ -59,7 +59,6 @@ fun MinimalControlContent(
                 showText = false
             )
             
-
             CustomizableButton(
                 config = ButtonConfig(
                     id = "camera_switch",
@@ -72,7 +71,6 @@ fun MinimalControlContent(
                 showText = false
             )
             
-
             CustomizableButton(
                 config = ButtonConfig(
                     id = "RecordingToggle",

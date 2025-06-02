@@ -1,5 +1,6 @@
 package com.outdu.camconnect.ui.components.indicators
 
+
 import android.Manifest
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,6 +41,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
+
 
 /**
  * Battery level indicator with placeholder icon and percentage
@@ -452,6 +454,7 @@ fun AiStatusIndicator(
         modifier = modifier.size(24.dp),
         contentScale = ContentScale.Fit
     )
+
 }
 
 /**

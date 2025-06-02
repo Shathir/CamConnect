@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.R
 
+
 /**
  * Camera stream view component - main video display
  */
@@ -189,6 +190,7 @@ fun VideoFeedSlot(
 //                        .width((label.length * 7).dp)
 //                        .background(Color.White.copy(alpha = 0.5f))
 //                )
+
             }
         }
     }
