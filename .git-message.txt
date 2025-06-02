@@ -1,0 +1,11 @@
+# Title: (brief summary, imperative mood)
+
+# Description:
+# - Explain what and why.
+# - Keep wrapped at 72 characters if possible.
+
+# Signed-off-by: <your name> <your.email@example.com>
+# Date: YYYY-MM-DD
+
+# Lines starting with '#' are comments and will be ignored.
+
