@@ -7,6 +7,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -291,7 +292,7 @@ fun ControlTabSwitcher(
             .fillMaxWidth()
             .height(48.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.Gray.copy(alpha = 0.1f)),
+            .background(Color(0xFF222222)),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         ControlTab.values().forEach { tab ->
@@ -301,7 +302,7 @@ fun ControlTabSwitcher(
                     .fillMaxHeight()
                     .clickable { onTabSelected(tab) }
                     .background(
-                        if (selectedTab == tab) Color(0xFF2196F3)
+                        if (selectedTab == tab) Color(0xFF333333)
                         else Color.Transparent
                     ),
                 contentAlignment = Alignment.Center
@@ -311,11 +312,21 @@ fun ControlTabSwitcher(
                     modifier = Modifier
                         .height(14.dp)
                         .width((tab.displayName.length * 7).dp)
-                        .background(
-                            if (selectedTab == tab) Color.White.copy(alpha = 0.8f)
-                            else Color.Black.copy(alpha = 0.3f)
-                        )
+//                        .background(
+//                            if (selectedTab == tab) Color.White.copy(alpha = 0.8f)
+//                            else Color.Black.copy(alpha = 0.3f)
+//                        )
                 )
+                {
+                    Text(
+                        text = tab.displayName,
+                        color = if (selectedTab == tab) Color.White
+                        else Color(0xFF5C5C5C),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+
             }
         }
     }

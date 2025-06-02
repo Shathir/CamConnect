@@ -295,8 +295,8 @@ fun ToggleableIconRow(
                         contentDescription = iconData.description,
                         modifier = Modifier.size(24.dp),
                         colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
-                            if (iconData.isSelected) Color(0xFF2196F3)
-                            else Color.Gray.copy(alpha = 0.5f)
+                            if (iconData.isSelected) iconData.colorOnSelect
+                            else iconData.color
                         ),
                         contentScale = androidx.compose.ui.layout.ContentScale.Fit
                     )
@@ -324,5 +324,7 @@ data class ToggleableIcon(
     val id: String,
     val iconPlaceholder: String, // Drawable resource ID as string
     val description: String,
-    val isSelected: Boolean = false
+    val isSelected: Boolean = false,
+    val color: Color = Color(0xFF8F8F8F),
+    val colorOnSelect: Color = Color(0xFF2196F3)
 ) 

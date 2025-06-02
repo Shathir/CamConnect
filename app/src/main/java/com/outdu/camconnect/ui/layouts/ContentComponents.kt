@@ -59,30 +59,18 @@ fun MinimalControlContent(
                 showText = false
             )
             
-            // Camera switch button
-//            CameraSwitchButton(
-//                currentCamera = cameraState.currentCamera,
-//                totalCameras = 3,
-//                onSwitch = onCameraSwitch
-//            )
             CustomizableButton(
                 config = ButtonConfig(
                     id = "camera_switch",
-                    iconPlaceholder = R.drawable.camera_lens_line.toString(),
+                    iconPlaceholder = R.drawable.expand_line.toString(),
                     text = "Camera",
                     backgroundColor = Color(0xFF333333),
-                    onClick = onCameraSwitch
+                    onClick = onExpandClick
                 ),
                 isCompact = true,
                 showText = false
             )
             
-            // Recording toggle
-//            RecordingToggle(
-//                isRecording = cameraState.isRecording,
-//                onToggle = onRecordingToggle,
-//                modifier = Modifier.size(48.dp)
-//            )
             CustomizableButton(
                 config = ButtonConfig(
                     id = "RecordingToggle",
@@ -96,10 +84,10 @@ fun MinimalControlContent(
             )
             
             // Compass
-            CompassIndicator(
-                direction = systemStatus.compassDirection,
-                size = 60.dp
-            )
+//            CompassIndicator(
+//                direction = systemStatus.compassDirection,
+//                size = 60.dp
+//            )
         }
         
         // Bottom indicators
@@ -110,7 +98,7 @@ fun MinimalControlContent(
             // Battery indicator
             BatteryIndicator(
                 batteryLevel = systemStatus.batteryLevel,
-                showPercentage = true
+                showPercentage = false
             )
             
             // Connectivity indicators
@@ -123,31 +111,31 @@ fun MinimalControlContent(
             }
             
             // AI status
-//            AiStatusIndicator(
-//                isEnabled = systemStatus.isAiEnabled,
-//                modifier = Modifier.padding(vertical = 4.dp)
-//            )
-            CustomizableButton(
-                config = ButtonConfig(
-                    id = "AiStatusIndicator",
-                    iconPlaceholder = R.drawable.ai_line.toString(),
-                    text = "AiStatus",
-                    backgroundColor = Color(0xFF333333),
-                    onClick = {}
-                ),
-                isCompact = true,
-                showText = false
+            AiStatusIndicator(
+                isEnabled = systemStatus.isAiEnabled,
+                modifier = Modifier.padding(vertical = 4.dp)
             )
+//            CustomizableButton(
+//                config = ButtonConfig(
+//                    id = "AiStatusIndicator",
+//                    iconPlaceholder = R.drawable.ai_line.toString(),
+//                    text = "AiStatus",
+//                    backgroundColor = Color(0xFF333333),
+//                    onClick = {}
+//                ),
+//                isCompact = true,
+//                showText = false
+//            )
             
             // Speed indicator
             CompactSpeedIndicator(speed = systemStatus.currentSpeed)
         }
         
         // Expand button
-        ExpandButton(
-            isExpanded = false,
-            onClick = onExpandClick
-        )
+//        ExpandButton(
+//            isExpanded = false,
+//            onClick = onExpandClick
+//        )
     }
 }
 
@@ -185,10 +173,16 @@ fun ExpandedControlContent(
             ) {
                 customButtons.take(5).forEach { buttonConfig ->
                     CustomizableButton(
-                        config = buttonConfig,
+                        config = if (buttonConfig.id == "Settings") {
+                            buttonConfig.copy(onClick = onSettingsClick)
+                        } else if (buttonConfig.id == "collapse-screen"){
+                            buttonConfig.copy(onClick = onCollapseClick)
+                        } else {
+                            buttonConfig
+                        },
                         modifier = Modifier.weight(1f),
                         isCompact = true,
-                        showText = true
+                        showText = true,
                     )
                 }
             }
@@ -219,7 +213,7 @@ fun ExpandedControlContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFE0E0E0))
+                    .background(Color(0xFF222222))
                     .padding(8.dp)
             ) {
                 ToggleableIconRow(
@@ -229,19 +223,19 @@ fun ExpandedControlContent(
             }
             
             // Row 4: Compass component
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFE0E0E0))
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CompassIndicator(
-                    direction = systemStatus.compassDirection,
-                    size = 100.dp
-                )
-            }
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .clip(RoundedCornerShape(8.dp))
+//                    .background(Color(0xFFE0E0E0))
+//                    .padding(16.dp),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                CompassIndicator(
+//                    direction = systemStatus.compassDirection,
+//                    size = 100.dp
+//                )
+//            }
             
             // Row 5: Video feed and snapshot slots
             Row(
@@ -266,87 +260,91 @@ fun ExpandedControlContent(
                     .background(Color(0xFFE0E0E0))
                     .padding(12.dp)
             ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+//                Column(
+//                    verticalArrangement = Arrangement.spacedBy(8.dp)
+//                ) {
                     // Speed indicator
-                    SpeedIndicator(
-                        speed = systemStatus.currentSpeed,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+//                    SpeedIndicator(
+//                        speed = systemStatus.currentSpeed,
+//                        modifier = Modifier.fillMaxWidth()
+//                    )
                     
                     // Status indicators in a row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
+                        SpeedIndicator(
+                            speed = systemStatus.currentSpeed,
+//                            modifier = Modifier.fillMaxWidth()
+                        )
                         BatteryIndicator(
                             batteryLevel = systemStatus.batteryLevel,
                             showPercentage = true
                         )
                         WifiIndicator(isConnected = systemStatus.isWifiConnected)
-                        OnlineIndicator(isOnline = systemStatus.isOnline)
+//                        OnlineIndicator(isOnline = systemStatus.isOnline)
                         AiStatusIndicator(isEnabled = systemStatus.isAiEnabled)
                     }
-                }
+//                }
             }
         }
         
         // Bottom bar with settings and collapse button
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(4.dp)
-                .background(Color(0xFFE0E0E0))
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Settings button
-                Row(
-                    modifier = Modifier
-                        .clickable { onSettingsClick() }
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Settings icon placeholder
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color.Gray)
-                    )
-                    // "Settings" text placeholder
-                    Box(
-                        modifier = Modifier
-                            .height(14.dp)
-                            .width(50.dp)
-                            .background(Color.Black.copy(alpha = 0.2f))
-                    )
-                }
-                
-                // Collapse button
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .clickable { onCollapseClick() }
-                        .padding(12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Chevron right placeholder
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .background(Color.Gray, RoundedCornerShape(4.dp))
-                    )
-                }
-            }
-        }
+//        Box(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .shadow(4.dp)
+//                .background(Color(0xFFE0E0E0))
+//                .padding(horizontal = 16.dp, vertical = 8.dp)
+//        ) {
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.SpaceBetween,
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                // Settings button
+//                Row(
+//                    modifier = Modifier
+//                        .clickable { onSettingsClick() }
+//                        .padding(8.dp),
+//                    verticalAlignment = Alignment.CenterVertically,
+//                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+//                ) {
+//                    // Settings icon placeholder
+//                    Box(
+//                        modifier = Modifier
+//                            .size(20.dp)
+//                            .clip(RoundedCornerShape(4.dp))
+//                            .background(Color.Gray)
+//                    )
+//                    // "Settings" text placeholder
+//                    Box(
+//                        modifier = Modifier
+//                            .height(14.dp)
+//                            .width(50.dp)
+//                            .background(Color.Black.copy(alpha = 0.2f))
+//                    )
+//                }
+//
+//                // Collapse button
+//                Box(
+//                    modifier = Modifier
+//                        .size(48.dp)
+//                        .clip(RoundedCornerShape(24.dp))
+//                        .clickable { onCollapseClick() }
+//                        .padding(12.dp),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    // Chevron right placeholder
+//                    Box(
+//                        modifier = Modifier
+//                            .size(24.dp)
+//                            .background(Color.Gray, RoundedCornerShape(4.dp))
+//                    )
+//                }
+//            }
+//        }
     }
 }
 
@@ -386,7 +384,7 @@ fun FullControlContent(
                     config = buttonConfig,
                     modifier = Modifier.weight(1f),
                     isCompact = false,
-                    showText = true
+                    showText = false
                 )
             }
         }

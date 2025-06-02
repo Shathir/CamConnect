@@ -1,18 +1,24 @@
 package com.outdu.camconnect.ui.components.camera
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.outdu.camconnect.R
+
 
 /**
  * Camera stream view component - main video display
@@ -26,14 +32,21 @@ fun CameraStreamView(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.Black),
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF2A2A2A)),
         contentAlignment = Alignment.Center
     ) {
         if (isConnected) {
             // TODO: Replace with actual camera view implementation
             // This is a placeholder for the actual camera stream
-            CameraPlaceholder(cameraName = cameraName)
+//            CameraPlaceholder(cameraName = cameraName)
+            Image(
+                painter = painterResource(R.drawable.stream_sample_visible),
+                contentDescription = "Stream Sample Icon",
+                modifier = Modifier.fillMaxSize(), // size like an icon
+                contentScale = ContentScale.FillBounds,
+                alignment = Alignment.Center,
+            )
         } else {
             DisconnectedView()
         }
@@ -101,7 +114,8 @@ private fun DisconnectedView() {
         ) {
             // X mark for disconnected
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
                     .padding(16.dp)
             ) {
                 Box(
@@ -145,7 +159,6 @@ fun VideoFeedSlot(
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.Black)
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -157,18 +170,27 @@ fun VideoFeedSlot(
                 // Video icon placeholder
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .fillMaxSize()
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color.White.copy(alpha = 0.2f))
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                // Label text placeholder
-                Box(
-                    modifier = Modifier
-                        .height(12.dp)
-                        .width((label.length * 7).dp)
-                        .background(Color.White.copy(alpha = 0.5f))
-                )
+                {
+                    Image(
+                        painter = painterResource(id = R.drawable.boat_hologram), // your .png file
+                        contentDescription = "My PNG Icon",
+                        modifier = Modifier.fillMaxSize(), // size like an icon
+                        contentScale = ContentScale.Fit,
+                        alignment = Alignment.Center,
+                    )
+                }
+//                Spacer(modifier = Modifier.height(8.dp))
+//                // Label text placeholder
+//                Box(
+//                    modifier = Modifier
+//                        .height(12.dp)
+//                        .width((label.length * 7).dp)
+//                        .background(Color.White.copy(alpha = 0.5f))
+//                )
+
             }
         }
     }

@@ -10,6 +10,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,7 +46,7 @@ fun AdaptiveStreamLayout(
     var systemStatus by remember { 
         mutableStateOf(
             SystemStatus(
-                batteryLevel = 85,
+                batteryLevel = 75,
                 isWifiConnected = true,
                 isLteConnected = false,
                 isOnline = true,
@@ -86,38 +88,38 @@ fun AdaptiveStreamLayout(
     val customButtons = remember {
         listOf(
             ButtonConfig(
-                id = "camera",
-                iconPlaceholder = R.drawable.camera_lens_line.toString(),
-                text = "Snapshot",
-                backgroundColor = Color(0xFF4CAF50),
+                id = "picture-in-picture",
+                iconPlaceholder = R.drawable.picture_in_picture_line.toString(),
+                text = "Picture-in-Picture",
+                backgroundColor = Color(0xFF333333),
                 onClick = { /* Handle snapshot */ }
             ),
             ButtonConfig(
-                id = "gallery",
-                iconPlaceholder = R.drawable.camera_lens_line.toString(),
-                text = "Gallery",
-                backgroundColor = Color(0xFF2196F3),
+                id = "collapse-screen",
+                iconPlaceholder = R.drawable.expand_line.toString(),
+                text = "Collapse Screen",
+                backgroundColor = Color(0xFF333333),
                 onClick = { /* Handle gallery */ }
             ),
             ButtonConfig(
-                id = "share",
-                iconPlaceholder = R.drawable.camera_lens_line.toString(),
-                text = "Share",
-                backgroundColor = Color(0xFF9C27B0),
+                id = "ir",
+                iconPlaceholder = R.drawable.ir_line.toString(),
+                text = "IR",
+                backgroundColor = Color(0xFF333333),
                 onClick = { /* Handle share */ }
             ),
             ButtonConfig(
-                id = "night",
-                iconPlaceholder = R.drawable.camera_lens_line.toString(),
-                text = "Night",
-                backgroundColor = Color(0xFF607D8B),
+                id = "ir-cut-filter",
+                iconPlaceholder = R.drawable.ircut_filter_line.toString(),
+                text = "IR-Cut-Filter",
+                backgroundColor = Color(0xFF333333),
                 onClick = { /* Handle night mode */ }
             ),
             ButtonConfig(
-                id = "flash",
-                iconPlaceholder = R.drawable.camera_lens_line.toString(),
-                text = "Flash",
-                backgroundColor = Color(0xFFFF9800),
+                id = "Settings",
+                iconPlaceholder = R.drawable.settings_line.toString(),
+                text = "Settings",
+                backgroundColor = Color(0xFF333333),
                 onClick = { /* Handle flash */ }
             )
         )
@@ -126,18 +128,19 @@ fun AdaptiveStreamLayout(
     // Toggleable icons for Layout 2
     val toggleableIcons = remember {
         mutableStateListOf(
-            ToggleableIcon("grid", R.drawable.camera_lens_line.toString(), "Grid", false),
-            ToggleableIcon("hdr", R.drawable.camera_lens_line.toString(), "HDR", true),
-            ToggleableIcon("timer", R.drawable.camera_lens_line.toString(), "Timer", false),
-            ToggleableIcon("stabilize", R.drawable.camera_lens_line.toString(), "Stabilize", true),
-            ToggleableIcon("mic", R.drawable.camera_lens_line.toString(), "Audio", true),
-            ToggleableIcon("location", R.drawable.camera_lens_line.toString(), "Location", false)
+            ToggleableIcon("hdr", R.drawable.hd_line.toString(), "Hdr", true, colorOnSelect = Color.White),
+            ToggleableIcon("stabilize", R.drawable.git_commit_line.toString(), "Stabilize", false, colorOnSelect = Color.White),
+            ToggleableIcon("timer", R.drawable.spy_line.toString(), "Timer", true, colorOnSelect = Color(0xFF0C59E0)),
+            ToggleableIcon("dayNight", R.drawable.eye_2_line.toString(), "DayNight", false, colorOnSelect = Color.White),
+            ToggleableIcon("visible", R.drawable.eye_line.toString(), "Visible", true, colorOnSelect = Color.White),
+            ToggleableIcon("ir", R.drawable.router_line.toString(), "Ir", true, colorOnSelect = Color(0xFFF43823))
         )
     }
     
     // Main consistent layout structure
     Row(
         modifier = modifier.fillMaxSize()
+            .background(Color(0xFF0D0D0D))
     ) {
         // Left Pane - Camera Stream (animated width)
         Box(
@@ -152,6 +155,13 @@ fun AdaptiveStreamLayout(
             )
         }
         
+        HorizontalDivider(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(8.dp)
+                .background(Color(0xFF0D0D0D))
+        )
+
         // Right Pane - Controls (animated width and content)
         AnimatedRightPane(
             layoutMode = layoutMode,
@@ -248,6 +258,7 @@ private fun AnimatedRightPane(
         modifier = Modifier
             .fillMaxWidth(paneWeight)
             .fillMaxHeight()
+            .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFF222222))
     ) {
         // Top bar with settings button (always visible)
@@ -260,7 +271,7 @@ private fun AnimatedRightPane(
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(4.dp)
-                    .background(Color(0xFF2196F3))
+                    .background(Color(0xFF222222))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Row(
@@ -290,6 +301,14 @@ private fun AnimatedRightPane(
                             .padding(start = 8.dp)
                             .background(Color.White.copy(alpha = 0.8f))
                     )
+                    {
+                        Text(
+                            text = "Settings",
+                            color = Color.White,
+                            modifier = Modifier.padding(start = 8.dp)
+                                .align(Alignment.Center)
+                        )
+                    }
                 }
             }
         }

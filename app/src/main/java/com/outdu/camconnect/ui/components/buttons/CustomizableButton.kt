@@ -49,73 +49,74 @@ fun CustomizableButton(
     showText: Boolean = true,
     isCompact: Boolean = false
 ) {
-    val buttonModifier = modifier
-        .clip(RoundedCornerShape(8.dp))
-        .background(
-            if (config.enabled) config.backgroundColor 
-            else config.backgroundColor.copy(alpha = 0.5f)
-        )
-        .clickable(enabled = config.enabled) { config.onClick() }
-        .padding(
-            horizontal = if (isCompact) 8.dp else 12.dp,
-            vertical = if (isCompact) 6.dp else 10.dp
-        )
-
-    if (isCompact || config.text.isEmpty() || !showText) {
-        // Icon only mode for compact layouts
+    // Determine button size
+    val buttonSize = if (isCompact) 48.dp else 56.dp
+    
+    // Outer box to ensure square shape
+    Box(
+        modifier = modifier
+            .size(buttonSize) // Enforce square shape
+    ) {
+        // Inner button with styling
         Box(
-            modifier = buttonModifier.size(if (isCompact) 24.dp else 32.dp),
+            modifier = Modifier
+                .fillMaxSize() // Fill the square parent
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    if (config.enabled) config.backgroundColor 
+                    else config.backgroundColor.copy(alpha = 0.5f)
+                )
+                .clickable(enabled = config.enabled) { config.onClick() },
             contentAlignment = Alignment.Center
         ) {
-            // Validate and render icon
-            val resourceId = config.iconPlaceholder.toIntOrNull()
-            if (resourceId != null && config.iconPlaceholder.isNotEmpty()) {
-                Image(
-                    painter = painterResource(id = resourceId),
-                    contentDescription = config.text,
-                    modifier = Modifier.size(if (isCompact) 16.dp else 24.dp),
-                    colorFilter = ColorFilter.tint(config.color),
-                    contentScale = ContentScale.Fit
-                )
+            if (isCompact || config.text.isEmpty() || !showText) {
+                // Icon only mode
+                // Validate and render  icon
+                val resourceId = config.iconPlaceholder.toIntOrNull()
+                if (resourceId != null && config.iconPlaceholder.isNotEmpty()) {
+                    Image(
+                        painter = painterResource(id = resourceId),
+                        contentDescription = config.text,
+                        modifier = Modifier.size(if (isCompact) 20.dp else 24.dp),
+                        colorFilter = ColorFilter.tint(config.color),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    // Fallback placeholder
+                    Box(
+                        modifier = Modifier
+                            .size(if (isCompact) 20.dp else 24.dp)
+                            .background(config.color, CircleShape)
+                    )
+                }
             } else {
-                // Fallback placeholder
-                Box(
-                    modifier = Modifier
-                        .size(if (isCompact) 16.dp else 24.dp)
-                        .background(config.color, CircleShape)
-                )
-            }
-        }
-    } else {
-        // Full mode with icon and text
-        Row(
-            modifier = buttonModifier,
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Validate and render icon
-            val resourceId = config.iconPlaceholder.toIntOrNull()
-            if (resourceId != null && config.iconPlaceholder.isNotEmpty()) {
-                Image(
-                    painter = painterResource(id = resourceId),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    colorFilter = ColorFilter.tint(config.color),
-                    contentScale = ContentScale.Fit
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            
-            // Text without using Material Text composable
-            Box(
-                modifier = Modifier,
-                contentAlignment = Alignment.Center
-            ) {
-                BasicText(
-                    text = config.text,
-                    color = config.color,
-                    fontSize = if (isCompact) 12.sp else 14.sp
-                )
+                // Full mode with icon and text - arranged vertically to fit square shape
+                Column(
+                    modifier = Modifier.padding(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Validate and render icon
+                    val resourceId = config.iconPlaceholder.toIntOrNull()
+                    if (resourceId != null && config.iconPlaceholder.isNotEmpty()) {
+                        Image(
+                            painter = painterResource(id = resourceId),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            colorFilter = ColorFilter.tint(config.color),
+                            contentScale = ContentScale.Fit
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                    }
+                    
+                    // Text
+                    BasicText(
+                        text = config.text,
+                        color = config.color,
+                        fontSize = 10.sp
+                    )
+                }
+
             }
         }
     }
