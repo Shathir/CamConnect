@@ -48,6 +48,9 @@ fun AdaptiveStreamLayout(
     // Camera state
     var cameraState by remember { mutableStateOf(CameraState()) }
     
+    // GPS Speed state (updated from LiveTrackingMap)
+    var currentSpeed by remember { mutableStateOf(0f) }
+    
     // System status
     var systemStatus by remember { 
         mutableStateOf(
@@ -57,10 +60,15 @@ fun AdaptiveStreamLayout(
                 isLteConnected = false,
                 isOnline = true,
                 isAiEnabled = true,
-                currentSpeed = 45.5f,
+                currentSpeed = 0f, // Will be updated by GPS
                 compassDirection = 127f
             )
         )
+    }
+    
+    // Update systemStatus when GPS speed changes
+    LaunchedEffect(currentSpeed) {
+        systemStatus = systemStatus.copy(currentSpeed = currentSpeed)
     }
     
     // Detection settings
@@ -158,7 +166,8 @@ fun AdaptiveStreamLayout(
                 modifier = Modifier.fillMaxSize(),
                 isConnected = systemStatus.isOnline,
                 cameraName = "Camera ${cameraState.currentCamera + 1}",
-                context = context
+                context = context,
+                onSpeedUpdate = { speed -> currentSpeed = speed }
             )
         }
         
@@ -228,7 +237,8 @@ fun AdaptiveStreamLayout(
                         isSelected = !toggleableIcons[index].isSelected
                     )
                 }
-            }
+            },
+            onSpeedUpdate = { speed -> currentSpeed = speed }
         )
     }
 }
@@ -259,7 +269,8 @@ private fun AnimatedRightPane(
     onMotionDetectionToggle: (Boolean) -> Unit,
     onCameraModeSelected: (CameraMode) -> Unit,
     onOrientationModeSelected: (OrientationMode) -> Unit,
-    onIconToggle: (String) -> Unit
+    onIconToggle: (String) -> Unit,
+    onSpeedUpdate: (Float) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -353,7 +364,8 @@ private fun AnimatedRightPane(
                         onRecordingToggle = onRecordingToggle,
                         onZoomChange = onZoomChange,
                         onIconToggle = onIconToggle,
-                        onCollapseClick = { onLayoutModeChange(LayoutMode.MINIMAL_CONTROL) }
+                        onCollapseClick = { onLayoutModeChange(LayoutMode.MINIMAL_CONTROL) },
+                        onSpeedUpdate = onSpeedUpdate
                     )
                 }
                 

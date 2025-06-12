@@ -60,7 +60,9 @@ import java.util.Locale
 
 @SuppressLint("MissingPermission")
 @Composable
-fun LiveTrackingMap() {
+fun LiveTrackingMap(
+    onSpeedUpdate: (Float) -> Unit = {}
+) {
     val context = LocalContext.current
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
@@ -87,6 +89,7 @@ fun LiveTrackingMap() {
                     val validSpeed = if (rawSpeed >= MIN_VALID_SPEED) rawSpeed else 0f
 //                    speed.value = smoothSpeed(speed.value, validSpeed) // to km/h
                     speed.value = validSpeed
+                    onSpeedUpdate(validSpeed) // Pass speed to parent component
                     prevLocation.value = it
                 }
             }
