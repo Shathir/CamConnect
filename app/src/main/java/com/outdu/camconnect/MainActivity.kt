@@ -159,26 +159,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    
-    private fun checkAndRequestPermissions() {
-        // Check if we need to request permissions (only for Android 6.0+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val permissionsToRequest = mutableListOf<String>()
-            
-            // Check each permission
-            for (permission in REQUIRED_PERMISSIONS) {
-                if (ContextCompat.checkSelfPermission(this, permission) 
-                    != PackageManager.PERMISSION_GRANTED) {
-                    permissionsToRequest.add(permission)
-                }
-            }
-            
-            // Request permissions if needed
-            if (permissionsToRequest.isNotEmpty()) {
-                requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
-            }
-        }
-    }
 }
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
