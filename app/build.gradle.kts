@@ -18,6 +18,17 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
+        }
+
+        externalNativeBuild{
+            cmake{
+                arguments.add("-DANDROID_STL=c++_shared")
+                arguments.add("-DGSTREAMER_ROOT_ANDROID=/home/sr/sw/shathir_ws/android_ws/CamConnect/app/src/main/gstreamer_1_0_android_1_22_4")
+            }
+        }
     }
 
     buildTypes {
@@ -30,11 +41,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
     buildFeatures {
         compose = true
@@ -47,6 +58,15 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    externalNativeBuild {
+        cmake {
+            path("src/main/cpp/CMakeLists.txt")
+            version = "3.10.2"
+        }
+    }
+
+    ndkVersion = "21.0.6113669"
 }
 
 dependencies {
@@ -59,6 +79,11 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
+    implementation(libs.androidx.appcompat.resources)
+//    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.commons.net)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -7,13 +7,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
 import com.outdu.camconnect.ui.components.camera.CameraStreamView
@@ -56,7 +63,8 @@ fun FullControlLayout(
             CameraStreamView(
                 modifier = Modifier.fillMaxSize(),
                 isConnected = systemStatus.isOnline,
-                cameraName = "Camera ${cameraState.currentCamera + 1}"
+                cameraName = "Camera ${cameraState.currentCamera + 1}",
+                context = LocalContext.current
             )
         }
         
@@ -239,3 +247,172 @@ fun FullControlLayout(
         }
     }
 }
+
+
+
+@Composable
+fun CustomToggleButton(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isSelected) Color(0xFF1A73E8) else Color(0xFF444444))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun CustomSelectableButton(
+    label: String,
+    isSelected: Boolean,
+    selectedColor: Color = Color.Red,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isSelected) selectedColor else Color(0xFF444444))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+class CameraControlViewModel : ViewModel() {
+    var autoDayNight by mutableStateOf(true)
+    var displayMode by mutableStateOf("Visible")
+    var objectDetection by mutableStateOf(true)
+    var detectFarObjects by mutableStateOf(true)
+    var motionDetection by mutableStateOf(true)
+    var captureMode by mutableStateOf("EIS")
+    var orientation by mutableStateOf("Flip")
+}
+
+@Composable
+fun CameraControlScreen(viewModel: CameraControlViewModel) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .padding(16.dp)
+    ) {
+
+        Text("Camera Control", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingRow("Auto Day/Night") {
+            CustomToggleButton(
+                "ON", viewModel.autoDayNight,
+                onClick = { viewModel.autoDayNight = true}
+            )
+            Spacer(Modifier.width(8.dp))
+            CustomToggleButton("OFF", !viewModel.autoDayNight,
+                onClick = {viewModel.autoDayNight = false}
+            )
+        }
+
+        SettingRow("Display Modes") {
+            CustomToggleButton("Visible", viewModel.displayMode == "Visible",
+                onClick =  {
+                    viewModel.displayMode = "Visible"
+                }
+            )
+            Spacer(Modifier.width(8.dp))
+            CustomSelectableButton("Infra Red", viewModel.displayMode == "Infra Red",
+                onClick = {
+                    viewModel.displayMode = "Infra Red"
+                }
+            )
+            Spacer(Modifier.width(8.dp))
+            CustomToggleButton("Auto", viewModel.displayMode == "Auto",
+                onClick = {
+                    viewModel.displayMode = "Auto"
+                }
+            )
+        }
+
+//        SettingRow("Object Detection") {
+//            CustomToggleButton("ON", viewModel.objectDetection) {
+//                viewModel.objectDetection = true
+//            }
+//            Spacer(Modifier.width(8.dp))
+//            CustomToggleButton("OFF", !viewModel.objectDetection) {
+//                viewModel.objectDetection = false
+//            }
+//        }
+//
+//        SettingRow("Detect Far Away Objects") {
+//            CustomToggleButton("YES", viewModel.detectFarObjects) {
+//                viewModel.detectFarObjects = true
+//            }
+//            Spacer(Modifier.width(8.dp))
+//            CustomToggleButton("NO", !viewModel.detectFarObjects) {
+//                viewModel.detectFarObjects = false
+//            }
+//        }
+//
+//        SettingRow("Motion Detection") {
+//            CustomToggleButton("YES", viewModel.motionDetection) {
+//                viewModel.motionDetection = true
+//            }
+//            Spacer(Modifier.width(8.dp))
+//            CustomToggleButton("NO", !viewModel.motionDetection) {
+//                viewModel.motionDetection = false
+//            }
+//        }
+//
+//        SettingRow("Camera Capture") {
+//            CustomToggleButton("EIS", viewModel.captureMode == "EIS") {
+//                viewModel.captureMode = "EIS"
+//            }
+//            Spacer(Modifier.width(8.dp))
+//            CustomToggleButton("HDR", viewModel.captureMode == "HDR") {
+//                viewModel.captureMode = "HDR"
+//            }
+//        }
+//
+//        SettingRow("Orientation") {
+//            CustomToggleButton("Flip Vertical", viewModel.orientation == "Flip") {
+//                viewModel.orientation = "Flip"
+//            }
+//            Spacer(Modifier.width(8.dp))
+//            CustomToggleButton("Mirror", viewModel.orientation == "Mirror") {
+//                viewModel.orientation = "Mirror"
+//            }
+//        }
+    }
+}
+
+@Composable
+fun SettingRow(label: String, content: @Composable RowScope.() -> Unit) {
+    Column(Modifier.padding(vertical = 8.dp)) {
+        Text(text = label, color = Color.White, fontSize = 14.sp)
+        Spacer(Modifier.height(4.dp))
+        Row(content = content)
+    }
+}
+
+
+
+
+

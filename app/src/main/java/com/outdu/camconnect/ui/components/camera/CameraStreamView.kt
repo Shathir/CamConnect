@@ -1,5 +1,7 @@
 package com.outdu.camconnect.ui.components.camera
 
+
+import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,11 +15,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.R
+import com.outdu.camconnect.Viewmodels.AppViewModel
+import com.outdu.camconnect.ui.layouts.maps.LiveTrackingMap
+import com.outdu.camconnect.ui.layouts.streamer.VideoSurfaceView
 
 
 /**
@@ -27,7 +34,8 @@ import com.outdu.camconnect.R
 fun CameraStreamView(
     modifier: Modifier = Modifier,
     isConnected: Boolean = true,
-    cameraName: String = "Camera 1"
+    cameraName: String = "Camera 1",
+    context: Context
 ) {
     Box(
         modifier = modifier
@@ -40,13 +48,14 @@ fun CameraStreamView(
             // TODO: Replace with actual camera view implementation
             // This is a placeholder for the actual camera stream
 //            CameraPlaceholder(cameraName = cameraName)
-            Image(
-                painter = painterResource(R.drawable.stream_sample_visible),
-                contentDescription = "Stream Sample Icon",
-                modifier = Modifier.fillMaxSize(), // size like an icon
-                contentScale = ContentScale.FillBounds,
-                alignment = Alignment.Center,
-            )
+//            Image(
+//                painter = painterResource(R.drawable.stream_sample_visible),
+//                contentDescription = "Stream Sample Icon",
+//                modifier = Modifier.fillMaxSize(), // size like an icon
+//                contentScale = ContentScale.FillBounds,
+//                alignment = Alignment.Center,
+//            )
+            VideoSurfaceView(viewModel = AppViewModel(), context)
         } else {
             DisconnectedView()
         }
@@ -178,7 +187,8 @@ fun VideoFeedSlot(
                         painter = painterResource(id = R.drawable.boat_hologram), // your .png file
                         contentDescription = "My PNG Icon",
                         modifier = Modifier.fillMaxSize(), // size like an icon
-                        contentScale = ContentScale.Fit,
+                        contentScale = ContentScale.FillBounds,
+
                         alignment = Alignment.Center,
                     )
                 }
@@ -208,52 +218,56 @@ fun SnapshotSlot(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(Color.DarkGray)
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            if (hasSnapshot) {
-                // TODO: Display actual snapshot
-                // "Last Snapshot" text placeholder
-                Box(
-                    modifier = Modifier
-                        .height(14.dp)
-                        .width(100.dp)
-                        .background(Color.White.copy(alpha = 0.7f))
-                )
-            } else {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Photo icon placeholder
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = 0.2f))
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.3f))
-                                .align(Alignment.Center)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    // "No Snapshot" text placeholder
-                    Box(
-                        modifier = Modifier
-                            .height(12.dp)
-                            .width(80.dp)
-                            .background(Color.White.copy(alpha = 0.5f))
-                    )
-                }
-            }
-        }
+
+        LiveTrackingMap()
+
+
+//        Box(
+//            modifier = Modifier.fillMaxSize(),
+//            contentAlignment = Alignment.Center
+//        ) {
+//            if (hasSnapshot) {
+//                // TODO: Display actual snapshot
+//                // "Last Snapshot" text placeholder
+//                Box(
+//                    modifier = Modifier
+//                        .height(14.dp)
+//                        .width(100.dp)
+//                        .background(Color.White.copy(alpha = 0.7f))
+//                )
+//            } else {
+//                Column(
+//                    horizontalAlignment = Alignment.CenterHorizontally
+//                ) {
+//                    // Photo icon placeholder
+//                    Box(
+//                        modifier = Modifier
+//                            .size(32.dp)
+//                            .clip(RoundedCornerShape(6.dp))
+//                            .background(Color.White.copy(alpha = 0.2f))
+//                    ) {
+//                        Box(
+//                            modifier = Modifier
+//                                .size(20.dp)
+//                                .clip(CircleShape)
+//                                .background(Color.White.copy(alpha = 0.3f))
+//                                .align(Alignment.Center)
+//                        )
+//                    }
+//                    Spacer(modifier = Modifier.height(8.dp))
+//                    // "No Snapshot" text placeholder
+//                    Box(
+//                        modifier = Modifier
+//                            .height(12.dp)
+//                            .width(80.dp)
+//                            .background(Color.White.copy(alpha = 0.5f))
+//                    )
+//                }
+//            }
+//        }
     }
 }
 

@@ -6,13 +6,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.R
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
@@ -58,7 +61,7 @@ fun MinimalControlContent(
                 isCompact = true,
                 showText = false
             )
-            
+
             CustomizableButton(
                 config = ButtonConfig(
                     id = "camera_switch",
@@ -70,7 +73,7 @@ fun MinimalControlContent(
                 isCompact = true,
                 showText = false
             )
-            
+
             CustomizableButton(
                 config = ButtonConfig(
                     id = "RecordingToggle",
@@ -82,14 +85,14 @@ fun MinimalControlContent(
                 isCompact = true,
                 showText = false
             )
-            
+
             // Compass
 //            CompassIndicator(
 //                direction = systemStatus.compassDirection,
 //                size = 60.dp
 //            )
         }
-        
+
         // Bottom indicators
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -100,7 +103,7 @@ fun MinimalControlContent(
                 batteryLevel = systemStatus.batteryLevel,
                 showPercentage = false
             )
-            
+
             // Connectivity indicators
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -109,7 +112,7 @@ fun MinimalControlContent(
                 WifiIndicator(isConnected = systemStatus.isWifiConnected)
 //                LteIndicator(isConnected = systemStatus.isLteConnected)
             }
-            
+
             // AI status
             AiStatusIndicator(
                 isEnabled = systemStatus.isAiEnabled,
@@ -126,11 +129,11 @@ fun MinimalControlContent(
 //                isCompact = true,
 //                showText = false
 //            )
-            
+
             // Speed indicator
             CompactSpeedIndicator(speed = systemStatus.currentSpeed)
         }
-        
+
         // Expand button
 //        ExpandButton(
 //            isExpanded = false,
@@ -175,7 +178,9 @@ fun ExpandedControlContent(
                     CustomizableButton(
                         config = if (buttonConfig.id == "Settings") {
                             buttonConfig.copy(onClick = onSettingsClick)
-                        } else if (buttonConfig.id == "collapse-screen"){
+
+                        } else if (buttonConfig.id == "collapse-screen") {
+
                             buttonConfig.copy(onClick = onCollapseClick)
                         } else {
                             buttonConfig
@@ -186,42 +191,84 @@ fun ExpandedControlContent(
                     )
                 }
             }
-            
+
             // Row 2: Recording toggle and Zoom selector
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Recording toggle
-                RecordingToggle(
-                    isRecording = cameraState.isRecording,
-                    onToggle = onRecordingToggle,
-                    modifier = Modifier.size(56.dp)
-                )
-                
-                // Scrollable zoom selector
-                ZoomSelector(
-                    currentZoom = cameraState.zoomLevel,
-                    onZoomSelected = onZoomChange,
-                    modifier = Modifier.weight(1f)
-                )
+                // Recording button with dark theme
+                Box(
+                    modifier = Modifier
+                        .height(48.dp)
+                        .weight(2f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (cameraState.isRecording) Color(0xFFF43823) else Color(0xFF333333)
+                        )
+                        .clickable { onRecordingToggle() }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Record dot indicator
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (cameraState.isRecording) Color.White else Color(0xFFDC2626)
+                                )
+                        )
+                        // Record text
+                        Text(
+                            text = "RECORD",
+                            color = if (cameraState.isRecording) Color.White else Color(0xFF9CA3AF),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // Zoom selector with dark theme
+                Box(
+                    modifier = Modifier
+                        .height(48.dp)
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF374151))
+                        .clickable { /* Handle zoom click */ }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "${cameraState.zoomLevel.toInt()}X",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
-            
+
             // Row 3: 6 toggleable icons
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .background(Color(0xFF222222))
-                    .padding(8.dp)
+                    .padding(1.dp)
+
             ) {
                 ToggleableIconRow(
                     icons = toggleableIcons,
                     onToggle = onIconToggle
                 )
             }
-            
+
             // Row 4: Compass component
 //            Box(
 //                modifier = Modifier
@@ -236,60 +283,61 @@ fun ExpandedControlContent(
 //                    size = 100.dp
 //                )
 //            }
-            
+
             // Row 5: Video feed and snapshot slots
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
-                VideoFeedSlot(
-                    modifier = Modifier.weight(1f),
-                    label = "Rear Camera"
-                )
+//                VideoFeedSlot(
+//                    modifier = Modifier.weight(1f),
+//                    label = "Rear Camera"
+//                )
                 SnapshotSlot(
                     modifier = Modifier.weight(1f),
                     hasSnapshot = false
                 )
             }
-            
+
             // Row 6: Status information
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFE0E0E0))
-                    .padding(12.dp)
-            ) {
-//                Column(
-//                    verticalArrangement = Arrangement.spacedBy(8.dp)
-//                ) {
-                    // Speed indicator
-//                    SpeedIndicator(
-//                        speed = systemStatus.currentSpeed,
-//                        modifier = Modifier.fillMaxWidth()
-//                    )
-                    
-                    // Status indicators in a row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        SpeedIndicator(
-                            speed = systemStatus.currentSpeed,
-//                            modifier = Modifier.fillMaxWidth()
-                        )
-                        BatteryIndicator(
-                            batteryLevel = systemStatus.batteryLevel,
-                            showPercentage = true
-                        )
-                        WifiIndicator(isConnected = systemStatus.isWifiConnected)
-//                        OnlineIndicator(isOnline = systemStatus.isOnline)
-                        AiStatusIndicator(isEnabled = systemStatus.isAiEnabled)
-                    }
-//                }
-            }
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .clip(RoundedCornerShape(8.dp))
+//                    .background(Color(0xFFE0E0E0))
+//                    .padding(12.dp)
+//            ) {
+////                Column(
+////                    verticalArrangement = Arrangement.spacedBy(8.dp)
+////                ) {
+//                    // Speed indicator
+////                    SpeedIndicator(
+////                        speed = systemStatus.currentSpeed,
+////                        modifier = Modifier.fillMaxWidth()
+////                    )
+//
+//                    // Status indicators in a row
+//                    Row(
+//                        modifier = Modifier.fillMaxWidth(),
+//                        horizontalArrangement = Arrangement.SpaceEvenly
+//                    ) {
+//                        SpeedIndicator(
+//                            speed = systemStatus.currentSpeed,
+////                            modifier = Modifier.fillMaxWidth()
+//                        )
+//                        BatteryIndicator(
+//                            batteryLevel = systemStatus.batteryLevel,
+//                            showPercentage = true
+//                        )
+//                        WifiIndicator(isConnected = systemStatus.isWifiConnected)
+////                        OnlineIndicator(isOnline = systemStatus.isOnline)
+//                        AiStatusIndicator(isEnabled = systemStatus.isAiEnabled)
+//                    }
+////                }
+//            }
+
         }
-        
+
         // Bottom bar with settings and collapse button
 //        Box(
 //            modifier = Modifier
@@ -365,7 +413,8 @@ fun FullControlContent(
     onFarObjectDetectionToggle: (Boolean) -> Unit,
     onMotionDetectionToggle: (Boolean) -> Unit,
     onCameraModeSelected: (CameraMode) -> Unit,
-    onOrientationModeSelected: (OrientationMode) -> Unit
+    onOrientationModeSelected: (OrientationMode) -> Unit,
+    onCollapseClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -380,22 +429,31 @@ fun FullControlContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             customButtons.take(5).forEach { buttonConfig ->
-                CustomizableButton(
-                    config = buttonConfig,
-                    modifier = Modifier.weight(1f),
-                    isCompact = false,
-                    showText = false
-                )
+                if (buttonConfig.id != "Settings") {
+
+                    CustomizableButton(
+                        config =
+                            if (buttonConfig.id == "collapse-screen") {
+                                buttonConfig.copy(onClick = onCollapseClick)
+                            } else {
+                                buttonConfig
+                            },
+                        modifier = Modifier.weight(1f),
+                        isCompact = false,
+                        showText = false
+                    )
+                }
+
             }
         }
-        
+
         // Row 2: Tab switcher
         ControlTabSwitcher(
             selectedTab = selectedTab,
             onTabSelected = onTabSelected,
             modifier = Modifier.fillMaxWidth()
         )
-        
+
         // Tab content
         when (selectedTab) {
             ControlTab.CAMERA_CONTROL -> {
@@ -417,7 +475,7 @@ fun FullControlContent(
                             onVisionModeSelected = onVisionModeSelected
                         )
                     }
-                    
+
                     // Row 4: Detection Settings
                     Box(
                         modifier = Modifier
@@ -435,7 +493,7 @@ fun FullControlContent(
                             onMotionDetectionToggle = onMotionDetectionToggle
                         )
                     }
-                    
+
                     // Row 5: Image Settings
                     Box(
                         modifier = Modifier
@@ -453,7 +511,7 @@ fun FullControlContent(
                     }
                 }
             }
-            
+
             ControlTab.DEVICE_CONTROL -> {
                 // Device control content placeholder
                 Box(

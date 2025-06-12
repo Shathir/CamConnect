@@ -20,6 +20,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CamConnect"
         tools:targetApi="31">
+
+        <meta-data android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCZ9I61Wmw7_eAfyHyu2X3hzqx3lbb2IL4" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

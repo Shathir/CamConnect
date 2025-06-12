@@ -281,10 +281,10 @@ fun ToggleableIconRow(
         icons.take(6).forEach { iconData ->
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(24.dp)
                     .clip(CircleShape)
-                    .clickable { onToggle(iconData.id) }
-                    .padding(8.dp),
+//                    .clickable { onToggle(iconData.id) }
+                    .padding(1.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // Validate and render icon
@@ -293,7 +293,7 @@ fun ToggleableIconRow(
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(id = resourceId),
                         contentDescription = iconData.description,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(12.dp),
                         colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
                             if (iconData.isSelected) iconData.colorOnSelect
                             else iconData.color

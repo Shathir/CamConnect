@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
@@ -53,7 +54,8 @@ fun ExpandedControlLayout(
             CameraStreamView(
                 modifier = Modifier.fillMaxSize(),
                 isConnected = systemStatus.isOnline,
-                cameraName = "Camera ${cameraState.currentCamera + 1}"
+                cameraName = "Camera ${cameraState.currentCamera + 1}",
+                context = LocalContext.current
             )
         }
         
