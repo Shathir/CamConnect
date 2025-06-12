@@ -211,7 +211,7 @@ fun CompactSpeedIndicator(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Mph",
+                text = "KMph",
                 color = Color(0xFF5B5B5B),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold

@@ -35,7 +35,8 @@ fun CameraStreamView(
     modifier: Modifier = Modifier,
     isConnected: Boolean = true,
     cameraName: String = "Camera 1",
-    context: Context
+    context: Context,
+    onSpeedUpdate: (Float) -> Unit = {}
 ) {
     Box(
         modifier = modifier
@@ -212,7 +213,8 @@ fun VideoFeedSlot(
 @Composable
 fun SnapshotSlot(
     modifier: Modifier = Modifier,
-    hasSnapshot: Boolean = false
+    hasSnapshot: Boolean = false,
+    onSpeedUpdate: (Float) -> Unit = {}
 ) {
     Box(
         modifier = modifier
@@ -222,7 +224,7 @@ fun SnapshotSlot(
             .background(Color.DarkGray)
     ) {
 
-        LiveTrackingMap()
+        LiveTrackingMap(onSpeedUpdate = onSpeedUpdate)
 
 
 //        Box(

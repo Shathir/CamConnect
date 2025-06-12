@@ -156,7 +156,8 @@ fun ExpandedControlContent(
     onRecordingToggle: () -> Unit,
     onZoomChange: (Float) -> Unit,
     onIconToggle: (String) -> Unit,
-    onCollapseClick: () -> Unit
+    onCollapseClick: () -> Unit,
+    onSpeedUpdate: (Float) -> Unit = {}
 ) {
     Column(
         modifier = Modifier.fillMaxSize()
@@ -295,7 +296,8 @@ fun ExpandedControlContent(
 //                )
                 SnapshotSlot(
                     modifier = Modifier.weight(1f),
-                    hasSnapshot = false
+                    hasSnapshot = false,
+                    onSpeedUpdate = onSpeedUpdate
                 )
             }
 
