@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,7 +49,8 @@ fun MinimalControlLayout(
             CameraStreamView(
                 modifier = Modifier.fillMaxSize(),
                 isConnected = systemStatus.isOnline,
-                cameraName = "Camera ${cameraState.currentCamera + 1}"
+                cameraName = "Camera ${cameraState.currentCamera + 1}",
+                context = LocalContext.current
             )
         }
         

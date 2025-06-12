@@ -1,5 +1,6 @@
 package com.outdu.camconnect.ui.layouts
 
+import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -10,7 +11,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,7 +39,8 @@ import com.outdu.camconnect.ui.models.*
  */
 @Composable
 fun AdaptiveStreamLayout(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    context: Context
 ) {
     // Layout state
     var layoutMode by remember { mutableStateOf(LayoutMode.MINIMAL_CONTROL) }
@@ -151,7 +157,8 @@ fun AdaptiveStreamLayout(
             CameraStreamView(
                 modifier = Modifier.fillMaxSize(),
                 isConnected = systemStatus.isOnline,
-                cameraName = "Camera ${cameraState.currentCamera + 1}"
+                cameraName = "Camera ${cameraState.currentCamera + 1}",
+                context = context
             )
         }
         
@@ -287,10 +294,10 @@ private fun AnimatedRightPane(
                             .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(Color.White, RoundedCornerShape(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Close",
+                            tint = Color.White
                         )
                     }
                     // "Settings" text placeholder
@@ -299,7 +306,7 @@ private fun AnimatedRightPane(
                             .height(24.dp)
                             .width(80.dp)
                             .padding(start = 8.dp)
-                            .background(Color.White.copy(alpha = 0.8f))
+                            .background(Color(0xFF222222).copy(alpha = 0.8f))
                     )
                     {
                         Text(
@@ -351,21 +358,23 @@ private fun AnimatedRightPane(
                 }
                 
                 LayoutMode.FULL_CONTROL -> {
-                    FullControlContent(
-                        cameraState = cameraState,
-                        systemStatus = systemStatus,
-                        detectionSettings = detectionSettings,
-                        customButtons = customButtons,
-                        selectedTab = selectedTab,
-                        onTabSelected = onTabSelected,
-                        onAutoDayNightToggle = onAutoDayNightToggle,
-                        onVisionModeSelected = onVisionModeSelected,
-                        onObjectDetectionToggle = onObjectDetectionToggle,
-                        onFarObjectDetectionToggle = onFarObjectDetectionToggle,
-                        onMotionDetectionToggle = onMotionDetectionToggle,
-                        onCameraModeSelected = onCameraModeSelected,
-                        onOrientationModeSelected = onOrientationModeSelected
-                    )
+//                    FullControlContent(
+//                        cameraState = cameraState,
+//                        systemStatus = systemStatus,
+//                        detectionSettings = detectionSettings,
+//                        customButtons = customButtons,
+//                        selectedTab = selectedTab,
+//                        onTabSelected = onTabSelected,
+//                        onAutoDayNightToggle = onAutoDayNightToggle,
+//                        onVisionModeSelected = onVisionModeSelected,
+//                        onObjectDetectionToggle = onObjectDetectionToggle,
+//                        onFarObjectDetectionToggle = onFarObjectDetectionToggle,
+//                        onMotionDetectionToggle = onMotionDetectionToggle,
+//                        onCameraModeSelected = onCameraModeSelected,
+//                        onOrientationModeSelected = onOrientationModeSelected,
+//                        onCollapseClick = {onLayoutModeChange(LayoutMode.MINIMAL_CONTROL)}
+//                    )
+                    CameraControlScreen(viewModel = CameraControlViewModel())
                 }
             }
         }

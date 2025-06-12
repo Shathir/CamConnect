@@ -19,20 +19,46 @@ import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.ui.layouts.AdaptiveStreamLayout
 import android.Manifest
 import android.content.pm.PackageManager
+import android.media.MediaCodecList
+import android.media.MediaFormat
 import androidx.core.content.ContextCompat
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.outdu.camconnect.singleton.MainActivitySingleton
+import java.util.Locale
 
 
 class MainActivity : ComponentActivity() {
-    
+
+
+
+
+    var nativeCustomData: Long = 0 // Native code will use this to keep private data
+    external fun nativePlay()
+    external fun nativeInit(avcDecoder: String) // Initialize native code, build pipeline, etc.
+    external fun nativePause() // Set pipeline to PAUSED
+    external fun nativeSurfaceInit(surface: Any) // A new surface is available
+    external fun nativeSurfaceFinalize() // Surface about to be destroyed
     companion object {
         private val REQUIRED_PERMISSIONS = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
+
+        @JvmStatic
+        private external fun nativeClassInit(currentTimeMillis: Long): Boolean
+
+        init {
+            System.loadLibrary("gstreamer_android_player")
+            nativeClassInit(System.currentTimeMillis())
+        }
     }
-    
+    fun setMessage(message: String) {
+        runOnUiThread {
+            // Update UI with the message
+        }
+    }
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -47,7 +73,8 @@ class MainActivity : ComponentActivity() {
             ).show()
         }
     }
-    
+
+    var actualCodecName: String = ""
     override fun onCreate(savedInstanceState: Bundle?) {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -64,12 +91,22 @@ class MainActivity : ComponentActivity() {
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        val mediaCodecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+        val codecName = mediaCodecList.findDecoderForFormat(
+            MediaFormat.createVideoFormat(
+                "video/avc",
+                1920,
+                1080
+            )
+        )
+        actualCodecName = codecName.replace(".", "").lowercase(Locale.getDefault())
+
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
         // Check permissions
         checkAndRequestPermissions()
-        
+
         setContent {
             Box(
                 modifier = Modifier
@@ -82,9 +119,12 @@ class MainActivity : ComponentActivity() {
                         bottom = 8.dp
                     )
             ) {
-                AdaptiveStreamLayout()
+                AdaptiveStreamLayout(context = LocalContext.current)
             }
         }
+
+        nativeInit(actualCodecName)
+        MainActivitySingleton.setMainActivity(this)
     }
     
     private fun checkAndRequestPermissions() {
@@ -116,6 +156,6 @@ fun CamConnectPreview() {
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
     ) {
-        AdaptiveStreamLayout()
+//        AdaptiveStreamLayout()
     }
 }
