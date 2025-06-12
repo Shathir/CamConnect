@@ -1,5 +1,6 @@
 package com.outdu.camconnect.ui.components.camera
 
+
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -14,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -186,6 +188,7 @@ fun VideoFeedSlot(
                         contentDescription = "My PNG Icon",
                         modifier = Modifier.fillMaxSize(), // size like an icon
                         contentScale = ContentScale.FillBounds,
+
                         alignment = Alignment.Center,
                     )
                 }

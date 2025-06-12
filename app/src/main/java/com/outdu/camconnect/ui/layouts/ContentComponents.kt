@@ -178,7 +178,9 @@ fun ExpandedControlContent(
                     CustomizableButton(
                         config = if (buttonConfig.id == "Settings") {
                             buttonConfig.copy(onClick = onSettingsClick)
+
                         } else if (buttonConfig.id == "collapse-screen") {
+
                             buttonConfig.copy(onClick = onCollapseClick)
                         } else {
                             buttonConfig
@@ -259,6 +261,7 @@ fun ExpandedControlContent(
                     .clip(RoundedCornerShape(8.dp))
                     .background(Color(0xFF222222))
                     .padding(1.dp)
+
             ) {
                 ToggleableIconRow(
                     icons = toggleableIcons,
@@ -332,6 +335,7 @@ fun ExpandedControlContent(
 //                    }
 ////                }
 //            }
+
         }
 
         // Bottom bar with settings and collapse button
@@ -439,6 +443,7 @@ fun FullControlContent(
                         showText = false
                     )
                 }
+
             }
         }
 

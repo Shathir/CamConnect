@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.ui.layouts.AdaptiveStreamLayout
 import android.Manifest
 import android.content.pm.PackageManager
+
 import android.media.MediaCodecList
 import android.media.MediaFormat
 import androidx.core.content.ContextCompat
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
     external fun nativePause() // Set pipeline to PAUSED
     external fun nativeSurfaceInit(surface: Any) // A new surface is available
     external fun nativeSurfaceFinalize() // Surface about to be destroyed
+
     companion object {
         private val REQUIRED_PERMISSIONS = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -59,6 +61,7 @@ class MainActivity : ComponentActivity() {
             // Update UI with the message
         }
     }
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -75,6 +78,7 @@ class MainActivity : ComponentActivity() {
     }
 
     var actualCodecName: String = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -146,6 +150,26 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    
+    private fun checkAndRequestPermissions() {
+        // Check if we need to request permissions (only for Android 6.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val permissionsToRequest = mutableListOf<String>()
+            
+            // Check each permission
+            for (permission in REQUIRED_PERMISSIONS) {
+                if (ContextCompat.checkSelfPermission(this, permission) 
+                    != PackageManager.PERMISSION_GRANTED) {
+                    permissionsToRequest.add(permission)
+                }
+            }
+            
+            // Request permissions if needed
+            if (permissionsToRequest.isNotEmpty()) {
+                requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
@@ -156,6 +180,8 @@ fun CamConnectPreview() {
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
     ) {
+
 //        AdaptiveStreamLayout()
+
     }
 }
