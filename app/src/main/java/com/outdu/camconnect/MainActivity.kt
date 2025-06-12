@@ -27,6 +27,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import com.outdu.camconnect.singleton.MainActivitySingleton
+import org.freedesktop.gstreamer.GStreamer
 import java.util.Locale
 
 
@@ -107,7 +108,15 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+
+//        try {
+//            GStreamer.init(this)
+//        } catch (e: Exception) {
+//            Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
+//            finish()
+//            return
+//        }
+
         // Check permissions
         checkAndRequestPermissions()
 
