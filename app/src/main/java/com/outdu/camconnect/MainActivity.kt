@@ -19,9 +19,11 @@ import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.ui.layouts.AdaptiveStreamLayout
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.res.AssetManager
 
 import android.media.MediaCodecList
 import android.media.MediaFormat
+import android.util.Log
 import androidx.core.content.ContextCompat
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -37,12 +39,22 @@ class MainActivity : ComponentActivity() {
 
 
     var nativeCustomData: Long = 0 // Native code will use this to keep private data
-    external fun nativePlay()
+    external fun nativePlay(
+        width: Int,
+        height: Int
+    )
     external fun nativeInit(avcDecoder: String) // Initialize native code, build pipeline, etc.
     external fun nativePause() // Set pipeline to PAUSED
+    external fun nativeFinalize()
     external fun nativeSurfaceInit(surface: Any) // A new surface is available
     external fun nativeSurfaceFinalize() // Surface about to be destroyed
-
+    external fun nativeLoadOdModel(
+        mgr: AssetManager,
+        modelId: Int,
+        cpuGpu: Int,
+        midas: Boolean,
+        model: Int
+    ): Boolean
     companion object {
         private val REQUIRED_PERMISSIONS = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -56,6 +68,21 @@ class MainActivity : ComponentActivity() {
             System.loadLibrary("gstreamer_android_player")
             nativeClassInit(System.currentTimeMillis())
         }
+    }
+    fun onGStreamerInitialized() {
+    }
+
+    fun odCallback(
+        labels: IntArray,
+        probs: FloatArray,
+        pointXs: IntArray,
+        pointYs: IntArray,
+        pointWs: IntArray,
+        pointHs: IntArray,
+        depThres: FloatArray
+    ) {
+        Log.i("onCallback","onCallback is called")
+
     }
     fun setMessage(message: String) {
         runOnUiThread {
@@ -109,13 +136,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-//        try {
-//            GStreamer.init(this)
-//        } catch (e: Exception) {
-//            Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
-//            finish()
-//            return
-//        }
+        try {
+            GStreamer.init(this)
+        } catch (e: Exception) {
+            Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
 
         // Check permissions
         checkAndRequestPermissions()

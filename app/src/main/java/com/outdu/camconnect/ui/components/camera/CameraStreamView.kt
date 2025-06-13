@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.R
 import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.ui.layouts.maps.LiveTrackingMap
+import com.outdu.camconnect.ui.layouts.maps.MapLibreTrackingScreen
 import com.outdu.camconnect.ui.layouts.streamer.VideoSurfaceView
 
 
@@ -225,6 +226,7 @@ fun SnapshotSlot(
     ) {
 
         LiveTrackingMap(onSpeedUpdate = onSpeedUpdate)
+//        MapLibreTrackingScreen()
 
 
 //        Box(

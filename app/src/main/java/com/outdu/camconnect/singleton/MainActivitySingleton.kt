@@ -27,8 +27,8 @@ object MainActivitySingleton {
 //        mainActivity?.nativeFinalize()
     }
 
-    fun nativePlay(od: Boolean, ds: Boolean, far: Boolean, recording_path: String) {
-        mainActivity?.nativePlay()
+    fun nativePlay(width: Int, height: Int) {
+        mainActivity?.nativePlay(width, height)
     }
 
     fun nativePause() {

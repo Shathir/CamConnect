@@ -13,7 +13,7 @@
 #include "yolo.h"
 #include "midas.h"
 
-#define RTSP_URL "rtsp://onvif:test@192.168.2.1/live1.sdp"
+#define RTSP_URL "rtsp://192.168.2.1/live1.sdp"
 
 GST_DEBUG_CATEGORY_STATIC (debug_category);
 #define GST_CAT_DEFAULT debug_category
@@ -43,9 +43,6 @@ typedef struct _CustomData {
     char avc_decoder[100];
     gboolean od;
     gboolean ds;
-    gboolean far_roi;
-    jint width;
-    jint height;
     jlong currentTimeMillis;
 } CustomData;
 
@@ -253,7 +250,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
         {
             ncnn::MutexLockGuard g(lock);
 
-            if (data->od && g_yolo) {
+            if (g_yolo) {
                 std::vector<float> dep_thres;
                 int midas_ret=1;
 //                dep_thres.reserve(objects.size());
@@ -314,32 +311,10 @@ static void *app_function (void *userdata) {
                                "videoscale ! "
                                "video/x-raw,width=960,height=540,format=BGR ! "
                                "appsink max-buffers=2 drop=true name=rtspappsink",
-                RTSP_URL, data->avc_decoder);
-        /*sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
-                               "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               "glimagesink t. ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               "glcolorconvert ! gldownload ! "
-                               "video/x-raw,width=1920,height=1080,format=BGR ! "
-                               "videoscale ! "
-                               "video/x-raw,width=960,height=540,format=BGR ! "
-                               "appsink max-buffers=2 drop=true name=rtspappsink",
-                                RTSP_URL, data->avc_decoder);*/
-//        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
-//                               "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
-//                               "queue leaky=2 max-size-buffers=2 ! "
-//                               "glimagesink t. ! "
-//                               "queue leaky=2 max-size-buffers=2 ! "
-//                               "gldownload ! "
-//                               "videoscale ! "
-//                               "videoconvert ! "
-//                               "video/x-raw,width=960,height=540 ! "
-//                               "appsink max-buffers=2 drop=true name=rtspappsink",
-//                RTSP_URL, data->avc_decoder);
+                                RTSP_URL, data->avc_decoder);
     } else {
         sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
-                               "rtph264depay ! h264parse ! amcviddec-%s  ! glimagesink",
+                               "rtph264depay ! h264parse ! amcviddec-%s ! glimagesink",
                                 RTSP_URL, data->avc_decoder);
     }
     data->pipeline = gst_parse_launch(rtsp_pipeline, &error);
@@ -452,12 +427,12 @@ static void gst_native_finalize (JNIEnv* env, jobject thiz) {
 }
 
 /* Set pipeline to PLAYING state */
-static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height) {
+static void gst_native_play (JNIEnv* env, jobject thiz, jboolean od, jboolean ds) {
     CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
-    data->width = width;
-    data->height = height;
     if (!data) return;
     GST_DEBUG ("Setting state to PLAYING");
+    data->od=od;
+    data->ds=ds;
     pthread_create (&gst_app_thread, NULL, &app_function, data);
 //    gst_element_set_state (data->pipeline, GST_STATE_PLAYING);
 }
@@ -476,7 +451,7 @@ static void gst_native_pause (JNIEnv* env, jobject thiz) {
 /* Static class initializer: retrieve method and field IDs */
 static jboolean gst_native_class_init (JNIEnv* env, jclass klass, jlong currentTimeMillis) {
     if(currentTimeMillis>1704047400000) JNI_FALSE;
-    custom_data_field_id = env->GetFieldID (klass, "nativeCustomData", "J");
+    custom_data_field_id = env->GetFieldID (klass, "native_custom_data", "J");
     set_message_method_id = env->GetMethodID (klass, "setMessage", "(Ljava/lang/String;)V");
     od_callback_id = env->GetMethodID (klass, "odCallback", "([I[F[I[I[I[I[F)V");
     on_gstreamer_initialized_method_id = env->GetMethodID (klass, "onGStreamerInitialized", "()V");
@@ -531,8 +506,7 @@ static void gst_native_surface_finalize (JNIEnv *env, jobject thiz) {
     data->initialized = FALSE;
 }
 
-static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetManager,
-                                    jint modelid, jint cpugpu, jboolean midas, jint modelId) {
+static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetManager, jint modelid, jint cpugpu) {
     if (cpugpu < 0 || cpugpu > 1)
     {
         return JNI_FALSE;
@@ -540,12 +514,6 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
 
     AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %p", mgr);
-
-    const char* modelNames[] =
-            {
-                    "generic",
-                    "marine",
-            };
 
     const char* modeltypes[] =
             {
@@ -572,11 +540,8 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
             };
 
     const char* modeltype = modeltypes[(int)modelid];
-    const char* modelName = modelNames[(int)modelId];
-    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %s %s", modeltype, modelName);
     int target_size = target_sizes[(int)modelid];
     bool use_gpu = (int)cpugpu == 1;
-    cv::Rect rect(180,180,640,320);
 
     // reload
     {
@@ -590,17 +555,12 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
         }
         else
         {
-            if (!g_yolo) {
-                g_yolo = new Yolo(rect);
-            }
-
-            g_yolo->load(mgr, modeltype, modelName, target_size, mean_vals[(int)modelid], norm_vals[(int)modelid], use_gpu);
+            if (!g_yolo)
+                g_yolo = new Yolo;
+            g_yolo->load(mgr, modeltype, target_size, mean_vals[(int)modelid], norm_vals[(int)modelid], use_gpu);
         }
-
-        if(midas) {
-            g_midas=new Midas(rect);
-            g_midas->load(mgr, 1);
-        }
+        g_midas=new Midas;
+        g_midas->load(mgr, 1);
     }
 
     return JNI_TRUE;
@@ -610,12 +570,12 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
 static JNINativeMethod native_methods[] = {
         { "nativeInit", "(Ljava/lang/String;)V", (void *) gst_native_init},
         { "nativeFinalize", "()V", (void *) gst_native_finalize},
-        { "nativePlay", "(II)V", (void *) gst_native_play},
+        { "nativePlay", "(ZZ)V", (void *) gst_native_play},
         { "nativePause", "()V", (void *) gst_native_pause},
         { "nativeSurfaceInit", "(Ljava/lang/Object;)V", (void *) gst_native_surface_init},
         { "nativeSurfaceFinalize", "()V", (void *) gst_native_surface_finalize},
         { "nativeClassInit", "(J)Z", (void *) gst_native_class_init},
-        { "nativeLoadOdModel", "(Landroid/content/res/AssetManager;IIZI)Z", (void *) od_native_loadModel}
+        { "nativeLoadOdModel", "(Landroid/content/res/AssetManager;II)Z", (void *) od_native_loadModel}
 };
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {
@@ -627,7 +587,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
         return -1;
     }
 
-    jclass klass = env->FindClass("com/outdu/camconnect/MainActivity");
+    jclass klass = env->FindClass("com/outdu/sr/motocamapp4/MainActivity");
     if (!klass) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "Could not retrieve class com.example.gstreamer.GStreamerPlayer");
         return -1;
