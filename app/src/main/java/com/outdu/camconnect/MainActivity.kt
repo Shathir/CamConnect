@@ -144,6 +144,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+
         // Check permissions
         checkAndRequestPermissions()
 

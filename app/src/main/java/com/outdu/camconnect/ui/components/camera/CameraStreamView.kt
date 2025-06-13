@@ -228,6 +228,7 @@ fun SnapshotSlot(
         LiveTrackingMap(onSpeedUpdate = onSpeedUpdate)
 //        MapLibreTrackingScreen()
 
+
 //        Box(
 //            modifier = Modifier.fillMaxSize(),
 //            contentAlignment = Alignment.Center
