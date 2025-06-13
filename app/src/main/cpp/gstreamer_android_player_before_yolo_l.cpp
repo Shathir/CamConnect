@@ -13,7 +13,7 @@
 #include "yolo.h"
 #include "midas.h"
 
-#define RTSP_URL "rtsp://onvif:test@192.168.2.1/live1.sdp"
+#define RTSP_URL "rtsp://192.168.2.1/live1.sdp"
 
 GST_DEBUG_CATEGORY_STATIC (debug_category);
 #define GST_CAT_DEFAULT debug_category
@@ -43,9 +43,6 @@ typedef struct _CustomData {
     char avc_decoder[100];
     gboolean od;
     gboolean ds;
-    gboolean far_roi;
-    jint width;
-    jint height;
     jlong currentTimeMillis;
 } CustomData;
 
@@ -124,7 +121,7 @@ static void od_callback(const std::vector<Object> &objects, const std::vector<fl
     jintArray pointyArray = (env)->NewIntArray(objects.size());
     jintArray pointwArray = (env)->NewIntArray(objects.size());
     jintArray pointhArray = (env)->NewIntArray(objects.size());
-    jfloatArray depThresArray = (env)->NewFloatArray(dep_thres.size());
+    jfloatArray depThresArray = (env)->NewFloatArray(objects.size());
     for (int i = 0; i < objects.size(); i++) {
         jint label = objects[i].label;  // Assuming objects is a vector of struct Object
         jfloat prob = objects[i].prob;
@@ -133,7 +130,7 @@ static void od_callback(const std::vector<Object> &objects, const std::vector<fl
         jint point_w = objects[i].rect.width*1920;//points[i].y;
         jint point_h = objects[i].rect.height*1080;//points[i].y;
         jfloat depThres = 0.;
-        if(data->ds && dep_thres.size()>0){
+        if(data->ds){
             depThres=dep_thres[i];
         }
 
@@ -144,9 +141,7 @@ static void od_callback(const std::vector<Object> &objects, const std::vector<fl
         (env)->SetIntArrayRegion(pointwArray, i, 1, &point_w);
         (env)->SetIntArrayRegion(pointhArray, i, 1, &point_h);
         (env)->SetFloatArrayRegion(probArray, i, 1, &prob);
-        if(data->ds && dep_thres.size()>0){
-            (env)->SetFloatArrayRegion(depThresArray, i, 1, &depThres);
-        }
+        (env)->SetFloatArrayRegion(depThresArray, i, 1, &depThres);
     }
     env->CallVoidMethod (data->app, od_callback_id, labelArray, probArray,
                          pointxArray, pointyArray, pointwArray, pointhArray, depThresArray);
@@ -245,40 +240,32 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
             gst_sample_unref(sample);
             return GST_FLOW_ERROR;
         }
-        cv::Mat bgr(sample_height, sample_width, CV_8UC3);
-        memcpy(bgr.data, gstBufferMap.data, gstBufferMap.size);
+        cv::Mat rgb(sample_height, sample_width, CV_8UC3);
+        memcpy(rgb.data, gstBufferMap.data, gstBufferMap.size);
         gst_buffer_unmap(buffer, &gstBufferMap);
         gst_sample_unref(sample);
         // nanodet
         {
             ncnn::MutexLockGuard g(lock);
 
-            if (data->od && g_yolo) {
-                std::vector<float> dep_thres;
-                int midas_ret=1;
-//                dep_thres.reserve(objects.size());
-                if(data->ds && g_midas) {
-                    midas_ret=g_midas->invokeProcessAsync(bgr);
-                }
+            if (g_yolo) {
                 std::vector<Object> objects;
-                g_yolo->detect(bgr, objects);//yolo od threshold 0.6
+                g_yolo->detect(rgb, objects);//yolo od threshold 0.6
+
                 std::vector<cv::Point2f> points2F;
                 points2F.reserve(objects.size());
+                std::vector<float> dep_thres;
+                dep_thres.reserve(objects.size());
                 for(Object &obj:objects) {
-                    points2F.emplace_back((obj.rect.x+obj.rect.width/2), (obj.rect.y+obj.rect.height/2));
-                    obj.rect.x=obj.rect.x/bgr.cols;
-                    obj.rect.y=obj.rect.y/bgr.rows;
-                    obj.rect.width=obj.rect.width/bgr.cols;
-                    obj.rect.height=obj.rect.height/bgr.rows;
+                    points2F.emplace_back((obj.rect.x+obj.rect.width/2)/rgb.cols, (obj.rect.y+obj.rect.height/2)/rgb.rows);
+                    obj.rect.x=obj.rect.x/rgb.cols;
+                    obj.rect.y=obj.rect.y/rgb.rows;
+                    obj.rect.width=obj.rect.width/rgb.cols;
+                    obj.rect.height=obj.rect.height/rgb.rows;
                 }
-
-                if(data->ds && g_midas) {
-                    if(midas_ret==0) {
-                        g_midas->updatePoints(points2F);
-                        g_midas->postProcess(bgr.cols, bgr.rows, dep_thres);
-                    }
+                if(data->ds && objects.size()>0) {
+                    g_midas->invokeProcessAsync(rgb, points2F, dep_thres);
                 }
-
                 od_callback(objects, dep_thres, data);
             }
         }
@@ -310,36 +297,14 @@ static void *app_function (void *userdata) {
                                "glimagesink t. ! "
                                "queue leaky=2 max-size-buffers=2 ! "
                                "glcolorconvert ! gldownload ! "
-                               "video/x-raw,width=1920,height=1080,format=BGR ! "
+                               "video/x-raw,width=1920,height=1080,format=RGB ! "
                                "videoscale ! "
-                               "video/x-raw,width=960,height=540,format=BGR ! "
+                               "video/x-raw,width=320,height=180,format=RGB ! "
                                "appsink max-buffers=2 drop=true name=rtspappsink",
-                RTSP_URL, data->avc_decoder);
-        /*sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
-                               "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               "glimagesink t. ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               "glcolorconvert ! gldownload ! "
-                               "video/x-raw,width=1920,height=1080,format=BGR ! "
-                               "videoscale ! "
-                               "video/x-raw,width=960,height=540,format=BGR ! "
-                               "appsink max-buffers=2 drop=true name=rtspappsink",
-                                RTSP_URL, data->avc_decoder);*/
-//        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
-//                               "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
-//                               "queue leaky=2 max-size-buffers=2 ! "
-//                               "glimagesink t. ! "
-//                               "queue leaky=2 max-size-buffers=2 ! "
-//                               "gldownload ! "
-//                               "videoscale ! "
-//                               "videoconvert ! "
-//                               "video/x-raw,width=960,height=540 ! "
-//                               "appsink max-buffers=2 drop=true name=rtspappsink",
-//                RTSP_URL, data->avc_decoder);
+                                RTSP_URL, data->avc_decoder);
     } else {
         sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
-                               "rtph264depay ! h264parse ! amcviddec-%s  ! glimagesink",
+                               "rtph264depay ! h264parse ! amcviddec-%s ! glimagesink",
                                 RTSP_URL, data->avc_decoder);
     }
     data->pipeline = gst_parse_launch(rtsp_pipeline, &error);
@@ -358,9 +323,9 @@ static void *app_function (void *userdata) {
     if(data->od) {
         data->app_sink = gst_bin_get_by_name(GST_BIN(data->pipeline), "rtspappsink");
         GstCaps *caps = gst_caps_new_simple("video/x-raw",
-                                            "width", G_TYPE_INT, 960,
-                                            "height", G_TYPE_INT, 540,
-                                            "format", G_TYPE_STRING, "BGR", NULL);
+                                            "width", G_TYPE_INT, 320,
+                                            "height", G_TYPE_INT, 180,
+                                            "format", G_TYPE_STRING, "RGB", NULL);
         gst_app_sink_set_caps(GST_APP_SINK(data->app_sink), caps);
         g_object_set (data->app_sink, "emit-signals", TRUE, NULL);
         g_signal_connect (data->app_sink, "new-sample", G_CALLBACK (new_sample), data);
@@ -452,12 +417,12 @@ static void gst_native_finalize (JNIEnv* env, jobject thiz) {
 }
 
 /* Set pipeline to PLAYING state */
-static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height) {
+static void gst_native_play (JNIEnv* env, jobject thiz, jboolean od, jboolean ds) {
     CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
-    data->width = width;
-    data->height = height;
     if (!data) return;
     GST_DEBUG ("Setting state to PLAYING");
+    data->od=od;
+    data->ds=ds;
     pthread_create (&gst_app_thread, NULL, &app_function, data);
 //    gst_element_set_state (data->pipeline, GST_STATE_PLAYING);
 }
@@ -476,7 +441,7 @@ static void gst_native_pause (JNIEnv* env, jobject thiz) {
 /* Static class initializer: retrieve method and field IDs */
 static jboolean gst_native_class_init (JNIEnv* env, jclass klass, jlong currentTimeMillis) {
     if(currentTimeMillis>1704047400000) JNI_FALSE;
-    custom_data_field_id = env->GetFieldID (klass, "nativeCustomData", "J");
+    custom_data_field_id = env->GetFieldID (klass, "native_custom_data", "J");
     set_message_method_id = env->GetMethodID (klass, "setMessage", "(Ljava/lang/String;)V");
     od_callback_id = env->GetMethodID (klass, "odCallback", "([I[F[I[I[I[I[F)V");
     on_gstreamer_initialized_method_id = env->GetMethodID (klass, "onGStreamerInitialized", "()V");
@@ -531,8 +496,7 @@ static void gst_native_surface_finalize (JNIEnv *env, jobject thiz) {
     data->initialized = FALSE;
 }
 
-static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetManager,
-                                    jint modelid, jint cpugpu, jboolean midas, jint modelId) {
+static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetManager, jint modelid, jint cpugpu) {
     if (cpugpu < 0 || cpugpu > 1)
     {
         return JNI_FALSE;
@@ -540,12 +504,6 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
 
     AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %p", mgr);
-
-    const char* modelNames[] =
-            {
-                    "generic",
-                    "marine",
-            };
 
     const char* modeltypes[] =
             {
@@ -572,11 +530,8 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
             };
 
     const char* modeltype = modeltypes[(int)modelid];
-    const char* modelName = modelNames[(int)modelId];
-    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %s %s", modeltype, modelName);
     int target_size = target_sizes[(int)modelid];
     bool use_gpu = (int)cpugpu == 1;
-    cv::Rect rect(180,180,640,320);
 
     // reload
     {
@@ -590,17 +545,12 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
         }
         else
         {
-            if (!g_yolo) {
-                g_yolo = new Yolo(rect);
-            }
-
-            g_yolo->load(mgr, modeltype, modelName, target_size, mean_vals[(int)modelid], norm_vals[(int)modelid], use_gpu);
+            if (!g_yolo)
+                g_yolo = new Yolo;
+            g_yolo->load(mgr, modeltype, target_size, mean_vals[(int)modelid], norm_vals[(int)modelid], use_gpu);
         }
-
-        if(midas) {
-            g_midas=new Midas(rect);
-            g_midas->load(mgr, 1);
-        }
+        g_midas=new Midas;
+        g_midas->load(mgr, 1);
     }
 
     return JNI_TRUE;
@@ -610,12 +560,12 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
 static JNINativeMethod native_methods[] = {
         { "nativeInit", "(Ljava/lang/String;)V", (void *) gst_native_init},
         { "nativeFinalize", "()V", (void *) gst_native_finalize},
-        { "nativePlay", "(II)V", (void *) gst_native_play},
+        { "nativePlay", "(ZZ)V", (void *) gst_native_play},
         { "nativePause", "()V", (void *) gst_native_pause},
         { "nativeSurfaceInit", "(Ljava/lang/Object;)V", (void *) gst_native_surface_init},
         { "nativeSurfaceFinalize", "()V", (void *) gst_native_surface_finalize},
         { "nativeClassInit", "(J)Z", (void *) gst_native_class_init},
-        { "nativeLoadOdModel", "(Landroid/content/res/AssetManager;IIZI)Z", (void *) od_native_loadModel}
+        { "nativeLoadOdModel", "(Landroid/content/res/AssetManager;II)Z", (void *) od_native_loadModel}
 };
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {
@@ -627,7 +577,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
         return -1;
     }
 
-    jclass klass = env->FindClass("com/outdu/camconnect/MainActivity");
+    jclass klass = env->FindClass("com/outdu/sr/motocamapp4/MainActivity");
     if (!klass) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "Could not retrieve class com.example.gstreamer.GStreamerPlayer");
         return -1;
