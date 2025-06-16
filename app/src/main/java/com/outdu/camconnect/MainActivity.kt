@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.outdu.camconnect.singleton.MainActivitySingleton
 import org.freedesktop.gstreamer.GStreamer
 import java.util.Locale
+import com.outdu.camconnect.ui.theme.*
 
 
 class MainActivity : ComponentActivity() {
@@ -149,18 +150,20 @@ class MainActivity : ComponentActivity() {
         checkAndRequestPermissions()
 
         setContent {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF0D0D0D))
-                    .padding(
-                        start = 24.dp,
-                        top = 8.dp,
-                        end = 8.dp,
-                        bottom = 8.dp
-                    )
-            ) {
-                AdaptiveStreamLayout(context = LocalContext.current)
+            CamConnectTheme {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(VeryDarkBackground)
+                        .padding(
+                            start = 24.dp,
+                            top = 8.dp,
+                            end = 8.dp,
+                            bottom = 8.dp
+                        )
+                ) {
+                    AdaptiveStreamLayout(context = LocalContext.current)
+                }
             }
         }
 
@@ -192,13 +195,13 @@ class MainActivity : ComponentActivity() {
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
 fun CamConnectPreview() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-    ) {
-
-//        AdaptiveStreamLayout()
-
+    CamConnectTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(VeryDarkBackground)
+        ) {
+            // Preview content
+        }
     }
 }

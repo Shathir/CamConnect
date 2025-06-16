@@ -8,6 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +27,12 @@ import com.outdu.camconnect.ui.components.controls.*
 import com.outdu.camconnect.ui.components.indicators.*
 import com.outdu.camconnect.ui.components.settings.*
 import com.outdu.camconnect.ui.models.*
+import com.outdu.camconnect.ui.theme.*
+import com.outdu.camconnect.ui.theme.AppColors.ButtonBgColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonIconColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 
 /**
  * Minimal control content - vertical layout with essential controls
@@ -53,9 +62,11 @@ fun MinimalControlContent(
             CustomizableButton(
                 config = ButtonConfig(
                     id = "settings",
-                    iconPlaceholder = R.drawable.settings_line.toString(),
+                    iconPlaceholder = R.drawable.sliders_horizontal.toString(),
+                    color = MediumGray,
                     text = "Settings",
-                    backgroundColor = Color(0xFF333333),
+                    BorderColor = ButtonBorderColor,
+                    backgroundColor = MediumDarkBackground,
                     onClick = onSettingsClick
                 ),
                 isCompact = true,
@@ -66,8 +77,10 @@ fun MinimalControlContent(
                 config = ButtonConfig(
                     id = "camera_switch",
                     iconPlaceholder = R.drawable.expand_line.toString(),
+                    color = Color.White,
                     text = "Camera",
-                    backgroundColor = Color(0xFF333333),
+                    BorderColor = DefaultColors.DarkGray,
+                    backgroundColor = DefaultColors.DarkGray,
                     onClick = onExpandClick
                 ),
                 isCompact = true,
@@ -77,9 +90,11 @@ fun MinimalControlContent(
             CustomizableButton(
                 config = ButtonConfig(
                     id = "RecordingToggle",
-                    iconPlaceholder = R.drawable.record_circle_line.toString(),
+                    iconPlaceholder = R.drawable.record_icon.toString(),
+                    color = RecordRed,
                     text = "Recording",
-                    backgroundColor = Color(0xFF333333),
+                    BorderColor = ButtonBorderColor,
+                    backgroundColor = MediumDarkBackground,
                     onClick = onRecordingToggle
                 ),
                 isCompact = true,
@@ -151,6 +166,7 @@ fun ExpandedControlContent(
     systemStatus: SystemStatus,
     customButtons: List<ButtonConfig>,
     toggleableIcons: List<ToggleableIcon>,
+    buttonStates: MutableMap<String, Boolean>,
     onSettingsClick: () -> Unit,
     onCameraSwitch: () -> Unit,
     onRecordingToggle: () -> Unit,
@@ -170,21 +186,57 @@ fun ExpandedControlContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Row 1: Customizable 5-button row
+            // Row 1: Customizable 5-button row with state management
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 customButtons.take(5).forEach { buttonConfig ->
+                    // Get current selection state for this button
+                    val isSelected = buttonStates[buttonConfig.id] ?: false
+                    
                     CustomizableButton(
-                        config = if (buttonConfig.id == "Settings") {
-                            buttonConfig.copy(onClick = onSettingsClick)
-
-                        } else if (buttonConfig.id == "collapse-screen") {
-
-                            buttonConfig.copy(onClick = onCollapseClick)
-                        } else {
-                            buttonConfig
+                        config = when (buttonConfig.id) {
+                            "Settings" -> buttonConfig.copy(onClick = onSettingsClick,
+                                BorderColor = ButtonBorderColor,
+                                backgroundColor = if(isSelected) ButtonSelectedBgColor else ButtonBgColor,
+                                color = if(isSelected) ButtonSelectedIconColor else ButtonIconColor)
+                            "collapse-screen" -> buttonConfig.copy(onClick = onCollapseClick,
+                                BorderColor = ButtonBorderColor,
+                                backgroundColor = if(isSelected) ButtonSelectedBgColor else ButtonBgColor,
+                                color = if(isSelected) ButtonSelectedIconColor else ButtonIconColor)
+                            else -> {
+                                // Create dynamic button config based on selection state
+                                buttonConfig.copy(
+                                    backgroundColor = if (isSelected) {
+                                        // Active state - brighter background
+                                        when (buttonConfig.id) {
+                                            "ir" -> RecordRed
+                                            else -> ButtonSelectedBgColor
+                                        }
+                                    } else {
+                                        // Inactive state - default background
+                                        ButtonBgColor
+                                    },
+                                    color = if (isSelected) ButtonSelectedIconColor else ButtonIconColor,
+                                    BorderColor = if (isSelected) {
+                                        // Active state - brighter background
+                                        when (buttonConfig.id) {
+                                            "ir" -> RecordRed
+                                            else -> ButtonBorderColor
+                                        }
+                                    } else {
+                                        // Inactive state - default background
+                                        ButtonBorderColor
+                                    },
+                                    onClick = {
+                                        // Toggle button state
+                                        buttonStates[buttonConfig.id] = !isSelected
+                                        // Call original onClick if needed
+                                        buttonConfig.onClick()
+                                    }
+                                )
+                            }
                         },
                         modifier = Modifier.weight(1f),
                         isCompact = true,
@@ -206,7 +258,7 @@ fun ExpandedControlContent(
                         .weight(2f)
                         .clip(RoundedCornerShape(12.dp))
                         .background(
-                            if (cameraState.isRecording) Color(0xFFF43823) else Color(0xFF333333)
+                            if (cameraState.isRecording) RecordRed else MediumDarkBackground
                         )
                         .clickable { onRecordingToggle() }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -222,13 +274,13 @@ fun ExpandedControlContent(
                                 .size(12.dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(
-                                    if (cameraState.isRecording) Color.White else Color(0xFFDC2626)
+                                    if (cameraState.isRecording) White else RedVariant
                                 )
                         )
                         // Record text
                         Text(
                             text = "RECORD",
-                            color = if (cameraState.isRecording) Color.White else Color(0xFF9CA3AF),
+                            color = if (cameraState.isRecording) White else MediumLightGray,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -241,14 +293,14 @@ fun ExpandedControlContent(
                         .height(48.dp)
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF374151))
+                        .background(DarkSlate)
                         .clickable { /* Handle zoom click */ }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "${cameraState.zoomLevel.toInt()}X",
-                        color = Color.White,
+                        color = White,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -260,7 +312,7 @@ fun ExpandedControlContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF222222))
+                    .background(DarkBackground2)
                     .padding(1.dp)
 
             ) {
@@ -467,7 +519,7 @@ fun FullControlContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFE0E0E0))
+                            .background(DarkBackground2)
                             .padding(16.dp)
                     ) {
                         DisplaySettingsSection(
@@ -483,7 +535,7 @@ fun FullControlContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFE0E0E0))
+                            .background(DarkBackground2)
                             .padding(16.dp)
                     ) {
                         DetectionSettingsSection(
@@ -501,7 +553,7 @@ fun FullControlContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFE0E0E0))
+                            .background(DarkBackground2)
                             .padding(16.dp)
                     ) {
                         ImageSettingsSection(
@@ -520,7 +572,7 @@ fun FullControlContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFE0E0E0))
+                        .background(DarkBackground2)
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {

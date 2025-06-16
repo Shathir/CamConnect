@@ -26,6 +26,7 @@ import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.ui.layouts.maps.LiveTrackingMap
 import com.outdu.camconnect.ui.layouts.maps.MapLibreTrackingScreen
 import com.outdu.camconnect.ui.layouts.streamer.VideoSurfaceView
+import com.outdu.camconnect.ui.theme.*
 
 
 /**
@@ -43,7 +44,7 @@ fun CameraStreamView(
         modifier = modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xFF2A2A2A)),
+            .background(DarkBackground3),
         contentAlignment = Alignment.Center
     ) {
         if (isConnected) {
@@ -225,7 +226,7 @@ fun SnapshotSlot(
             .background(Color.DarkGray)
     ) {
 
-        LiveTrackingMap(onSpeedUpdate = onSpeedUpdate)
+//        LiveTrackingMap(onSpeedUpdate = onSpeedUpdate)
 //        MapLibreTrackingScreen()
 
 

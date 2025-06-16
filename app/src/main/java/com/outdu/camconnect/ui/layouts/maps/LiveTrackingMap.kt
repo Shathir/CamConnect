@@ -57,6 +57,7 @@ import com.outdu.camconnect.utils.calculateOffsetLocation
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.outdu.camconnect.ui.theme.*
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -193,7 +194,7 @@ fun LiveTrackingMap(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp)
-                .background(Color.White.copy(alpha = 0.8f))
+                .background(LightGray)
         ) {
 
 //                Text(
@@ -253,7 +254,7 @@ fun MapTypeSelector(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (isSelected) Color(0xFF424242) else Color(0xFFBDBDBD))
+                    .background(if (isSelected) DarkGray3 else LightGray2)
                     .clickable { onMapTypeChange(type) }
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {

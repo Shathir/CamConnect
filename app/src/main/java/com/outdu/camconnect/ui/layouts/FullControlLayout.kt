@@ -26,6 +26,7 @@ import com.outdu.camconnect.ui.components.buttons.CustomizableButton
 import com.outdu.camconnect.ui.components.camera.CameraStreamView
 import com.outdu.camconnect.ui.components.settings.*
 import com.outdu.camconnect.ui.models.*
+import com.outdu.camconnect.ui.theme.*
 
 /**
  * Layout 3: Full Control Panel (Settings and Configuration)
@@ -73,14 +74,14 @@ fun FullControlLayout(
             modifier = Modifier
                 .weight(0.55f)
                 .fillMaxHeight()
-                .background(Color(0xFFF5F5F5)) // Light gray background
+                .background(LightGrayBackground) // Light gray background
         ) {
             // Top bar with back button
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(4.dp)
-                    .background(Color(0xFF2196F3)) // Blue primary color
+                    .background(BluePrimary) // Blue primary color
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Row(
@@ -155,7 +156,7 @@ fun FullControlLayout(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFE0E0E0))
+                                    .background(LightGray)
                                     .padding(16.dp)
                             ) {
                                 DisplaySettingsSection(
@@ -171,7 +172,7 @@ fun FullControlLayout(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFE0E0E0))
+                                    .background(LightGray)
                                     .padding(16.dp)
                             ) {
                                 DetectionSettingsSection(
@@ -189,7 +190,7 @@ fun FullControlLayout(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFE0E0E0))
+                                    .background(LightGray)
                                     .padding(16.dp)
                             ) {
                                 ImageSettingsSection(
@@ -208,7 +209,7 @@ fun FullControlLayout(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFFE0E0E0))
+                                .background(LightGray)
                                 .padding(32.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -260,7 +261,7 @@ fun CustomToggleButton(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) Color(0xFF1A73E8) else Color(0xFF444444))
+            .background(if (isSelected) BlueVariant else DarkGray2)
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
@@ -284,7 +285,7 @@ fun CustomSelectableButton(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) selectedColor else Color(0xFF444444))
+            .background(if (isSelected) selectedColor else DarkGray2)
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {

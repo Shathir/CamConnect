@@ -20,6 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
+import androidx.compose.material3.Text
+import androidx.compose.ui.unit.Dp
+import com.outdu.camconnect.ui.theme.*
 
 /**
  * Recording toggle button with animated state
@@ -106,7 +109,7 @@ private fun ZoomChip(
             .height(32.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (isSelected) Color(0xFF2196F3) else Color.Gray.copy(alpha = 0.3f)
+                if (isSelected) BluePrimary else Gray.copy(alpha = 0.3f)
             )
             .clickable { onClick() }
             .padding(horizontal = 16.dp),
@@ -148,7 +151,7 @@ fun CameraSwitchButton(
             modifier = Modifier
                 .size(32.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF2196F3))
+                .background(BluePrimary)
         ) {
             // Camera lens
             Box(
@@ -195,7 +198,7 @@ fun ExpandButton(
                 topEnd = 0.dp,
                 bottomEnd = 0.dp
             ))
-            .background(Color(0xFFE0E0E0).copy(alpha = 0.9f))
+            .background(LightGray.copy(alpha = 0.9f))
             .clickable { onClick() }
             .padding(8.dp),
         contentAlignment = Alignment.Center
@@ -275,41 +278,60 @@ fun ToggleableIconRow(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        modifier = modifier.fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         icons.take(6).forEach { iconData ->
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-//                    .clickable { onToggle(iconData.id) }
-                    .padding(1.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                // Validate and render icon
-                val resourceId = iconData.iconPlaceholder.toIntOrNull()
-                if (resourceId != null && iconData.iconPlaceholder.isNotEmpty()) {
+            if(iconData.id == "viewmode")
+            {
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                )
+                {
+                    val resourceId = iconData.iconPlaceholder
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(id = resourceId),
                         contentDescription = iconData.description,
-                        modifier = Modifier.size(12.dp),
+                        modifier = Modifier.size(iconData.iconSize),
                         colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
                             if (iconData.isSelected) iconData.colorOnSelect
-                            else iconData.color
+                            else MediumGray2.copy(alpha = 0.6f)
                         ),
                         contentScale = androidx.compose.ui.layout.ContentScale.Fit
                     )
-                } else {
-                    // Fallback placeholder
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (iconData.isSelected) Color(0xFF2196F3)
-                                else Color.Gray.copy(alpha = 0.3f)
-                            )
+                    Text(
+                        text = "Star Light",
+                        color = if(iconData.isSelected) iconData.colorOnSelect else MediumGray2.copy(alpha = 0.6f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+            }
+            else {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+//                    .clickable { onToggle(iconData.id) }
+                        .padding(1.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Validate and render icon
+                    val resourceId = iconData.iconPlaceholder
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = resourceId),
+                        contentDescription = iconData.description,
+                        modifier = Modifier.size(iconData.iconSize),
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                            if (iconData.isSelected) iconData.colorOnSelect
+                            else MediumGray2.copy(alpha = 0.6f)
+                        ),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
                     )
                 }
             }
@@ -322,9 +344,10 @@ fun ToggleableIconRow(
  */
 data class ToggleableIcon(
     val id: String,
-    val iconPlaceholder: String, // Drawable resource ID as string
+    val iconPlaceholder: Int,
     val description: String,
     val isSelected: Boolean = false,
-    val color: Color = Color(0xFF8F8F8F),
-    val colorOnSelect: Color = Color(0xFF2196F3)
+    val color: Color = DefaultColors.MediumGray2,
+    val colorOnSelect: Color = DefaultColors.BluePrimary,
+    val iconSize: Dp = 16.dp,
 ) 
