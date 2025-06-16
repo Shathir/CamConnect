@@ -21,6 +21,7 @@ import com.outdu.camconnect.ui.components.controls.*
 import com.outdu.camconnect.ui.components.indicators.*
 import com.outdu.camconnect.ui.models.CameraState
 import com.outdu.camconnect.ui.models.SystemStatus
+import com.outdu.camconnect.ui.theme.*
 
 /**
  * Layout 2: Expanded Control Panel (Interactive Controls)
@@ -64,7 +65,7 @@ fun ExpandedControlLayout(
             modifier = Modifier
                 .weight(0.4f)
                 .fillMaxHeight()
-                .background(Color(0xFFF5F5F5)) // Light gray background
+                .background(LightGrayBackground) // Light gray background
         ) {
             // Scrollable content
             Column(
@@ -115,7 +116,7 @@ fun ExpandedControlLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFE0E0E0))
+                        .background(LightGray)
                         .padding(8.dp)
                 ) {
                     ToggleableIconRow(
@@ -129,7 +130,7 @@ fun ExpandedControlLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFE0E0E0))
+                        .background(LightGray)
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -159,7 +160,7 @@ fun ExpandedControlLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFE0E0E0))
+                        .background(LightGray)
                         .padding(12.dp)
                 ) {
                     Column(
@@ -193,7 +194,7 @@ fun ExpandedControlLayout(
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(4.dp)
-                    .background(Color(0xFFE0E0E0))
+                    .background(LightGray)
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Row(

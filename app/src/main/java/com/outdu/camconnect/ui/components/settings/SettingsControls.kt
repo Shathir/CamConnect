@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.ui.models.CameraMode
 import com.outdu.camconnect.ui.models.OrientationMode
 import com.outdu.camconnect.ui.models.VisionMode
+import com.outdu.camconnect.ui.theme.*
 
 /**
  * Display settings section with auto day/night mode and vision mode selection
@@ -41,7 +42,7 @@ fun DisplaySettingsSection(
             modifier = Modifier
                 .height(16.dp)
                 .width(120.dp)
-                .background(Color.Black.copy(alpha = 0.2f))
+                .background(DarkBackground2)
         )
         
         // Auto Day/Night Mode Toggle
@@ -55,7 +56,7 @@ fun DisplaySettingsSection(
                 modifier = Modifier
                     .height(14.dp)
                     .width(140.dp)
-                    .background(Color.Black.copy(alpha = 0.1f))
+                    .background(DarkBackground1)
             )
             // Custom switch
             CustomSwitch(
@@ -74,7 +75,7 @@ fun DisplaySettingsSection(
                 modifier = Modifier
                     .height(14.dp)
                     .width(80.dp)
-                    .background(Color.Black.copy(alpha = 0.15f))
+                    .background(DarkBackground1)
             )
             VisionModeSelector(
                 selectedMode = selectedVisionMode,
@@ -127,7 +128,7 @@ fun DetectionSettingsSection(
             modifier = Modifier
                 .height(16.dp)
                 .width(130.dp)
-                .background(Color.Black.copy(alpha = 0.2f))
+                .background(DarkBackground2)
         )
         
         DetectionToggle(
@@ -166,7 +167,7 @@ private fun DetectionToggle(
             modifier = Modifier
                 .height(14.dp)
                 .width((label.length * 8).dp)
-                .background(Color.Black.copy(alpha = 0.1f))
+                .background(DarkBackground1)
         )
         CustomSwitch(
             checked = isEnabled,
@@ -195,7 +196,7 @@ fun ImageSettingsSection(
             modifier = Modifier
                 .height(16.dp)
                 .width(100.dp)
-                .background(Color.Black.copy(alpha = 0.2f))
+                .background(DarkBackground2)
         )
         
         // Camera Mode Selection
@@ -208,7 +209,7 @@ fun ImageSettingsSection(
                 modifier = Modifier
                     .height(14.dp)
                     .width(90.dp)
-                    .background(Color.Black.copy(alpha = 0.15f))
+                    .background(DarkBackground1)
             )
             CameraModeSelector(
                 selectedMode = selectedCameraMode,
@@ -226,7 +227,7 @@ fun ImageSettingsSection(
                 modifier = Modifier
                     .height(14.dp)
                     .width(80.dp)
-                    .background(Color.Black.copy(alpha = 0.15f))
+                    .background(DarkBackground1)
             )
             OrientationModeSelector(
                 selectedMode = selectedOrientationMode,
@@ -292,7 +293,7 @@ fun ControlTabSwitcher(
             .fillMaxWidth()
             .height(48.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF222222)),
+            .background(DarkBackground2),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         ControlTab.values().forEach { tab ->
@@ -302,7 +303,7 @@ fun ControlTabSwitcher(
                     .fillMaxHeight()
                     .clickable { onTabSelected(tab) }
                     .background(
-                        if (selectedTab == tab) Color(0xFF333333)
+                        if (selectedTab == tab) MediumDarkBackground
                         else Color.Transparent
                     ),
                 contentAlignment = Alignment.Center
@@ -321,7 +322,7 @@ fun ControlTabSwitcher(
                     Text(
                         text = tab.displayName,
                         color = if (selectedTab == tab) Color.White
-                        else Color(0xFF5C5C5C),
+                        else MediumGray3,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
@@ -347,7 +348,7 @@ private fun CustomSwitch(
             .height(24.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(
-                if (checked) Color(0xFF4CAF50) else Color.Gray.copy(alpha = 0.3f)
+                if (checked) ConnectionGreen else Gray.copy(alpha = 0.3f)
             )
             .clickable { onCheckedChange(!checked) }
             .padding(2.dp)
@@ -376,7 +377,7 @@ private fun CustomChip(
             .height(32.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (selected) Color(0xFF2196F3) else Color.Gray.copy(alpha = 0.2f)
+                if (selected) BluePrimary else Gray.copy(alpha = 0.2f)
             )
             .clickable { onClick() }
             .padding(horizontal = 12.dp),

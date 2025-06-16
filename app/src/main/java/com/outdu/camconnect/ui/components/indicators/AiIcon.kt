@@ -1,11 +1,14 @@
 package com.outdu.camconnect.ui.components.indicators
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.PathParser
+import com.outdu.camconnect.ui.theme.*
 
+@Composable
 fun aiIcon(isEnabled: Boolean): ImageVector {
     return ImageVector.Builder(
         name = "AiStatusVector",
@@ -22,10 +25,10 @@ fun aiIcon(isEnabled: Boolean): ImageVector {
         addPath(
             pathData = nodes,
             fill = if (!isEnabled) {
-                SolidColor(Color.Gray)
+                SolidColor(Gray)
             } else {
                 Brush.linearGradient(
-                    colors = listOf(Color(0xFF46B7B1), Color(0xFF0C59E0)),
+                    colors = listOf(AiGradientStart, AiGradientEnd),
                     start = Offset(1.021f, 3.669f),
                     end = Offset(9.088f, 12.627f)
                 )

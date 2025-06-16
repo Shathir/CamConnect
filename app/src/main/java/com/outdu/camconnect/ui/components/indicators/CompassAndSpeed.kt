@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.sin
+import com.outdu.camconnect.ui.theme.*
+import com.outdu.camconnect.ui.theme.AppColors.PrimaryText
+import com.outdu.camconnect.ui.theme.AppColors.SecondaryText
 
 /**
  * Directional compass component with live direction feedback
@@ -143,7 +146,7 @@ fun SpeedIndicator(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFFE0E0E0).copy(alpha = 0.7f))
+            .background(LightGray.copy(alpha = 0.7f))
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Row(
@@ -155,7 +158,7 @@ fun SpeedIndicator(
                 modifier = Modifier
                     .size(20.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF2196F3))
+                    .background(BluePrimary)
             ) {
                 // Speed meter indicator
                 Box(
@@ -205,17 +208,17 @@ fun CompactSpeedIndicator(
             ) {
             Text(
                 text = "$speed",
-                color = Color.White,
+                color = PrimaryText,
                 fontFamily = FontFamily.SansSerif,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = "KMph",
-                color = Color(0xFF5B5B5B),
+                color = SecondaryText,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }
     }
-} 
+}

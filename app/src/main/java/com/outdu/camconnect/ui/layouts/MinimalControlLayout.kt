@@ -21,6 +21,7 @@ import com.outdu.camconnect.ui.components.camera.CameraStreamView
 import com.outdu.camconnect.ui.models.CameraState
 import com.outdu.camconnect.ui.models.SystemStatus
 import com.outdu.camconnect.R
+import com.outdu.camconnect.ui.theme.*
 
 /**
  * Layout 1: Minimal Control Panel (Stream Focused)
@@ -59,7 +60,7 @@ fun MinimalControlLayout(
             modifier = Modifier
                 .weight(0.1f)
                 .fillMaxHeight()
-                .background(Color(0xFF1A1A1A)) // Very dark background
+                .background(DarkBackground1) // Very dark background
                 .padding(vertical = 16.dp, horizontal = 8.dp),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -90,7 +91,7 @@ fun MinimalControlLayout(
                     modifier = Modifier
                         .size(16.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFFF4444)) // Bright red
+                        .background(BrightRed) // Bright red
                 )
                 
                 // Compass showing "N"
@@ -111,7 +112,7 @@ fun MinimalControlLayout(
                 Box(
                     modifier = Modifier
                         .size(16.dp)
-                        .background(Color(0xFFFFCC00)) // Bright yellow/orange
+                        .background(AlertYellow) // Bright yellow/orange
                 )
                 
                 // Green circular indicator
@@ -119,7 +120,7 @@ fun MinimalControlLayout(
                     modifier = Modifier
                         .size(16.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF00DD00)) // Bright green
+                        .background(BrightGreen) // Bright green
                 )
                 
                 // Blue diamond indicator
@@ -127,7 +128,7 @@ fun MinimalControlLayout(
                     modifier = Modifier
                         .size(16.dp)
                         .rotate(45f) // Rotate to make diamond shape
-                        .background(Color(0xFF00AAFF)) // Bright blue
+                        .background(BrightBlue) // Bright blue
                 )
             }
             

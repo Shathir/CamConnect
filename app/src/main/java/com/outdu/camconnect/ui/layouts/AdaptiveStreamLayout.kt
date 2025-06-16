@@ -18,6 +18,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +33,7 @@ import com.outdu.camconnect.ui.components.controls.*
 import com.outdu.camconnect.ui.components.indicators.*
 import com.outdu.camconnect.ui.components.settings.*
 import com.outdu.camconnect.ui.models.*
+import com.outdu.camconnect.ui.theme.*
 
 /**
  * Main adaptive layout container with animated individual components
@@ -42,8 +44,8 @@ fun AdaptiveStreamLayout(
     modifier: Modifier = Modifier,
     context: Context
 ) {
-    // Layout state
-    var layoutMode by remember { mutableStateOf(LayoutMode.MINIMAL_CONTROL) }
+    // Layout state - persists across theme changes and recompositions
+    var layoutMode by rememberSaveable { mutableStateOf(LayoutMode.MINIMAL_CONTROL) }
     
     // Camera state
     var cameraState by remember { mutableStateOf(CameraState()) }
@@ -74,8 +76,11 @@ fun AdaptiveStreamLayout(
     // Detection settings
     var detectionSettings by remember { mutableStateOf(DetectionSettings()) }
     
-    // Settings tab state
-    var selectedTab by remember { mutableStateOf(ControlTab.CAMERA_CONTROL) }
+    // Settings tab state - persists across theme changes
+    var selectedTab by rememberSaveable { mutableStateOf(ControlTab.CAMERA_CONTROL) }
+    
+    // Persistent button states for expanded control - survives layout mode changes
+    val buttonStates = remember { mutableStateMapOf<String, Boolean>() }
     
     // Animated weights for the two panes
     val leftPaneWeight by animateFloatAsState(
@@ -98,68 +103,93 @@ fun AdaptiveStreamLayout(
         label = "right_pane_weight"
     )
 
-    // Custom buttons configuration
+    // Custom buttons configuration - Theme-aware colors applied outside remember
     val customButtons = remember {
         listOf(
             ButtonConfig(
                 id = "picture-in-picture",
                 iconPlaceholder = R.drawable.picture_in_picture_line.toString(),
                 text = "Picture-in-Picture",
-                backgroundColor = Color(0xFF333333),
+                backgroundColor = Color.Transparent, // Will be overridden with theme-aware color
                 onClick = { /* Handle snapshot */ }
             ),
             ButtonConfig(
                 id = "collapse-screen",
                 iconPlaceholder = R.drawable.expand_line.toString(),
                 text = "Collapse Screen",
-                backgroundColor = Color(0xFF333333),
+                backgroundColor = Color.Transparent, // Will be overridden with theme-aware color
+                color = Color.Transparent,
                 onClick = { /* Handle gallery */ }
             ),
             ButtonConfig(
                 id = "ir",
                 iconPlaceholder = R.drawable.ir_line.toString(),
                 text = "IR",
-                backgroundColor = Color(0xFF333333),
+                backgroundColor = Color.Transparent, // Will be overridden with theme-aware color
                 onClick = { /* Handle share */ }
             ),
             ButtonConfig(
                 id = "ir-cut-filter",
-                iconPlaceholder = R.drawable.ircut_filter_line.toString(),
+                iconPlaceholder = R.drawable.headlights.toString(),
                 text = "IR-Cut-Filter",
-                backgroundColor = Color(0xFF333333),
+                backgroundColor = Color.Transparent, // Will be overridden with theme-aware color
                 onClick = { /* Handle night mode */ }
             ),
             ButtonConfig(
                 id = "Settings",
-                iconPlaceholder = R.drawable.settings_line.toString(),
+                iconPlaceholder = R.drawable.sliders_horizontal.toString(),
                 text = "Settings",
-                backgroundColor = Color(0xFF333333),
+                backgroundColor = Color.Transparent, // Will be overridden with theme-aware color
                 onClick = { /* Handle flash */ }
             )
         )
     }
     
-    // Toggleable icons for Layout 2
+    // Apply theme-aware colors to custom buttons
+    val themedCustomButtons = customButtons.map { button ->
+            button.copy(
+                backgroundColor = MediumDarkBackground,
+                color = MediumGray
+            )
+    }
+    
+    // Toggleable icons for Layout 2 - Basic structure without theme-aware colors
     val toggleableIcons = remember {
         mutableStateListOf(
-            ToggleableIcon("hdr", R.drawable.hd_line.toString(), "Hdr", true, colorOnSelect = Color.White),
-            ToggleableIcon("stabilize", R.drawable.git_commit_line.toString(), "Stabilize", false, colorOnSelect = Color.White),
-            ToggleableIcon("timer", R.drawable.spy_line.toString(), "Timer", true, colorOnSelect = Color(0xFF0C59E0)),
-            ToggleableIcon("dayNight", R.drawable.eye_2_line.toString(), "DayNight", false, colorOnSelect = Color.White),
-            ToggleableIcon("visible", R.drawable.eye_line.toString(), "Visible", true, colorOnSelect = Color.White),
-            ToggleableIcon("ir", R.drawable.router_line.toString(), "Ir", true, colorOnSelect = Color(0xFFF43823))
+            ToggleableIcon("viewmode", R.drawable.moonstars,"viewMode", true, colorOnSelect = DefaultColors.SpyBlue),
+            ToggleableIcon("hdr", R.drawable.hd_line, description ="Hdr", true, colorOnSelect =  Color.White),
+            ToggleableIcon("stabilize", R.drawable.git_commit_line, "Stabilize", true, colorOnSelect = Color.White),
+            ToggleableIcon("timer", R.drawable.spy_line, "Timer", true, colorOnSelect = DefaultColors.SpyBlue),
+            ToggleableIcon("dayNight", R.drawable.eye_2_line, "DayNight", true, colorOnSelect = Color.White)
         )
+    }
+
+    // Apply theme-aware colors to icons when they change
+    LaunchedEffect(SpyBlue, RecordRed) {
+        toggleableIcons.forEachIndexed { index, icon ->
+            val themedIcon = when (icon.id) {
+                "viewmode" -> icon.copy(colorOnSelect = DefaultColors.SpyBlue)
+                "timer" -> icon.copy(colorOnSelect = DefaultColors.SpyBlue)
+                else -> icon.copy(colorOnSelect = Color.White)
+            }
+            if (toggleableIcons[index] != themedIcon) {
+                toggleableIcons[index] = themedIcon
+            }
+        }
     }
     
     // Main consistent layout structure
     Row(
-        modifier = modifier.fillMaxSize()
-            .background(Color(0xFF0D0D0D))
+        modifier = modifier
+            .fillMaxSize()
+            .background(VeryDarkBackground),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Left Pane - Camera Stream (animated width)
         Box(
             modifier = Modifier
                 .weight(leftPaneWeight)
+                .background(VeryDarkBackground)
                 .fillMaxHeight()
         ) {
             CameraStreamView(
@@ -171,12 +201,12 @@ fun AdaptiveStreamLayout(
             )
         }
         
-        HorizontalDivider(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(8.dp)
-                .background(Color(0xFF0D0D0D))
-        )
+//        HorizontalDivider(
+//            modifier = Modifier
+//                .fillMaxHeight()
+//                .width(8.dp)
+//                .background(Color.Transparent)
+//        )
 
         // Right Pane - Controls (animated width and content)
         AnimatedRightPane(
@@ -185,9 +215,10 @@ fun AdaptiveStreamLayout(
             cameraState = cameraState,
             systemStatus = systemStatus,
             detectionSettings = detectionSettings,
-            customButtons = customButtons,
+            customButtons = themedCustomButtons,
             toggleableIcons = toggleableIcons,
             selectedTab = selectedTab,
+            buttonStates = buttonStates,
             onLayoutModeChange = { layoutMode = it },
             onCameraSwitch = { 
                 cameraState = cameraState.copy(
@@ -257,6 +288,7 @@ private fun AnimatedRightPane(
     customButtons: List<ButtonConfig>,
     toggleableIcons: List<ToggleableIcon>,
     selectedTab: ControlTab,
+    buttonStates: MutableMap<String, Boolean>,
     onLayoutModeChange: (LayoutMode) -> Unit,
     onCameraSwitch: () -> Unit,
     onRecordingToggle: () -> Unit,
@@ -277,7 +309,7 @@ private fun AnimatedRightPane(
             .fillMaxWidth(paneWeight)
             .fillMaxHeight()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF222222))
+            .background(DarkBackground2)
     ) {
         // Top bar with settings button (always visible)
         AnimatedVisibility(
@@ -289,7 +321,7 @@ private fun AnimatedRightPane(
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(4.dp)
-                    .background(Color(0xFF222222))
+                    .background(DarkBackground2.copy(alpha = 0.8f))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Row(
@@ -317,7 +349,7 @@ private fun AnimatedRightPane(
                             .height(24.dp)
                             .width(80.dp)
                             .padding(start = 8.dp)
-                            .background(Color(0xFF222222).copy(alpha = 0.8f))
+                            .background(DarkBackground2.copy(alpha = 0.8f))
                     )
                     {
                         Text(
@@ -359,6 +391,7 @@ private fun AnimatedRightPane(
                         systemStatus = systemStatus,
                         customButtons = customButtons,
                         toggleableIcons = toggleableIcons,
+                        buttonStates = buttonStates,
                         onSettingsClick = { onLayoutModeChange(LayoutMode.FULL_CONTROL) },
                         onCameraSwitch = onCameraSwitch,
                         onRecordingToggle = onRecordingToggle,

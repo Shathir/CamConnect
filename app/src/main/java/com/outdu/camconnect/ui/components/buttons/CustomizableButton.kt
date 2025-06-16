@@ -25,6 +25,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.outdu.camconnect.ui.theme.*
+import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 
 /**
  * Data class for button configuration
@@ -34,9 +37,10 @@ data class ButtonConfig(
     val iconPlaceholder: String = "", // Drawable resource ID as string
     val text: String = "",
     val color: Color = Color.White,
-    val backgroundColor: Color = Color(0xFF2196F3),
+    val backgroundColor: Color = DefaultColors.BluePrimary,
     val enabled: Boolean = true,
-    val onClick: () -> Unit = {}
+    val onClick: () -> Unit = {},
+    val BorderColor: Color = Color.White
 )
 
 /**
@@ -52,6 +56,9 @@ fun CustomizableButton(
     // Determine button size
     val buttonSize = if (isCompact) 48.dp else 56.dp
     
+    // Check if we're in dark theme
+    val isDarkTheme = isSystemInDarkTheme()
+    
     // Outer box to ensure square shape
     Box(
         modifier = modifier
@@ -65,6 +72,11 @@ fun CustomizableButton(
                 .background(
                     if (config.enabled) config.backgroundColor 
                     else config.backgroundColor.copy(alpha = 0.5f)
+                )
+                .border(
+                    width = if (isDarkTheme) 0.dp else 2.dp, // No border in dark theme
+                    color = config.BorderColor,
+                    shape = RoundedCornerShape(20.dp)
                 )
                 .clickable(enabled = config.enabled) { config.onClick() },
             contentAlignment = Alignment.Center
@@ -132,7 +144,7 @@ fun IconToggleButton(
     isSelected: Boolean,
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    selectedTint: Color = Color(0xFF2196F3),
+    selectedTint: Color = DefaultColors.BluePrimary,
     unselectedTint: Color = Color.Gray
 ) {
     Box(

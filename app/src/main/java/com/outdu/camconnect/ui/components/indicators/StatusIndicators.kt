@@ -41,6 +41,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
+import com.outdu.camconnect.ui.theme.*
 
 
 /**
@@ -89,10 +90,10 @@ fun BatteryIndicator(
     val displayBatteryLevel = if (currentBatteryLevel != -1) currentBatteryLevel else batteryLevel
     
     val batteryColor = when {
-        displayBatteryLevel <= 10 -> Color.Red
-        displayBatteryLevel <= 30 -> Color.Yellow
-        displayBatteryLevel <= 50 -> Color(0xFFFF9800) // Orange
-        else -> Color.Green
+        displayBatteryLevel <= 10 -> BatteryRed
+        displayBatteryLevel <= 30 -> BatteryYellow
+        displayBatteryLevel <= 50 -> BatteryOrange
+        else -> BatteryGreen
     }
 
     Column (
@@ -123,7 +124,7 @@ fun BatteryIndicator(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(1.dp))
-                            .background(Color(0xFF222222))
+                            .background(DarkBackground2)
                     ) {
                         // Battery level fill
                         Box(
@@ -157,7 +158,7 @@ fun BatteryIndicator(
                 // Percentage text
                 Text(
                     text = "$displayBatteryLevel%",
-                    color = Color.White,
+                    color = White,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -384,8 +385,8 @@ fun LteIndicator(
                         .width(3.dp)
                         .height((6 + i * 3).dp)
                         .background(
-                            if (isConnected && i <= signalStrength - 1) Color.Green
-                            else Color.Gray.copy(alpha = 0.3f),
+                            if (isConnected && i <= signalStrength - 1) BatteryGreen
+                            else Gray.copy(alpha = 0.3f),
                             RoundedCornerShape(1.dp)
                         )
                 )
@@ -406,8 +407,8 @@ fun OnlineIndicator(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(
-                if (isOnline) Color(0xFF4CAF50).copy(alpha = 0.1f)
-                else Color.Red.copy(alpha = 0.1f)
+                if (isOnline) ConnectionGreen.copy(alpha = 0.1f)
+                else ConnectionRed.copy(alpha = 0.1f)
             )
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -417,7 +418,7 @@ fun OnlineIndicator(
             modifier = Modifier
                 .size(8.dp)
                 .clip(CircleShape)
-                .background(if (isOnline) Color(0xFF4CAF50) else Color.Red)
+                .background(if (isOnline) ConnectionGreen else ConnectionRed)
         )
         // Text placeholder
         Box(
@@ -425,8 +426,8 @@ fun OnlineIndicator(
                 .height(11.dp)
                 .width(if (isOnline) 35.dp else 40.dp)
                 .background(
-                    if (isOnline) Color(0xFF4CAF50).copy(alpha = 0.3f) 
-                    else Color.Red.copy(alpha = 0.3f)
+                    if (isOnline) ConnectionGreen.copy(alpha = 0.3f) 
+                    else ConnectionRed.copy(alpha = 0.3f)
                 )
         )
     }
