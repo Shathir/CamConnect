@@ -81,12 +81,15 @@ object AppColors {
     val White: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.White else LightColors.White
     val Black: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.Black else LightColors.Black
 
-    //BUtton Colors
+    //Button Colors
     val ButtonSelectedBgColor: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.ButtonSelectedBgColor else LightColors.ButtonSelectedBgColor
     val ButtonSelectedIconColor: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.ButtonSelectedIconColor else LightColors.ButtonSelectedIconColor
     val ButtonBgColor: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.ButtonBgColor else LightColors.ButtonBgColor
     val ButtonIconColor: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.ButtonIconColor else LightColors.ButtonIconColor
     val ButtonBorderColor: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.ButtonBorderColor else LightColors.ButtonBorderColor
+
+    // Toggle Icon Colors
+    val IconOnSelected: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.IconOnSelected else LightColors.IconOnSelected
     // XML Drawable Colors
     val DrawableWhite: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.DrawableWhite else LightColors.DrawableWhite
     val DrawableBatteryYellow: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.DrawableBatteryYellow else LightColors.DrawableBatteryYellow
@@ -118,6 +121,7 @@ object DefaultColors {
     val Black = DarkColors.Black
     val MediumDarkBackground = DarkColors.MediumDarkBackground
     val DarkGray = DarkColors.DarkGray
+    val IconOnSelected = LightColors.IconOnSelected
 }
 
 // Legacy aliases for backward compatibility - Composable versions

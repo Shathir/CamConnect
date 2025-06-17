@@ -329,7 +329,7 @@ fun ToggleableIconRow(
                         modifier = Modifier.size(iconData.iconSize),
                         colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
                             if (iconData.isSelected) iconData.colorOnSelect
-                            else MediumGray2.copy(alpha = 0.6f)
+                            else MediumGray2
                         ),
                         contentScale = androidx.compose.ui.layout.ContentScale.Fit
                     )

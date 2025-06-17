@@ -34,6 +34,7 @@ import com.outdu.camconnect.ui.components.indicators.*
 import com.outdu.camconnect.ui.components.settings.*
 import com.outdu.camconnect.ui.models.*
 import com.outdu.camconnect.ui.theme.*
+import com.outdu.camconnect.ui.theme.AppColors.IconOnSelected
 
 /**
  * Main adaptive layout container with animated individual components
@@ -170,7 +171,7 @@ fun AdaptiveStreamLayout(
             val themedIcon = when (icon.id) {
                 "viewmode" -> icon.copy(colorOnSelect = DefaultColors.SpyBlue)
                 "timer" -> icon.copy(colorOnSelect = DefaultColors.SpyBlue)
-                else -> icon.copy(colorOnSelect = Color.White)
+                else -> icon.copy(colorOnSelect = DefaultColors.IconOnSelected)
             }
             if (toggleableIcons[index] != themedIcon) {
                 toggleableIcons[index] = themedIcon
