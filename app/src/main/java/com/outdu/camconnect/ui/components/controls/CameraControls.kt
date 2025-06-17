@@ -283,7 +283,7 @@ fun ToggleableIconRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        icons.take(6).forEach { iconData ->
+        icons.take(icons.size).forEach { iconData ->
             if(iconData.id == "viewmode")
             {
 

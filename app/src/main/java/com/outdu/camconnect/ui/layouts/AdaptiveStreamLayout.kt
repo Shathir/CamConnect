@@ -88,7 +88,7 @@ fun AdaptiveStreamLayout(
         targetValue = when (layoutMode) {
             LayoutMode.MINIMAL_CONTROL -> 0.9f
             LayoutMode.EXPANDED_CONTROL -> 0.6f
-            LayoutMode.FULL_CONTROL -> 0.45f
+            LayoutMode.FULL_CONTROL -> 0.3f
         },
         animationSpec = tween(durationMillis = 300),
         label = "left_pane_weight"
@@ -98,7 +98,7 @@ fun AdaptiveStreamLayout(
         targetValue = when (layoutMode) {
             LayoutMode.MINIMAL_CONTROL -> 0.1f
             LayoutMode.EXPANDED_CONTROL -> 0.4f
-            LayoutMode.FULL_CONTROL -> 0.55f
+            LayoutMode.FULL_CONTROL -> 0.7f
         },
         animationSpec = tween(durationMillis = 300),
         label = "right_pane_weight"
@@ -201,13 +201,6 @@ fun AdaptiveStreamLayout(
                 onSpeedUpdate = { speed -> currentSpeed = speed }
             )
         }
-        
-//        HorizontalDivider(
-//            modifier = Modifier
-//                .fillMaxHeight()
-//                .width(8.dp)
-//                .background(Color.Transparent)
-//        )
 
         // Right Pane - Controls (animated width and content)
         AnimatedRightPane(
@@ -315,53 +308,9 @@ private fun AnimatedRightPane(
         // Top bar with settings button (always visible)
         AnimatedVisibility(
             visible = layoutMode == LayoutMode.FULL_CONTROL,
-            enter = slideInVertically() + fadeIn(),
-            exit = slideOutVertically() + fadeOut()
+            enter = slideInHorizontally() + slideInVertically() +  fadeIn(),
+            exit = slideOutHorizontally() +  slideOutVertically() + fadeOut()
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(4.dp)
-                    .background(DarkBackground2.copy(alpha = 0.8f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Back button
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .clickable { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) }
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Close",
-                            tint = Color.White
-                        )
-                    }
-                    // "Settings" text placeholder
-                    Box(
-                        modifier = Modifier
-                            .height(24.dp)
-                            .width(80.dp)
-                            .padding(start = 8.dp)
-                            .background(DarkBackground2.copy(alpha = 0.8f))
-                    )
-                    {
-                        Text(
-                            text = "Settings",
-                            color = Color.White,
-                            modifier = Modifier.padding(start = 8.dp)
-                                .align(Alignment.Center)
-                        )
-                    }
-                }
-            }
         }
         
         // Main content area with animated content
@@ -404,23 +353,22 @@ private fun AnimatedRightPane(
                 }
                 
                 LayoutMode.FULL_CONTROL -> {
-//                    FullControlContent(
-//                        cameraState = cameraState,
-//                        systemStatus = systemStatus,
-//                        detectionSettings = detectionSettings,
-//                        customButtons = customButtons,
-//                        selectedTab = selectedTab,
-//                        onTabSelected = onTabSelected,
-//                        onAutoDayNightToggle = onAutoDayNightToggle,
-//                        onVisionModeSelected = onVisionModeSelected,
-//                        onObjectDetectionToggle = onObjectDetectionToggle,
-//                        onFarObjectDetectionToggle = onFarObjectDetectionToggle,
-//                        onMotionDetectionToggle = onMotionDetectionToggle,
-//                        onCameraModeSelected = onCameraModeSelected,
-//                        onOrientationModeSelected = onOrientationModeSelected,
-//                        onCollapseClick = {onLayoutModeChange(LayoutMode.MINIMAL_CONTROL)}
-//                    )
-                    CameraControlScreen(viewModel = CameraControlViewModel())
+                    SettingsControlLayout(
+                        cameraState = cameraState,
+                        systemStatus = systemStatus,
+                        detectionSettings = detectionSettings,
+                        customButtons = customButtons,
+                        selectedTab = selectedTab,
+                        onTabSelected = onTabSelected,
+                        onAutoDayNightToggle = onAutoDayNightToggle,
+                        onVisionModeSelected = onVisionModeSelected,
+                        onObjectDetectionToggle = onObjectDetectionToggle,
+                        onFarObjectDetectionToggle = onFarObjectDetectionToggle,
+                        onMotionDetectionToggle = onMotionDetectionToggle,
+                        onCameraModeSelected = onCameraModeSelected,
+                        onOrientationModeSelected = onOrientationModeSelected,
+                        onCollapseClick = {onLayoutModeChange(LayoutMode.EXPANDED_CONTROL)}
+                    )
                 }
             }
         }

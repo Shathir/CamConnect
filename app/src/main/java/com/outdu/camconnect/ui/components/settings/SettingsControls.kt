@@ -1,7 +1,9 @@
 package com.outdu.camconnect.ui.components.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -12,15 +14,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.ui.models.CameraMode
 import com.outdu.camconnect.ui.models.OrientationMode
 import com.outdu.camconnect.ui.models.VisionMode
 import com.outdu.camconnect.ui.theme.*
+import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonIconColor
 
 /**
  * Display settings section with auto day/night mode and vision mode selection
@@ -288,50 +294,113 @@ fun ControlTabSwitcher(
     onTabSelected: (ControlTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(DarkBackground2),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        ControlTab.values().forEach { tab ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clickable { onTabSelected(tab) }
-                    .background(
-                        if (selectedTab == tab) MediumDarkBackground
-                        else Color.Transparent
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                // Tab text placeholder
-                Box(
-                    modifier = Modifier
-                        .height(14.dp)
-                        .width((tab.displayName.length * 7).dp)
-//                        .background(
-//                            if (selectedTab == tab) Color.White.copy(alpha = 0.8f)
-//                            else Color.Black.copy(alpha = 0.3f)
-//                        )
-                )
+        ControlTab.entries.forEach { tab ->
+            if(tab.displayName == "AI Vision")
+            {
+
+                val isSelected = tab == selectedTab
+                val backgroundBrush = if(isSelected)
                 {
-                    Text(
-                        text = tab.displayName,
-                        color = if (selectedTab == tab) Color.White
-                        else MediumGray3,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFF4E8EFF), Color(0xFFFFF399))
+                    )
+
+                }
+                else {
+                    Brush.linearGradient(
+                        colors = listOf(DarkBackground2, DarkBackground2)
                     )
                 }
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f)
+                        .gradientBorder(
+                            cornerRadius = 20.dp,
+                            borderWidth = if (isDarkTheme) 0.dp else 2.dp,
+                            gradient = Brush.linearGradient(
+                                colors = listOf(Color(0xFF4E8EFF), Color(0xFFFFF399))
+                            )
+                        )
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            backgroundBrush
+                        )
+                        .clickable{ onTabSelected(tab)},
+                    contentAlignment = Alignment.Center
+                ) {
+//                    Box(
+//                        modifier = Modifier.padding(2.dp)
+//                            .clip(RoundedCornerShape(20.dp))
+//                            .fillMaxSize()
+//                            .background(
+//                                backgroundBrush
+//                            )
+//                            .clickable { onTabSelected(tab) },
+//                        contentAlignment = Alignment.Center
+//                    )
+//                    {
+                        Text(
+                            text = tab.displayName,
+                            color = if (selectedTab == tab) Color.Black
+                            else ButtonIconColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1
+                        )
+//                    }
+                }
 
+            }
+            else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .border(
+                            width = if (isDarkTheme) 0.dp else 2.dp, // No border in dark theme
+                            color = ButtonBorderColor,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .background(
+                            if (selectedTab == tab) ButtonBorderColor
+                            else Color.Transparent
+                        )
+                        .clickable { onTabSelected(tab) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = tab.displayName,
+                        color = if (selectedTab == tab) Color.Black
+                        else ButtonIconColor,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
 }
+
+fun Modifier.gradientBorder(
+    cornerRadius: Dp = 20.dp,
+    borderWidth: Dp = 2.dp,
+    gradient: Brush
+): Modifier = this
+    .background(gradient, shape = RoundedCornerShape(cornerRadius))
+    .padding(borderWidth)
+
 
 /**
  * Custom switch component
@@ -397,6 +466,7 @@ private fun CustomChip(
 }
 
 enum class ControlTab(val displayName: String) {
-    CAMERA_CONTROL("Camera Control"),
-    DEVICE_CONTROL("Device Control")
+    CAMERA_CONTROL("Camera"),
+    AI_CONTROL("AI Vision"),
+    LICENSE_CONTROL("Manage"),
 } 
