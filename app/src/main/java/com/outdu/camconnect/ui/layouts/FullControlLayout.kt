@@ -1,5 +1,6 @@
 package com.outdu.camconnect.ui.layouts
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -29,7 +30,10 @@ import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
 import com.outdu.camconnect.ui.components.camera.CameraStreamView
 import com.outdu.camconnect.ui.components.settings.*
+import com.outdu.camconnect.ui.components.settings.ai.AiLayout
+import com.outdu.camconnect.ui.components.settings.camera.CameraLayout
 import com.outdu.camconnect.ui.components.settings.license.CameraInfoCard
+import com.outdu.camconnect.ui.components.settings.license.LicenseLayout
 import com.outdu.camconnect.ui.models.*
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBgColor
@@ -64,7 +68,7 @@ fun SettingsControlLayout(
     // Right Pane - Full Settings (55%)
     Column(
         modifier = Modifier
-            .padding(top=16.dp)
+            .padding(top = 16.dp)
             .fillMaxSize()
             .background(Color.Transparent) // Light gray background
     ) {
@@ -129,131 +133,28 @@ fun SettingsControlLayout(
             // Tab content
             when (selectedTab) {
                 ControlTab.CAMERA_CONTROL -> {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
-                        // Row 3: Display Settings
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(LightGray)
-                                .padding(16.dp)
-                        ) {
-                            DisplaySettingsSection(
-                                isAutoDayNightEnabled = cameraState.isAutoDayNightEnabled,
-                                onAutoDayNightToggle = onAutoDayNightToggle,
-                                selectedVisionMode = cameraState.visionMode,
-                                onVisionModeSelected = onVisionModeSelected
-                            )
-                        }
-
-                        // Row 4: Detection Settings
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(LightGray)
-                                .padding(16.dp)
-                        ) {
-                            DetectionSettingsSection(
-                                isObjectDetectionEnabled = detectionSettings.isObjectDetectionEnabled,
-                                onObjectDetectionToggle = onObjectDetectionToggle,
-                                isFarObjectDetectionEnabled = detectionSettings.isFarObjectDetectionEnabled,
-                                onFarObjectDetectionToggle = onFarObjectDetectionToggle,
-                                isMotionDetectionEnabled = detectionSettings.isMotionDetectionEnabled,
-                                onMotionDetectionToggle = onMotionDetectionToggle
-                            )
-                        }
-
-                        // Row 5: Image Settings
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(LightGray)
-                                .padding(16.dp)
-                        ) {
-                            ImageSettingsSection(
-                                selectedCameraMode = cameraState.cameraMode,
-                                onCameraModeSelected = onCameraModeSelected,
-                                selectedOrientationMode = cameraState.orientationMode,
-                                onOrientationModeSelected = onOrientationModeSelected
-                            )
-                        }
-                    }
+                    CameraLayout(
+                        cameraState = cameraState,
+                        systemStatus = systemStatus,
+                        detectionSettings = detectionSettings,
+                        customButtons = customButtons,
+                        onAutoDayNightToggle = onAutoDayNightToggle,
+                        onVisionModeSelected = onVisionModeSelected,
+                        onObjectDetectionToggle = onObjectDetectionToggle,
+                        onFarObjectDetectionToggle = onFarObjectDetectionToggle,
+                        onMotionDetectionToggle = onMotionDetectionToggle,
+                        onCameraModeSelected = onCameraModeSelected,
+                        onOrientationModeSelected = onOrientationModeSelected
+                    )
                 }
 
                 ControlTab.AI_CONTROL -> {
                     // Device control content placeholder
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(LightGray)
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            // Device icon placeholder
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.Gray)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            // "Device Control" text placeholder
-                            Box(
-                                modifier = Modifier
-                                    .height(24.dp)
-                                    .width(120.dp)
-                                    .background(Color.Black.copy(alpha = 0.3f))
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            // Description text placeholder
-                            Box(
-                                modifier = Modifier
-                                    .height(16.dp)
-                                    .width(200.dp)
-                                    .background(Color.Gray.copy(alpha = 0.3f))
-                            )
-                        }
-                    }
+                    AiLayout()
                 }
 
                 ControlTab.LICENSE_CONTROL -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Transparent)
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            // Device icon placeholder
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp)
-                            ) {
-                                items(15) {
-                                    CameraInfoCard(
-                                        title = "Boat-Front",
-                                        macId = "112.0192.10192",
-                                        key = "9102881",
-                                        status = "Active"
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    LicenseLayout()
                 }
             }
         }
@@ -289,7 +190,7 @@ fun CustomSelectableButton(
     label: String,
     isSelected: Boolean,
     selectedColor: Color = Color.Red,
-    modifier: Modifier = Modifier,
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Box(
@@ -365,56 +266,6 @@ fun CameraControlScreen(viewModel: CameraControlViewModel) {
                 }
             )
         }
-
-//        SettingRow("Object Detection") {
-//            CustomToggleButton("ON", viewModel.objectDetection) {
-//                viewModel.objectDetection = true
-//            }
-//            Spacer(Modifier.width(8.dp))
-//            CustomToggleButton("OFF", !viewModel.objectDetection) {
-//                viewModel.objectDetection = false
-//            }
-//        }
-//
-//        SettingRow("Detect Far Away Objects") {
-//            CustomToggleButton("YES", viewModel.detectFarObjects) {
-//                viewModel.detectFarObjects = true
-//            }
-//            Spacer(Modifier.width(8.dp))
-//            CustomToggleButton("NO", !viewModel.detectFarObjects) {
-//                viewModel.detectFarObjects = false
-//            }
-//        }
-//
-//        SettingRow("Motion Detection") {
-//            CustomToggleButton("YES", viewModel.motionDetection) {
-//                viewModel.motionDetection = true
-//            }
-//            Spacer(Modifier.width(8.dp))
-//            CustomToggleButton("NO", !viewModel.motionDetection) {
-//                viewModel.motionDetection = false
-//            }
-//        }
-//
-//        SettingRow("Camera Capture") {
-//            CustomToggleButton("EIS", viewModel.captureMode == "EIS") {
-//                viewModel.captureMode = "EIS"
-//            }
-//            Spacer(Modifier.width(8.dp))
-//            CustomToggleButton("HDR", viewModel.captureMode == "HDR") {
-//                viewModel.captureMode = "HDR"
-//            }
-//        }
-//
-//        SettingRow("Orientation") {
-//            CustomToggleButton("Flip Vertical", viewModel.orientation == "Flip") {
-//                viewModel.orientation = "Flip"
-//            }
-//            Spacer(Modifier.width(8.dp))
-//            CustomToggleButton("Mirror", viewModel.orientation == "Mirror") {
-//                viewModel.orientation = "Mirror"
-//            }
-//        }
     }
 }
 

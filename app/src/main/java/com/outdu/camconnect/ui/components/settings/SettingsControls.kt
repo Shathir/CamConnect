@@ -9,6 +9,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -325,8 +327,8 @@ fun ControlTabSwitcher(
                         .fillMaxHeight()
                         .weight(1f)
                         .gradientBorder(
-                            cornerRadius = 20.dp,
-                            borderWidth = if (isDarkTheme) 0.dp else 2.dp,
+                            cornerRadius = if (isDarkTheme) 21.dp else 22.dp,
+                            borderWidth = if (isDarkTheme) 1.dp else 2.dp,
                             gradient = Brush.linearGradient(
                                 colors = listOf(Color(0xFF4E8EFF), Color(0xFFFFF399))
                             )
@@ -335,29 +337,35 @@ fun ControlTabSwitcher(
                         .background(
                             backgroundBrush
                         )
-                        .clickable{ onTabSelected(tab)},
+                        .clickable { onTabSelected(tab) },
                     contentAlignment = Alignment.Center
                 ) {
-//                    Box(
-//                        modifier = Modifier.padding(2.dp)
-//                            .clip(RoundedCornerShape(20.dp))
-//                            .fillMaxSize()
-//                            .background(
-//                                backgroundBrush
-//                            )
-//                            .clickable { onTabSelected(tab) },
-//                        contentAlignment = Alignment.Center
-//                    )
-//                    {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    ) {
+                        Icon(
+                            painter = when (tab) {
+                                ControlTab.CAMERA_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.camera_line)
+                                ControlTab.AI_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.ai_line)
+                                ControlTab.LICENSE_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
+                            },
+                            contentDescription = tab.displayName,
+                            tint = if (selectedTab == tab) if(isDarkTheme) Color.White else Color.Black
+                            else if(isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF5C5C5C),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = tab.displayName,
-                            color = if (selectedTab == tab) Color.Black
-                            else ButtonIconColor,
+                            color = if (selectedTab == tab) if(isDarkTheme) Color.White else Color.Black
+                            else if(isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF5C5C5C),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             maxLines = 1
                         )
-//                    }
+                    }
                 }
 
             }
@@ -373,20 +381,38 @@ fun ControlTabSwitcher(
                             shape = RoundedCornerShape(20.dp)
                         )
                         .background(
-                            if (selectedTab == tab) ButtonBorderColor
-                            else Color.Transparent
+                            if (selectedTab == tab) if (isDarkTheme) Color(0xFF515151) else Color(0xFFD7D7D7)
+                            else if (isDarkTheme) Color(0xFF333333) else Color(0xFFFFFFFF )
                         )
                         .clickable { onTabSelected(tab) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = tab.displayName,
-                        color = if (selectedTab == tab) Color.Black
-                        else ButtonIconColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        maxLines = 1
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    ) {
+                        Icon(
+                            painter = when (tab) {
+                                ControlTab.CAMERA_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.camera_line)
+                                ControlTab.AI_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.ai_line)
+                                ControlTab.LICENSE_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
+                            },
+                            contentDescription = tab.displayName,
+                            tint = if (selectedTab == tab) if(isDarkTheme) Color.White else Color.Black
+                            else if(isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF5C5C5C),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = tab.displayName,
+                            color = if (selectedTab == tab) if(isDarkTheme) Color.White else Color.Black
+                            else if(isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF5C5C5C),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
         }
