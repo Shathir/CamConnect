@@ -30,6 +30,8 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonIconColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
+import com.outdu.camconnect.utils.MemoryManager
+import android.util.Log
 
 /**
  * Expanded control content - scrollable with multiple control sections
@@ -49,6 +51,23 @@ fun ExpandedControlContent(
     onCollapseClick: () -> Unit,
     onSpeedUpdate: (Float) -> Unit = {}
 ) {
+    // Manage scroll state with proper cleanup
+    val scrollState = rememberScrollState()
+
+    // Cleanup when component is disposed
+    DisposableEffect(Unit) {
+        Log.d("ExpandedControlContent", "Component created")
+        onDispose {
+            Log.d("ExpandedControlContent", "Component disposed - cleaning up")
+            // Clear any button states that might be lingering
+            try {
+                MemoryManager.cleanupWeakReferences()
+            } catch (e: Exception) {
+                Log.e("ExpandedControlContent", "Error during cleanup", e)
+            }
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -115,16 +134,16 @@ fun ExpandedControlContent(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        isCompact = true,
-                        showText = true,
+                        isCompact = false,
+                        showText = false
                     )
                 }
             }
 
-            // Row 2: Recording toggle and Zoom selector
+            // Row 2: Status Indicators
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Recording button with dark theme

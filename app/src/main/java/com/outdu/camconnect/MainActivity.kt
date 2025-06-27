@@ -28,8 +28,11 @@ import androidx.core.content.ContextCompat
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.singleton.MainActivitySingleton
+import com.outdu.camconnect.ui.layouts.streamer.ZoomableVideoTextureView
 import com.outdu.camconnect.ui.setupflow.SetupScreen
+import com.outdu.camconnect.utils.MemoryManager
 import org.freedesktop.gstreamer.GStreamer
 import java.util.Locale
 import com.outdu.camconnect.ui.theme.*
@@ -170,6 +173,37 @@ class MainActivity : ComponentActivity() {
 
         nativeInit(actualCodecName)
         MainActivitySingleton.setMainActivity(this)
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // Pause native streaming when app goes to background
+        try {
+            MainActivitySingleton.nativePause()
+            MemoryManager.cleanupWeakReferences()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error during pause", e)
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Resume will be handled by surface callbacks when they become available
+        Log.d("MainActivity", "Memory stats: ${MemoryManager.getMemoryStats()}")
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        // Force cleanup of all native resources
+        MemoryManager.forceCleanup()
+        // Clear the singleton reference to prevent memory leaks
+        MainActivitySingleton.clearMainActivity()
+        // Cleanup native resources
+        try {
+            nativeFinalize()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error during native cleanup", e)
+        }
     }
     
     private fun checkAndRequestPermissions() {

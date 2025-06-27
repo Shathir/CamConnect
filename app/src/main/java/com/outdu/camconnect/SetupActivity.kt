@@ -68,41 +68,44 @@ fun SetupFlow(
     onConnectCamera: () -> Unit,
     onStartStreaming: () -> Unit
 ) {
-    when {
-        // Show landing screen if no registration started
-        !setupState.isNetworkConfigured -> {
-            LandingScreen(
-                onGetStarted = onGetStarted,
-                onRegister = onRegister
-            )
-        }
-        // Show registration screen if network is configured but email not verified
-        !setupState.isEmailVerified && setupState.username.isEmpty() -> {
-            RegistrationScreen(
-                setupState = setupState,
-                onNext = { /* Move to verification screen */ },
-                onUpdateDetails = onUpdateRegistrationDetails
-            )
-        }
-        // Show email verification screen
-        !setupState.isEmailVerified -> {
-            EmailVerificationScreen(
-                setupState = setupState,
-                onVerify = onVerifyEmail,
-                onUpdateCode = onUpdateVerificationCode
-            )
-        }
-        // Show camera connection screen after email verification
-        !setupState.isCameraConfigured -> {
-            CameraConnectionScreen(
-                onConnectCamera = onConnectCamera
-            )
-        }
-        // Show setup complete screen
-        else -> {
-            SetupCompleteScreen(
-                onStartStreaming = onStartStreaming
-            )
-        }
-    }
+    SetupCompleteScreen(
+        onStartStreaming = onStartStreaming
+    )
+//    when {
+//        // Show landing screen if no registration started
+//        !setupState.isNetworkConfigured -> {
+//            LandingScreen(
+//                onGetStarted = onGetStarted,
+//                onRegister = onRegister
+//            )
+//        }
+//        // Show registration screen if network is configured but email not verified
+//        !setupState.isEmailVerified && setupState.username.isEmpty() -> {
+//            RegistrationScreen(
+//                setupState = setupState,
+//                onNext = { /* Move to verification screen */ },
+//                onUpdateDetails = onUpdateRegistrationDetails
+//            )
+//        }
+//        // Show email verification screen
+//        !setupState.isEmailVerified -> {
+//            EmailVerificationScreen(
+//                setupState = setupState,
+//                onVerify = onVerifyEmail,
+//                onUpdateCode = onUpdateVerificationCode
+//            )
+//        }
+//        // Show camera connection screen after email verification
+//        !setupState.isCameraConfigured -> {
+//            CameraConnectionScreen(
+//                onConnectCamera = onConnectCamera
+//            )
+//        }
+//        // Show setup complete screen
+//        else -> {
+//            SetupCompleteScreen(
+//                onStartStreaming = onStartStreaming
+//            )
+//        }
+//    }
 } 

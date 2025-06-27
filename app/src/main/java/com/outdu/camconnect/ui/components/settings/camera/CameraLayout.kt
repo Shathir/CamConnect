@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -11,12 +12,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.outdu.camconnect.R
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.settings.DetectionSettingsSection
 import com.outdu.camconnect.ui.components.settings.DisplaySettingsSection
@@ -50,56 +58,107 @@ fun CameraLayout(
     // Replace this with your actual camera settings UI.
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Row 3: Display Settings
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(LightGray)
-                .padding(16.dp)
-        ) {
-            DisplaySettingsSection(
-                isAutoDayNightEnabled = cameraState.isAutoDayNightEnabled,
-                onAutoDayNightToggle = onAutoDayNightToggle,
-                selectedVisionMode = cameraState.visionMode,
-                onVisionModeSelected = onVisionModeSelected
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        )
+        {
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Auto Day/ Night",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        lineHeight = 14.02.sp,
+                        fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                        fontWeight = FontWeight(500),
+                        color = Color(0xFFFFFFFF),
+
+                        )
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Orientation",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        lineHeight = 14.02.sp,
+                        fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                        fontWeight = FontWeight(500),
+                        color = Color(0xFFFFFFFF),
+
+                        )
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Display Mode",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        lineHeight = 14.02.sp,
+                        fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                        fontWeight = FontWeight(500),
+                        color = Color(0xFFFFFFFF),
+
+                        )
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        )
+        {
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Camera Capture",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        lineHeight = 14.02.sp,
+                        fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                        fontWeight = FontWeight(500),
+                        color = Color(0xFFFFFFFF),
+
+                        )
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        )
+        {
+            Text(
+                text = "To Activate Zoom Control, Disable WDR & EIS",
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    lineHeight = 10.51.sp,
+                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                    fontWeight = FontWeight(500),
+                    color = Color(0xFFFFFFFF),
+
+                    )
             )
         }
 
-        // Row 4: Detection Settings
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(LightGray)
-                .padding(16.dp)
-        ) {
-            DetectionSettingsSection(
-                isObjectDetectionEnabled = detectionSettings.isObjectDetectionEnabled,
-                onObjectDetectionToggle = onObjectDetectionToggle,
-                isFarObjectDetectionEnabled = detectionSettings.isFarObjectDetectionEnabled,
-                onFarObjectDetectionToggle = onFarObjectDetectionToggle,
-                isMotionDetectionEnabled = detectionSettings.isMotionDetectionEnabled,
-                onMotionDetectionToggle = onMotionDetectionToggle
-            )
-        }
-
-        // Row 5: Image Settings
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(LightGray)
-                .padding(16.dp)
-        ) {
-            ImageSettingsSection(
-                selectedCameraMode = cameraState.cameraMode,
-                onCameraModeSelected = onCameraModeSelected,
-                selectedOrientationMode = cameraState.orientationMode,
-                onOrientationModeSelected = onOrientationModeSelected
-            )
-        }
     }
 }

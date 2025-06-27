@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -47,7 +48,9 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonIconColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
+import com.outdu.camconnect.utils.MemoryManager
 import kotlinx.coroutines.delay
+import android.util.Log
 
 /**
  * Full control content - comprehensive settings interface
@@ -69,10 +72,26 @@ fun FullControlContent(
     onOrientationModeSelected: (OrientationMode) -> Unit,
     onCollapseClick: () -> Unit
 ) {
+    // Manage scroll state with proper cleanup
+    val scrollState = rememberScrollState()
+    
+    // Cleanup when component is disposed
+    DisposableEffect(Unit) {
+        Log.d("FullControlContent", "Component created")
+        onDispose {
+            Log.d("FullControlContent", "Component disposed - cleaning up")
+            try {
+                MemoryManager.cleanupWeakReferences()
+            } catch (e: Exception) {
+                Log.e("FullControlContent", "Error during cleanup", e)
+            }
+        }
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
@@ -221,6 +240,15 @@ fun DropInImage(
     imageSize: Dp = 80.dp
 ) {
     var visible by remember { mutableStateOf(false) }
+
+    // Cleanup when component is disposed
+    DisposableEffect(Unit) {
+        Log.d("DropInImage", "Animation component created")
+        onDispose {
+            Log.d("DropInImage", "Animation component disposed")
+            visible = false
+        }
+    }
 
     // Delay the visibility trigger for staggered effect
     LaunchedEffect(Unit) {

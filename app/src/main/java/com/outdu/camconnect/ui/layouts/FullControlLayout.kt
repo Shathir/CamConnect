@@ -40,6 +40,8 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonBgColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
+import com.outdu.camconnect.utils.MemoryManager
+import android.util.Log
 
 /**
  * Layout 3: Full Control Panel (Settings and Configuration)
@@ -64,13 +66,29 @@ fun SettingsControlLayout(
     modifier: Modifier = Modifier,
     onCollapseClick: () -> Unit
 ) {
+    // Manage scroll state with proper cleanup
+    val scrollState = rememberScrollState()
+    
+    // Cleanup when component is disposed
+    DisposableEffect(Unit) {
+        Log.d("SettingsControlLayout", "Component created")
+        onDispose {
+            Log.d("SettingsControlLayout", "Component disposed - cleaning up")
+            try {
+                MemoryManager.cleanupWeakReferences()
+            } catch (e: Exception) {
+                Log.e("SettingsControlLayout", "Error during cleanup", e)
+            }
+        }
+    }
 
     // Right Pane - Full Settings (55%)
     Column(
         modifier = Modifier
             .padding(top = 16.dp)
             .fillMaxSize()
-            .background(Color.Transparent) // Light gray background
+            .background(Color.Transparent), // Light gray background
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
 
         // Row 2: Tab switcher
@@ -120,41 +138,43 @@ fun SettingsControlLayout(
         }
 
 
-        // Scrollable content
+        // Scrollable content with managed scroll state
         Column(
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
 
 
-            // Tab content
-            when (selectedTab) {
-                ControlTab.CAMERA_CONTROL -> {
-                    CameraLayout(
-                        cameraState = cameraState,
-                        systemStatus = systemStatus,
-                        detectionSettings = detectionSettings,
-                        customButtons = customButtons,
-                        onAutoDayNightToggle = onAutoDayNightToggle,
-                        onVisionModeSelected = onVisionModeSelected,
-                        onObjectDetectionToggle = onObjectDetectionToggle,
-                        onFarObjectDetectionToggle = onFarObjectDetectionToggle,
-                        onMotionDetectionToggle = onMotionDetectionToggle,
-                        onCameraModeSelected = onCameraModeSelected,
-                        onOrientationModeSelected = onOrientationModeSelected
-                    )
-                }
+            // Tab content with proper keying for memory management
+            key(selectedTab) {
+                when (selectedTab) {
+                    ControlTab.CAMERA_CONTROL -> {
+                        CameraLayout(
+                            cameraState = cameraState,
+                            systemStatus = systemStatus,
+                            detectionSettings = detectionSettings,
+                            customButtons = customButtons,
+                            onAutoDayNightToggle = onAutoDayNightToggle,
+                            onVisionModeSelected = onVisionModeSelected,
+                            onObjectDetectionToggle = onObjectDetectionToggle,
+                            onFarObjectDetectionToggle = onFarObjectDetectionToggle,
+                            onMotionDetectionToggle = onMotionDetectionToggle,
+                            onCameraModeSelected = onCameraModeSelected,
+                            onOrientationModeSelected = onOrientationModeSelected
+                        )
+                    }
 
-                ControlTab.AI_CONTROL -> {
-                    // Device control content placeholder
-                    AiLayout()
-                }
+                    ControlTab.AI_CONTROL -> {
+                        // Device control content placeholder
+                        AiLayout()
+                    }
 
-                ControlTab.LICENSE_CONTROL -> {
-                    LicenseLayout()
+                    ControlTab.LICENSE_CONTROL -> {
+                        LicenseLayout()
+                    }
                 }
             }
         }

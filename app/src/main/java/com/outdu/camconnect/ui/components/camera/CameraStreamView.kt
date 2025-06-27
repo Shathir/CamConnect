@@ -4,11 +4,13 @@ package com.outdu.camconnect.ui.components.camera
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +28,7 @@ import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.ui.layouts.maps.LiveTrackingMap
 import com.outdu.camconnect.ui.layouts.maps.MapLibreTrackingScreen
 import com.outdu.camconnect.ui.layouts.streamer.VideoSurfaceView
+import com.outdu.camconnect.ui.layouts.streamer.ZoomableVideoTextureView
 import com.outdu.camconnect.ui.theme.*
 
 
@@ -40,11 +43,19 @@ fun CameraStreamView(
     context: Context,
     onSpeedUpdate: (Float) -> Unit = {}
 ) {
+    // Use a single ViewModel instance scoped to this composable
+    val viewModel = remember { AppViewModel() }
+    
     Box(
         modifier = modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(20.dp))
-            .background(DarkBackground3),
+            .border(
+                width = 2.dp,
+                color = DarkBackground3, // Change to your desired border color
+                shape = RoundedCornerShape(20.dp)
+            )
+            .background(Color.Transparent),
         contentAlignment = Alignment.Center
     ) {
         if (isConnected) {
@@ -58,7 +69,8 @@ fun CameraStreamView(
 //                contentScale = ContentScale.FillBounds,
 //                alignment = Alignment.Center,
 //            )
-            VideoSurfaceView(viewModel = AppViewModel(), context)
+//            VideoSurfaceView(viewModel = AppViewModel(), context)
+//            ZoomableVideoTextureView(viewModel = AppViewModel(), context)
         } else {
             DisconnectedView()
         }

@@ -29,6 +29,9 @@ import com.outdu.camconnect.ui.components.indicators.CompactSpeedIndicator
 import com.outdu.camconnect.ui.components.indicators.WifiIndicator
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
+import com.outdu.camconnect.utils.MemoryManager
+import android.util.Log
+import androidx.compose.runtime.DisposableEffect
 
 /**
  * Minimal control content - vertical layout with essential controls
@@ -42,6 +45,19 @@ fun MinimalControlContent(
     onRecordingToggle: () -> Unit,
     onExpandClick: () -> Unit
 ) {
+    // Cleanup when component is disposed
+    DisposableEffect(Unit) {
+        Log.d("MinimalControlContent", "Component created")
+        onDispose {
+            Log.d("MinimalControlContent", "Component disposed - cleaning up")
+            try {
+                MemoryManager.cleanupWeakReferences()
+            } catch (e: Exception) {
+                Log.e("MinimalControlContent", "Error during cleanup", e)
+            }
+        }
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()

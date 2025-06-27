@@ -24,7 +24,7 @@ object MainActivitySingleton {
     }
 
     fun nativeFinalize() {
-//        mainActivity?.nativeFinalize()
+        mainActivity?.nativeFinalize()
     }
 
     fun nativePlay(width: Int, height: Int) {
