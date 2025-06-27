@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,10 +55,13 @@ import com.google.android.gms.maps.model.PolylineOptions
 import com.outdu.camconnect.R
 import com.outdu.camconnect.ui.models.MapType
 import com.outdu.camconnect.utils.calculateOffsetLocation
+import com.outdu.camconnect.utils.MemoryManager
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.outdu.camconnect.ui.theme.*
+import android.util.Log
+
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -76,6 +80,9 @@ fun LiveTrackingMap(
     val speed = remember { mutableStateOf(0f) }
     val prevLocation = remember { mutableStateOf<Location?>(null) }
     val MIN_VALID_SPEED = 1f
+
+    // Store MapView reference for proper cleanup
+    val mapViewRef = remember { mutableStateOf<MapView?>(null) }
 
     val locationCallback = remember {
         object : LocationCallback() {
@@ -113,6 +120,40 @@ fun LiveTrackingMap(
         }
     }
 
+    // Comprehensive cleanup when component is disposed
+    DisposableEffect(Unit) {
+        Log.d("LiveTrackingMap", "Component created")
+        MemoryManager.onLayoutChanged("LiveTrackingMap")
+        
+        onDispose {
+            Log.d("LiveTrackingMap", "Component disposed - cleaning up")
+            try {
+                // Remove location updates
+                fusedClient.removeLocationUpdates(locationCallback)
+                
+                // Cleanup MapView
+                mapViewRef.value?.let { mapView ->
+                    mapView.onPause()
+                    mapView.onStop()
+                    mapView.onDestroy()
+                }
+                mapViewRef.value = null
+                mapRef.value = null
+                
+                // Clear references
+                userLocation.value = null
+                prevLocation.value = null
+                
+                // Memory cleanup
+                MemoryManager.cleanupWeakReferences()
+                
+                Log.d("LiveTrackingMap", "Cleanup completed")
+            } catch (e: Exception) {
+                Log.e("LiveTrackingMap", "Error during cleanup", e)
+            }
+        }
+    }
+
     // Request location on launch
     LaunchedEffect(Unit) {
         permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -130,6 +171,8 @@ fun LiveTrackingMap(
         Box(modifier = Modifier.fillMaxSize()) {
             AndroidView(factory = { ctx ->
                 val mapView = MapView(ctx)
+                mapViewRef.value = mapView // Store reference for cleanup
+                
                 mapView.onCreate(null)
                 mapView.onResume()
 

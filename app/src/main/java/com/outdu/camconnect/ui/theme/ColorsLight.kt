@@ -82,6 +82,12 @@ object LightColors {
     val ButtonIconColor = Color(0xFFAEAEAE)
     val ButtonBorderColor = Color(0xFFD7D7D7)
 
+
+
+
+    //Toggle Icon Colors
+    val IconOnSelected = Color(0xFF333333) // Green
+
     // XML Drawable Colors - Light Theme (keeping same as requested)
     val DrawableWhite = Color(0xFFFFFFFF)
     val DrawableBatteryYellow = Color(0xFFB4A215)

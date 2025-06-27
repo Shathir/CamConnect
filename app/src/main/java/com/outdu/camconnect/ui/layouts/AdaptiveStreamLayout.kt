@@ -24,16 +24,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.R
+import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
 import com.outdu.camconnect.ui.components.camera.*
 import com.outdu.camconnect.ui.components.controls.*
 import com.outdu.camconnect.ui.components.indicators.*
 import com.outdu.camconnect.ui.components.settings.*
+import com.outdu.camconnect.ui.layouts.streamer.ZoomableVideoTextureView
 import com.outdu.camconnect.ui.models.*
 import com.outdu.camconnect.ui.theme.*
+import com.outdu.camconnect.ui.theme.AppColors.IconOnSelected
+
 
 /**
  * Main adaptive layout container with animated individual components
@@ -87,7 +92,7 @@ fun AdaptiveStreamLayout(
         targetValue = when (layoutMode) {
             LayoutMode.MINIMAL_CONTROL -> 0.9f
             LayoutMode.EXPANDED_CONTROL -> 0.6f
-            LayoutMode.FULL_CONTROL -> 0.45f
+            LayoutMode.FULL_CONTROL -> 0.3f
         },
         animationSpec = tween(durationMillis = 300),
         label = "left_pane_weight"
@@ -97,7 +102,7 @@ fun AdaptiveStreamLayout(
         targetValue = when (layoutMode) {
             LayoutMode.MINIMAL_CONTROL -> 0.1f
             LayoutMode.EXPANDED_CONTROL -> 0.4f
-            LayoutMode.FULL_CONTROL -> 0.55f
+            LayoutMode.FULL_CONTROL -> 0.7f
         },
         animationSpec = tween(durationMillis = 300),
         label = "right_pane_weight"
@@ -170,107 +175,119 @@ fun AdaptiveStreamLayout(
             val themedIcon = when (icon.id) {
                 "viewmode" -> icon.copy(colorOnSelect = DefaultColors.SpyBlue)
                 "timer" -> icon.copy(colorOnSelect = DefaultColors.SpyBlue)
-                else -> icon.copy(colorOnSelect = Color.White)
+                else -> icon.copy(colorOnSelect = DefaultColors.IconOnSelected)
+
             }
             if (toggleableIcons[index] != themedIcon) {
                 toggleableIcons[index] = themedIcon
             }
         }
     }
-    
-    // Main consistent layout structure
-    Row(
-        modifier = modifier
-            .fillMaxSize()
-            .background(VeryDarkBackground),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Left Pane - Camera Stream (animated width)
-        Box(
-            modifier = Modifier
-                .weight(leftPaneWeight)
-                .background(VeryDarkBackground)
-                .fillMaxHeight()
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+            .background(VeryDarkBackground)
+    )
+    {
+        ZoomableVideoTextureView(viewModel = AppViewModel(), context)
+
+        // Main consistent layout structure
+        Row(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.Transparent)
+//        horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            CameraStreamView(
-                modifier = Modifier.fillMaxSize(),
-                isConnected = systemStatus.isOnline,
-                cameraName = "Camera ${cameraState.currentCamera + 1}",
-                context = context,
+
+            // Left Pane - Camera Stream (animated width)
+            Box(
+                modifier = Modifier
+                    .weight(leftPaneWeight)
+                    .background(Color.Transparent)
+                    .fillMaxHeight()
+            ) {
+                CameraStreamView(
+                    modifier = Modifier.fillMaxSize(),
+                    isConnected = systemStatus.isOnline,
+//                isConnected = false,
+                    cameraName = "Camera ${cameraState.currentCamera + 1}",
+                    context = context,
+                    onSpeedUpdate = { speed -> currentSpeed = speed }
+
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .width(8.dp)
+                    .fillMaxHeight()
+                    .background(VeryDarkBackground) // Your desired color
+            )
+
+            // Right Pane - Controls (animated width and content)
+            AnimatedRightPane(
+                layoutMode = layoutMode,
+                paneWeight = rightPaneWeight,
+                cameraState = cameraState,
+                systemStatus = systemStatus,
+                detectionSettings = detectionSettings,
+                customButtons = themedCustomButtons,
+                toggleableIcons = toggleableIcons,
+                selectedTab = selectedTab,
+                buttonStates = buttonStates,
+                onLayoutModeChange = { layoutMode = it },
+                onCameraSwitch = {
+                    cameraState = cameraState.copy(
+                        currentCamera = (cameraState.currentCamera + 1) % 3
+                    )
+                },
+                onRecordingToggle = {
+                    cameraState = cameraState.copy(
+                        isRecording = !cameraState.isRecording
+                    )
+                },
+                onZoomChange = { zoom ->
+                    cameraState = cameraState.copy(zoomLevel = zoom)
+                },
+                onTabSelected = { selectedTab = it },
+                onAutoDayNightToggle = { enabled ->
+                    cameraState = cameraState.copy(isAutoDayNightEnabled = enabled)
+                },
+                onVisionModeSelected = { mode ->
+                    cameraState = cameraState.copy(visionMode = mode)
+                },
+                onObjectDetectionToggle = { enabled ->
+                    detectionSettings = detectionSettings.copy(
+                        isObjectDetectionEnabled = enabled
+                    )
+                },
+                onFarObjectDetectionToggle = { enabled ->
+                    detectionSettings = detectionSettings.copy(
+                        isFarObjectDetectionEnabled = enabled
+                    )
+                },
+                onMotionDetectionToggle = { enabled ->
+                    detectionSettings = detectionSettings.copy(
+                        isMotionDetectionEnabled = enabled
+                    )
+                },
+                onCameraModeSelected = { mode ->
+                    cameraState = cameraState.copy(cameraMode = mode)
+                },
+                onOrientationModeSelected = { mode ->
+                    cameraState = cameraState.copy(orientationMode = mode)
+                },
+                onIconToggle = { iconId ->
+                    val index = toggleableIcons.indexOfFirst { it.id == iconId }
+                    if (index != -1) {
+                        toggleableIcons[index] = toggleableIcons[index].copy(
+                            isSelected = !toggleableIcons[index].isSelected
+                        )
+                    }
+                },
                 onSpeedUpdate = { speed -> currentSpeed = speed }
             )
         }
-        
-//        HorizontalDivider(
-//            modifier = Modifier
-//                .fillMaxHeight()
-//                .width(8.dp)
-//                .background(Color.Transparent)
-//        )
-
-        // Right Pane - Controls (animated width and content)
-        AnimatedRightPane(
-            layoutMode = layoutMode,
-            paneWeight = rightPaneWeight,
-            cameraState = cameraState,
-            systemStatus = systemStatus,
-            detectionSettings = detectionSettings,
-            customButtons = themedCustomButtons,
-            toggleableIcons = toggleableIcons,
-            selectedTab = selectedTab,
-            buttonStates = buttonStates,
-            onLayoutModeChange = { layoutMode = it },
-            onCameraSwitch = { 
-                cameraState = cameraState.copy(
-                    currentCamera = (cameraState.currentCamera + 1) % 3
-                )
-            },
-            onRecordingToggle = {
-                cameraState = cameraState.copy(
-                    isRecording = !cameraState.isRecording
-                )
-            },
-            onZoomChange = { zoom ->
-                cameraState = cameraState.copy(zoomLevel = zoom)
-            },
-            onTabSelected = { selectedTab = it },
-            onAutoDayNightToggle = { enabled ->
-                cameraState = cameraState.copy(isAutoDayNightEnabled = enabled)
-            },
-            onVisionModeSelected = { mode ->
-                cameraState = cameraState.copy(visionMode = mode)
-            },
-            onObjectDetectionToggle = { enabled ->
-                detectionSettings = detectionSettings.copy(
-                    isObjectDetectionEnabled = enabled
-                )
-            },
-            onFarObjectDetectionToggle = { enabled ->
-                detectionSettings = detectionSettings.copy(
-                    isFarObjectDetectionEnabled = enabled
-                )
-            },
-            onMotionDetectionToggle = { enabled ->
-                detectionSettings = detectionSettings.copy(
-                    isMotionDetectionEnabled = enabled
-                )
-            },
-            onCameraModeSelected = { mode ->
-                cameraState = cameraState.copy(cameraMode = mode)
-            },
-            onOrientationModeSelected = { mode ->
-                cameraState = cameraState.copy(orientationMode = mode)
-            },
-            onIconToggle = { iconId ->
-                val index = toggleableIcons.indexOfFirst { it.id == iconId }
-                if (index != -1) {
-                    toggleableIcons[index] = toggleableIcons[index].copy(
-                        isSelected = !toggleableIcons[index].isSelected
-                    )
-                }
-            },
-            onSpeedUpdate = { speed -> currentSpeed = speed }
-        )
     }
 }
 
@@ -314,8 +331,8 @@ private fun AnimatedRightPane(
         // Top bar with settings button (always visible)
         AnimatedVisibility(
             visible = layoutMode == LayoutMode.FULL_CONTROL,
-            enter = slideInVertically() + fadeIn(),
-            exit = slideOutVertically() + fadeOut()
+            enter = slideInHorizontally() + slideInVertically() +  fadeIn(),
+            exit = slideOutHorizontally() +  slideOutVertically() + fadeOut()
         ) {
             Box(
                 modifier = Modifier
@@ -361,6 +378,7 @@ private fun AnimatedRightPane(
                     }
                 }
             }
+
         }
         
         // Main content area with animated content
@@ -403,23 +421,22 @@ private fun AnimatedRightPane(
                 }
                 
                 LayoutMode.FULL_CONTROL -> {
-//                    FullControlContent(
-//                        cameraState = cameraState,
-//                        systemStatus = systemStatus,
-//                        detectionSettings = detectionSettings,
-//                        customButtons = customButtons,
-//                        selectedTab = selectedTab,
-//                        onTabSelected = onTabSelected,
-//                        onAutoDayNightToggle = onAutoDayNightToggle,
-//                        onVisionModeSelected = onVisionModeSelected,
-//                        onObjectDetectionToggle = onObjectDetectionToggle,
-//                        onFarObjectDetectionToggle = onFarObjectDetectionToggle,
-//                        onMotionDetectionToggle = onMotionDetectionToggle,
-//                        onCameraModeSelected = onCameraModeSelected,
-//                        onOrientationModeSelected = onOrientationModeSelected,
-//                        onCollapseClick = {onLayoutModeChange(LayoutMode.MINIMAL_CONTROL)}
-//                    )
-                    CameraControlScreen(viewModel = CameraControlViewModel())
+                    SettingsControlLayout(
+                        cameraState = cameraState,
+                        systemStatus = systemStatus,
+                        detectionSettings = detectionSettings,
+                        customButtons = customButtons,
+                        selectedTab = selectedTab,
+                        onTabSelected = onTabSelected,
+                        onAutoDayNightToggle = onAutoDayNightToggle,
+                        onVisionModeSelected = onVisionModeSelected,
+                        onObjectDetectionToggle = onObjectDetectionToggle,
+                        onFarObjectDetectionToggle = onFarObjectDetectionToggle,
+                        onMotionDetectionToggle = onMotionDetectionToggle,
+                        onCameraModeSelected = onCameraModeSelected,
+                        onOrientationModeSelected = onOrientationModeSelected,
+                        onCollapseClick = {onLayoutModeChange(LayoutMode.EXPANDED_CONTROL)}
+                    )
                 }
             }
         }
