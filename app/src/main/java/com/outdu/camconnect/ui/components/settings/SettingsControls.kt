@@ -30,6 +30,7 @@ import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonIconColor
 
+
 /**
  * Display settings section with auto day/night mode and vision mode selection
  */
@@ -320,6 +321,7 @@ fun ControlTabSwitcher(
                 else {
                     Brush.linearGradient(
                         colors = listOf(DarkBackground2, DarkBackground2)
+
                     )
                 }
                 Box(

@@ -56,6 +56,7 @@ fun CameraStreamView(
                 shape = RoundedCornerShape(20.dp)
             )
             .background(Color.Transparent),
+
         contentAlignment = Alignment.Center
     ) {
         if (isConnected) {

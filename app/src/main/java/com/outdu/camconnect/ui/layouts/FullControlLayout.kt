@@ -43,6 +43,7 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
 
+
 /**
  * Layout 3: Full Control Panel (Settings and Configuration)
  * Left Pane: 45% - Live camera stream display
@@ -141,6 +142,7 @@ fun SettingsControlLayout(
         // Scrollable content with managed scroll state
         Column(
             modifier = Modifier
+
                 .weight(1f)
                 .verticalScroll(scrollState)
                 .padding(16.dp),
@@ -165,6 +167,7 @@ fun SettingsControlLayout(
                             onCameraModeSelected = onCameraModeSelected,
                             onOrientationModeSelected = onOrientationModeSelected
                         )
+
                     }
 
                     ControlTab.AI_CONTROL -> {
@@ -174,6 +177,7 @@ fun SettingsControlLayout(
 
                     ControlTab.LICENSE_CONTROL -> {
                         LicenseLayout()
+
                     }
                 }
             }

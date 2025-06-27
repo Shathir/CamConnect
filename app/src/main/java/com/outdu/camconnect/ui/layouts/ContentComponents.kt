@@ -52,6 +52,7 @@ import com.outdu.camconnect.utils.MemoryManager
 import kotlinx.coroutines.delay
 import android.util.Log
 
+
 /**
  * Full control content - comprehensive settings interface
  */

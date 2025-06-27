@@ -33,6 +33,7 @@ import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
 import androidx.compose.runtime.DisposableEffect
 
+
 /**
  * Minimal control content - vertical layout with essential controls
  */
@@ -123,6 +124,7 @@ fun MinimalControlContent(
         // Bottom indicators
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
+
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Battery indicator
@@ -138,6 +140,7 @@ fun MinimalControlContent(
             ) {
                 WifiIndicator(isConnected = systemStatus.isWifiConnected)
 //                LteIndicator(isConnected = systemStatus.isLteConnected)
+
             }
 
             // AI status

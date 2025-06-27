@@ -33,6 +33,7 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
 
+
 /**
  * Expanded control content - scrollable with multiple control sections
  */
@@ -78,6 +79,7 @@ fun ExpandedControlContent(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
+
         ) {
             // Row 1: Customizable 5-button row with state management
             Row(
@@ -133,6 +135,7 @@ fun ExpandedControlContent(
                                 )
                             }
                         },
+
                         modifier = Modifier.weight(1f),
                         isCompact = false,
                         showText = false
@@ -158,6 +161,7 @@ fun ExpandedControlContent(
                         .clickable { onRecordingToggle() }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
+
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

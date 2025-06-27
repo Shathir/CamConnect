@@ -87,6 +87,7 @@ object DarkColors {
     //Toggle Icon Colors
     val IconOnSelected = Color.White // Green
 
+
     // XML Drawable Colors - Dark Theme
     val DrawableWhite = Color(0xFFFFFFFF)
     val DrawableBatteryYellow = Color(0xFFB4A215)

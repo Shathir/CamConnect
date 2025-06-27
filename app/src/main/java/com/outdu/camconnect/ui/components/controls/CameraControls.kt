@@ -284,6 +284,7 @@ fun ToggleableIconRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         icons.take(icons.size).forEach { iconData ->
+
             if(iconData.id == "viewmode")
             {
 
@@ -330,6 +331,7 @@ fun ToggleableIconRow(
                         colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
                             if (iconData.isSelected) iconData.colorOnSelect
                             else MediumGray2
+
                         ),
                         contentScale = androidx.compose.ui.layout.ContentScale.Fit
                     )

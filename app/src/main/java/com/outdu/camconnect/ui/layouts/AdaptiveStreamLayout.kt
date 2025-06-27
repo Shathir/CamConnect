@@ -39,6 +39,7 @@ import com.outdu.camconnect.ui.models.*
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.IconOnSelected
 
+
 /**
  * Main adaptive layout container with animated individual components
  * Maintains consistent structure while animating individual elements
@@ -175,6 +176,7 @@ fun AdaptiveStreamLayout(
                 "viewmode" -> icon.copy(colorOnSelect = DefaultColors.SpyBlue)
                 "timer" -> icon.copy(colorOnSelect = DefaultColors.SpyBlue)
                 else -> icon.copy(colorOnSelect = DefaultColors.IconOnSelected)
+
             }
             if (toggleableIcons[index] != themedIcon) {
                 toggleableIcons[index] = themedIcon
@@ -211,6 +213,7 @@ fun AdaptiveStreamLayout(
                     cameraName = "Camera ${cameraState.currentCamera + 1}",
                     context = context,
                     onSpeedUpdate = { speed -> currentSpeed = speed }
+
                 )
             }
 
@@ -331,6 +334,51 @@ private fun AnimatedRightPane(
             enter = slideInHorizontally() + slideInVertically() +  fadeIn(),
             exit = slideOutHorizontally() +  slideOutVertically() + fadeOut()
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(4.dp)
+                    .background(DarkBackground2.copy(alpha = 0.8f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Back button
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .clickable { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) }
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Close",
+                            tint = Color.White
+                        )
+                    }
+                    // "Settings" text placeholder
+                    Box(
+                        modifier = Modifier
+                            .height(24.dp)
+                            .width(80.dp)
+                            .padding(start = 8.dp)
+                            .background(DarkBackground2.copy(alpha = 0.8f))
+                    )
+                    {
+                        Text(
+                            text = "Settings",
+                            color = Color.White,
+                            modifier = Modifier.padding(start = 8.dp)
+                                .align(Alignment.Center)
+                        )
+                    }
+                }
+            }
+
         }
         
         // Main content area with animated content
