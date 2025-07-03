@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -84,7 +85,12 @@ fun LandingScreen(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Scout", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Scout",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
 
@@ -141,7 +147,8 @@ fun LandingScreen(
                         contentScale = ContentScale.Fit
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Powered with AI Vision",
+                    Text(
+                        "Powered with AI Vision",
                         style = TextStyle(
                             fontSize = 16.sp,
                             lineHeight = 14.02.sp,
@@ -156,7 +163,7 @@ fun LandingScreen(
 
             // CTA Button
             Button(
-                onClick = onGetStarted ,
+                onClick = onGetStarted,
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.padding(top = 8.dp)
@@ -179,7 +186,7 @@ fun LoginScreen(
             .background(Color(0xFF0D0D0D))
     )
     {
-        Column (
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 40.dp)
@@ -194,7 +201,12 @@ fun LoginScreen(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Scout", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Scout",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
             Column(
@@ -236,14 +248,202 @@ fun LoginScreen(
             )
             {
 
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .fillMaxWidth()
+                        .background(Color(0xFF222222)),
+                    contentAlignment = Alignment.Center
+                )
+                {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 24.dp)
+                            .align(Alignment.TopStart),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    )
+                    {
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        )
+                        {
+                            Icon(
+                                painter = painterResource(id = R.drawable.user_icon),
+                                contentDescription = "User Icon",
+                                tint = Color(0xFFF43823)
+                            )
+
+                            Text(
+                                text = "Login as Owner",
+                                style = TextStyle(
+                                    fontSize = 24.sp,
+                                    lineHeight = 14.02.sp,
+                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                                    fontWeight = FontWeight(500),
+                                    color = Color.White
+                                )
+                            )
+
+                            Text(
+                                text = "For adding, viewing & managing your account",
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    lineHeight = 14.02.sp,
+                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                                    fontWeight = FontWeight(400),
+                                    color = Color.White
+                                )
+                            )
+                        }
+
+                        Column()
+                        {
+
+                            Text(
+                                text = "Username/ Email ID",
+                                style = TextStyle(
+                                    fontSize = 14.sp,
+                                    lineHeight = 14.02.sp,
+                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                                    fontWeight = FontWeight(500),
+                                    color = Color.White
+                                )
+                            )
+                            // Email Input
+                            OutlinedTextField(
+                                value = setupState.email,
+                                onValueChange = {
+                                    onUpdateDetails(
+                                        it,
+                                        setupState.password,
+                                        setupState.confirmPassword,
+                                        setupState.verificationCode
+                                    )
+                                },
+                                label = { Text("Email") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                        }
+
+                        Column()
+                        {
+                            Text(
+                                text = "Password",
+                                style = TextStyle(
+                                    fontSize = 14.sp,
+                                    lineHeight = 14.02.sp,
+                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                                    fontWeight = FontWeight(500),
+                                    color = Color.White
+                                )
+                            )
+                            // Password Input
+                            OutlinedTextField(
+                                value = setupState.password,
+                                onValueChange = {
+                                    onUpdateDetails(
+                                        setupState.email,
+                                        it,
+                                        setupState.confirmPassword,
+                                        setupState.verificationCode
+                                    )
+                                },
+                                label = { Text("Password") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                            )
+                        }
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .fillMaxWidth()
+                        .background(Color(0xFF222222)),
+                    contentAlignment = Alignment.Center
+                )
+                {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 24.dp)
+                            .align(Alignment.TopStart),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    )
+                    {
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        )
+                        {
+                            Icon(
+                                painter = painterResource(id = R.drawable.users_icon),
+                                contentDescription = "User Icon",
+                                tint = Color(0xFFF43823)
+                            )
+
+                            Text(
+                                text = "Login as Viewer",
+                                style = TextStyle(
+                                    fontSize = 24.sp,
+                                    lineHeight = 14.02.sp,
+                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                                    fontWeight = FontWeight(500),
+                                    color = Color.White
+                                )
+                            )
+
+                            Text(
+                                text = "For only streaming access across cameras",
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    lineHeight = 14.02.sp,
+                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                                    fontWeight = FontWeight(400),
+                                    color = Color.White
+                                )
+                            )
+                        }
+
+                        Column()
+                        {
+
+                            // Email Input
+                            OutlinedTextField(
+                                value = setupState.email,
+                                onValueChange = {
+                                    onUpdateDetails(
+                                        it,
+                                        setupState.password,
+                                        setupState.confirmPassword,
+                                        setupState.verificationCode
+                                    )
+                                },
+                                label = { Text("Enter 6 digit Access Key",
+                                    color = Color(0xFF474747)
+                                    ) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                        }
+                    }
+                }
             }
 
             SupportRow()
-
         }
-    }
 
+    }
 }
+
 
 @Composable
 fun EmailVerificationScreen(
@@ -273,7 +473,7 @@ fun EmailVerificationScreen(
 
         OutlinedTextField(
             value = verificationCode,
-            onValueChange = { 
+            onValueChange = {
                 verificationCode = it
                 onUpdateCode(it)
             },
@@ -314,9 +514,9 @@ fun CameraConnectionScreen(
 
         Text(
             text = "1. Make sure your camera is powered on\n" +
-                   "2. Enable WiFi on your camera\n" +
-                   "3. Connect your phone to the camera's WiFi network\n" +
-                   "4. Click the button below to start the connection process",
+                    "2. Enable WiFi on your camera\n" +
+                    "3. Connect your phone to the camera's WiFi network\n" +
+                    "4. Click the button below to start the connection process",
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -334,10 +534,10 @@ fun SetupCompleteScreen(
     onStartStreaming: () -> Unit
 ) {
     var showPinDialog by remember { mutableStateOf(false) }
-    
+
     // Check if already authenticated
     val isAuthenticated by derivedStateOf { SessionManager.isAuthenticated() }
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -408,7 +608,7 @@ fun SetupCompleteScreen(
             Text(if (isAuthenticated) "Start Streaming" else "Authenticate & Start Streaming")
         }
     }
-    
+
     // PIN Authentication Dialog
     if (showPinDialog) {
         PinAuthDialog(
@@ -422,8 +622,6 @@ fun SetupCompleteScreen(
         )
     }
 }
-
-
 
 
 @Composable
