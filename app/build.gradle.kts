@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    kotlin("plugin.serialization") version "1.9.0"
 }
 
 android {
@@ -10,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.outdu.camconnect"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -74,10 +75,15 @@ dependencies {
 
 
     //MapLibre
-    implementation("org.maplibre.gl:android-sdk:10.1.0")
+    implementation(libs.android.sdk)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio) // or ktor-client-android
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -87,6 +93,10 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
     implementation(libs.androidx.appcompat.resources)
+    
+    // Lottie Animation
+    implementation("com.airbnb.android:lottie-compose:6.1.0")
+    
 //    implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.commons.net)
     testImplementation(libs.junit)

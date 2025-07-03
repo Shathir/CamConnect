@@ -77,7 +77,7 @@ fun RecordingToggle(
  * Scrollable zoom selector with predefined zoom levels
  */
 @Composable
-fun ZoomSelector(
+fun ZoomSelector1(
     currentZoom: Float,
     onZoomSelected: (Float) -> Unit,
     modifier: Modifier = Modifier,

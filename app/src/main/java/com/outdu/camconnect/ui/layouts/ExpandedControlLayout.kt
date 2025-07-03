@@ -32,6 +32,21 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
+import com.outdu.camconnect.communication.MotocamAPIAndroidHelper
+import com.outdu.camconnect.communication.MotocamAPIHelper
+import com.outdu.camconnect.communication.MotocamSocketClient
+import com.outdu.camconnect.network.HttpClientProvider
+import com.outdu.camconnect.ui.components.buttons.ScreenRecorderUI
+import com.outdu.camconnect.ui.components.buttons.ZoomSelector
+import io.ktor.client.request.get
+import io.ktor.client.request.headers
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.utils.EmptyContent.contentType
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import kotlinx.coroutines.launch
 
 
 /**
@@ -102,15 +117,50 @@ fun ExpandedControlContent(
                                 backgroundColor = if(isSelected) ButtonSelectedBgColor else ButtonBgColor,
                                 color = if(isSelected) ButtonSelectedIconColor else ButtonIconColor
                             )
+                            "ir" -> {
+                                val coroutineScope = rememberCoroutineScope()
+                                val isLoading = remember { mutableStateOf(false) }
+
+                                buttonConfig.copy(
+
+
+                                    BorderColor = if(isSelected) RecordRed else ButtonBorderColor,
+                                    backgroundColor = if(isSelected) RecordRed else ButtonBgColor,
+                                    color = if(isSelected) ButtonSelectedIconColor else ButtonIconColor,
+                                    onClick = {
+                                    if (isLoading.value) return@copy // avoid duplicate clicks
+                                    
+                                    // Set loading state
+                                    isLoading.value = true
+                                    
+                                    // Toggle logic: if currently selected (ON), turn OFF, and vice versa
+                                    val flip = if(isSelected) MotocamAPIHelper.FLIP.OFF else MotocamAPIHelper.FLIP.ON
+                                    
+                                    MotocamAPIAndroidHelper.setFlipAsync(
+                                        scope = coroutineScope,
+                                        flip = flip
+                                    ) { result, error ->
+                                        // Reset loading state
+                                        isLoading.value = false
+                                        
+                                        if(error != null) {
+                                            Log.e("UI", "IR Flip Error: $error")
+                                            // Optionally show error to user or handle error state
+                                        } else {
+                                            Log.i("UI", "IR Flip Result: $result")
+                                            // Update button state only on successful API call
+                                            if (result) {
+                                                buttonStates[buttonConfig.id] = !isSelected
+                                            }
+                                        }
+                                    }
+                                })}
                             else -> {
                                 // Create dynamic button config based on selection state
                                 buttonConfig.copy(
                                     backgroundColor = if (isSelected) {
                                         // Active state - brighter background
-                                        when (buttonConfig.id) {
-                                            "ir" -> RecordRed
-                                            else -> ButtonSelectedBgColor
-                                        }
+                                            ButtonSelectedBgColor
                                     } else {
                                         // Inactive state - default background
                                         ButtonBgColor
@@ -118,10 +168,7 @@ fun ExpandedControlContent(
                                     color = if (isSelected) ButtonSelectedIconColor else ButtonIconColor,
                                     BorderColor = if (isSelected) {
                                         // Active state - brighter background
-                                        when (buttonConfig.id) {
-                                            "ir" -> RecordRed
-                                            else -> ButtonBorderColor
-                                        }
+                                            ButtonBorderColor
                                     } else {
                                         // Inactive state - default background
                                         ButtonBorderColor
@@ -186,6 +233,7 @@ fun ExpandedControlContent(
                     }
                 }
 
+                var currentZoom by remember { mutableFloatStateOf(1f) }
                 // Zoom selector with dark theme
                 Box(
                     modifier = Modifier
@@ -197,11 +245,33 @@ fun ExpandedControlContent(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "${cameraState.zoomLevel.toInt()}X",
-                        color = White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                    val coroutineScope = rememberCoroutineScope()
+                    ZoomSelector(
+                        initialZoom = currentZoom,
+                        onZoomChanged = { zoom ->
+                            var zoomlevel = MotocamAPIHelper.ZOOM.X1
+                            when(zoom)
+                            {
+                                1f -> zoomlevel = MotocamAPIHelper.ZOOM.X1
+                                2f -> zoomlevel = MotocamAPIHelper.ZOOM.X2
+                                else -> zoomlevel = MotocamAPIHelper.ZOOM.X4
+                            }
+                            MotocamAPIAndroidHelper.setZoomAsync(
+                                scope = coroutineScope,
+                                zoom = zoomlevel
+                            )
+                            {result, error ->
+                                if(error != null) {
+                                    Log.e("UI", "Zoom Error: $error")
+                                    // Optionally show error to user or handle error state
+                                } else {
+                                    currentZoom = zoom
+                                    Log.d("Zoom", "Zoom set to $zoom X")
+                                    // Trigger zoom in your camera pipeline here
+                                    Log.i("Zoom", "Zoom Result: $result")
+                                }
+                            }
+                        }
                     )
                 }
             }
@@ -260,6 +330,7 @@ fun ExpandedControlContent(
                     hasSnapshot = false,
                     onSpeedUpdate = onSpeedUpdate
                 )
+//                ScreenRecorderUI(context = LocalContext.current)
             }
 
             // Row 6: Status information

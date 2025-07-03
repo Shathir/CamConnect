@@ -29,9 +29,11 @@ class SetupViewModel : ViewModel() {
     fun updateNetworkConfig(isConfigured: Boolean) {
         _setupState.value = _setupState.value.copy(
             isNetworkConfigured = isConfigured,
+            isSetupComplete = true,
             error = null
         )
-        checkSetupCompletion()
+//        checkSetupCompletion()
+
     }
 
     fun updateCameraConfig(isConfigured: Boolean) {

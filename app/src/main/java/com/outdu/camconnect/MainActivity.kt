@@ -18,6 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.ui.layouts.AdaptiveStreamLayout
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
 
@@ -27,9 +28,13 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.ui.platform.LocalContext
 import com.outdu.camconnect.Viewmodels.AppViewModel
+import com.outdu.camconnect.Viewmodels.RecorderViewModel
+import com.outdu.camconnect.services.ScreenRecordService
 import com.outdu.camconnect.singleton.MainActivitySingleton
+import com.outdu.camconnect.ui.components.buttons.ScreenRecorderUI
 import com.outdu.camconnect.ui.layouts.streamer.ZoomableVideoTextureView
 import com.outdu.camconnect.ui.setupflow.SetupScreen
 import com.outdu.camconnect.utils.MemoryManager
@@ -61,6 +66,8 @@ class MainActivity : ComponentActivity() {
         model: Int
     ): Boolean
     companion object {
+        const val REQUEST_CODE_SCREEN_CAPTURE = 1001
+
         private val REQUIRED_PERMISSIONS = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
@@ -111,6 +118,7 @@ class MainActivity : ComponentActivity() {
     }
 
     var actualCodecName: String = ""
+    private val viewModel: RecorderViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -166,6 +174,7 @@ class MainActivity : ComponentActivity() {
                             bottom = 8.dp
                         )
                 ) {
+//                    ScreenRecorderUI(LocalContext.current, viewModel)
                     AdaptiveStreamLayout(context = LocalContext.current)
                 }
             }
@@ -174,6 +183,19 @@ class MainActivity : ComponentActivity() {
         nativeInit(actualCodecName)
         MainActivitySingleton.setMainActivity(this)
     }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == REQUEST_CODE_SCREEN_CAPTURE && resultCode == RESULT_OK && data != null) {
+            val intent = Intent(this, ScreenRecordService::class.java).apply {
+                putExtra("resultCode", resultCode)
+                putExtra("data", data)
+            }
+            ContextCompat.startForegroundService(this, intent)
+            viewModel.start()
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
     
     override fun onPause() {
         super.onPause()
