@@ -7,6 +7,9 @@ import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -14,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,64 +28,52 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.outdu.camconnect.R
+import com.outdu.camconnect.ui.theme.AppColors.ButtonBgColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonIconColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ZoomSelector(
     zoomLevels: List<Float> = listOf(1f, 2f, 4f),
     initialZoom: Float = 1f,
     onZoomChanged: (Float) -> Unit
 ) {
-    val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
     val selectedIndex = remember { mutableStateOf(zoomLevels.indexOf(initialZoom)) }
 
-    LaunchedEffect(Unit) {
-        // Scroll to initial index
-        listState.scrollToItem(selectedIndex.value)
-    }
-
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (!listState.isScrollInProgress) {
-            val center = listState.firstVisibleItemIndex +
-                    if (listState.firstVisibleItemScrollOffset > 100) 1 else 0
-            val clampedIndex = center.coerceIn(0, zoomLevels.lastIndex)
-            selectedIndex.value = clampedIndex
-            onZoomChanged(zoomLevels[clampedIndex])
-        }
-    }
-
-    LazyRow(
-        state = listState,
+    Row(
         modifier = Modifier
-            .height(60.dp)
             .fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(horizontal = 32.dp),
-        flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        itemsIndexed(zoomLevels) { index, zoom ->
+        zoomLevels.forEachIndexed { index, zoom ->
             val isSelected = index == selectedIndex.value
+
             Box(
-                contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(if (isSelected) 60.dp else 50.dp)
-                    .clip(CircleShape)
-                    .background(if (isSelected) Color.Black else Color.LightGray)
+                    .fillMaxSize()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isSelected) ButtonSelectedBgColor else ButtonBgColor)
                     .clickable {
-                        coroutineScope.launch {
-                            listState.animateScrollToItem(index)
-                        }
-                    }
+                        selectedIndex.value = index
+                        onZoomChanged(zoom)
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "${zoom.toInt()}X",
-                    color = if (isSelected) Color.White else Color.Black,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) ButtonSelectedIconColor else ButtonIconColor,
+                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                    fontWeight = FontWeight(500),
                     fontSize = if (isSelected) 20.sp else 16.sp
                 )
             }

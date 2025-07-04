@@ -49,6 +49,8 @@ import com.outdu.camconnect.auth.SessionManager
 import com.outdu.camconnect.ui.components.indicators.aiIcon
 import kotlin.math.min
 import androidx.core.net.toUri
+import com.outdu.camconnect.ui.components.login.OwnerLoginCard
+import com.outdu.camconnect.ui.components.login.ViewerLoginCard
 
 @Composable
 fun LandingScreen(
@@ -178,14 +180,14 @@ fun LandingScreen(
 fun LoginScreen(
     setupState: SetupState,
     onNext: () -> Unit,
-    onUpdateDetails: (String, String, String, String) -> Unit
+    onUpdateDetails: (String, String, String, String) -> Unit,
+    onAuthenticate: (Boolean) -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF0D0D0D))
-    )
-    {
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -198,14 +200,20 @@ fun LoginScreen(
                     painter = painterResource(R.drawable.scout_logo), // Replace with your logo
                     contentDescription = "Scout Logo",
                     tint = Color.Red,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier
+                        .width(25.dp)
+                        .height(18.dp)
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(4.dp))
                 Text(
-                    "Scout",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
+                    text = "Scout",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        lineHeight = 14.02.sp,
+                        fontFamily = FontFamily(Font(R.font.onest_regular)),
+                        fontWeight = FontWeight(700),
+                        color = Color(0xFFC5C5C5)
+                    )
                 )
             }
 
@@ -219,7 +227,7 @@ fun LoginScreen(
                 Text(
                     text = "Welcome back,",
                     style = TextStyle(
-                        fontSize = 40.sp,
+                        fontSize = 32.sp,
                         lineHeight = 14.02.sp,
                         fontFamily = FontFamily(Font(R.font.onest_regular)),
                         fontWeight = FontWeight(700),
@@ -243,204 +251,19 @@ fun LoginScreen(
 
             Column(
                 modifier = Modifier
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .padding(end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
-            )
-            {
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .fillMaxWidth()
-                        .background(Color(0xFF222222)),
-                    contentAlignment = Alignment.Center
+            ) {
+                ViewerLoginCard(
+                    setupState = setupState,
+                    onUpdateDetails = onUpdateDetails,
+                    onAuthenticate = onAuthenticate
                 )
-                {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 24.dp)
-                            .align(Alignment.TopStart),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    )
-                    {
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        )
-                        {
-                            Icon(
-                                painter = painterResource(id = R.drawable.user_icon),
-                                contentDescription = "User Icon",
-                                tint = Color(0xFFF43823)
-                            )
-
-                            Text(
-                                text = "Login as Owner",
-                                style = TextStyle(
-                                    fontSize = 24.sp,
-                                    lineHeight = 14.02.sp,
-                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                                    fontWeight = FontWeight(500),
-                                    color = Color.White
-                                )
-                            )
-
-                            Text(
-                                text = "For adding, viewing & managing your account",
-                                style = TextStyle(
-                                    fontSize = 12.sp,
-                                    lineHeight = 14.02.sp,
-                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                                    fontWeight = FontWeight(400),
-                                    color = Color.White
-                                )
-                            )
-                        }
-
-                        Column()
-                        {
-
-                            Text(
-                                text = "Username/ Email ID",
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    lineHeight = 14.02.sp,
-                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                                    fontWeight = FontWeight(500),
-                                    color = Color.White
-                                )
-                            )
-                            // Email Input
-                            OutlinedTextField(
-                                value = setupState.email,
-                                onValueChange = {
-                                    onUpdateDetails(
-                                        it,
-                                        setupState.password,
-                                        setupState.confirmPassword,
-                                        setupState.verificationCode
-                                    )
-                                },
-                                label = { Text("Email") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            )
-                        }
-
-                        Column()
-                        {
-                            Text(
-                                text = "Password",
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    lineHeight = 14.02.sp,
-                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                                    fontWeight = FontWeight(500),
-                                    color = Color.White
-                                )
-                            )
-                            // Password Input
-                            OutlinedTextField(
-                                value = setupState.password,
-                                onValueChange = {
-                                    onUpdateDetails(
-                                        setupState.email,
-                                        it,
-                                        setupState.confirmPassword,
-                                        setupState.verificationCode
-                                    )
-                                },
-                                label = { Text("Password") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                            )
-                        }
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .fillMaxWidth()
-                        .background(Color(0xFF222222)),
-                    contentAlignment = Alignment.Center
-                )
-                {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 24.dp)
-                            .align(Alignment.TopStart),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    )
-                    {
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        )
-                        {
-                            Icon(
-                                painter = painterResource(id = R.drawable.users_icon),
-                                contentDescription = "User Icon",
-                                tint = Color(0xFFF43823)
-                            )
-
-                            Text(
-                                text = "Login as Viewer",
-                                style = TextStyle(
-                                    fontSize = 24.sp,
-                                    lineHeight = 14.02.sp,
-                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                                    fontWeight = FontWeight(500),
-                                    color = Color.White
-                                )
-                            )
-
-                            Text(
-                                text = "For only streaming access across cameras",
-                                style = TextStyle(
-                                    fontSize = 12.sp,
-                                    lineHeight = 14.02.sp,
-                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                                    fontWeight = FontWeight(400),
-                                    color = Color.White
-                                )
-                            )
-                        }
-
-                        Column()
-                        {
-
-                            // Email Input
-                            OutlinedTextField(
-                                value = setupState.email,
-                                onValueChange = {
-                                    onUpdateDetails(
-                                        it,
-                                        setupState.password,
-                                        setupState.confirmPassword,
-                                        setupState.verificationCode
-                                    )
-                                },
-                                label = { Text("Enter 6 digit Access Key",
-                                    color = Color(0xFF474747)
-                                    ) },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            )
-                        }
-                    }
-                }
             }
 
             SupportRow()
         }
-
     }
 }
 

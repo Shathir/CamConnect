@@ -35,35 +35,32 @@ class SetupActivity : ComponentActivity() {
                     SetupFlow(
                         setupState = setupState,
                         onGetStarted = {
-                            // Skip registration and go directly to camera setup
-                            viewModel.updateNetworkConfig(true)
-                            viewModel.updatePermissionsStatus(true)
-                        },
-                        onRegister = {
-                            // Start registration process
+                            // Skip registration and go directly to login
                             viewModel.updateNetworkConfig(true)
                         },
                         onUpdateRegistrationDetails = viewModel::updateRegistrationDetails,
                         onUpdateVerificationCode = viewModel::updateVerificationCode,
                         onVerifyEmail = viewModel::verifyEmail,
                         onConnectCamera = {
-                            // Here you would typically start the WiFi activity
-                            // For now, we'll just simulate successful connection
                             viewModel.updateCameraConfig(true)
                         },
-                        onStartStreaming = {
-                            // Check authentication status and navigate to MainActivity
-                            Log.i("SetupActivity", "Starting streaming - Session status: ${SessionManager.getSessionStatus()}")
-                            
-                            if (SessionManager.isAuthenticated()) {
+                        onAuthenticate = { isAuthenticated ->
+                            if (isAuthenticated) {
                                 // Navigate to MainActivity with authentication successful
-//                                startActivity(Intent(this@SetupActivity, MainActivity::class.java))
+                                startActivity(Intent(this@SetupActivity, MainActivity::class.java))
+                                Toast.makeText(this@SetupActivity, "Authentication successful", Toast.LENGTH_SHORT).show()
+                                finish()
+                            } else {
+                                Toast.makeText(this@SetupActivity, "Invalid PIN", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onStartStreaming = {
+                            if (SessionManager.isAuthenticated()) {
+                                startActivity(Intent(this@SetupActivity, MainActivity::class.java))
                                 Toast.makeText(this@SetupActivity, "Authentication successful", Toast.LENGTH_SHORT).show()
                                 finish()
                             } else {
                                 Log.w("SetupActivity", "Attempted to start streaming without authentication")
-                                // This shouldn't happen due to UI controls, but handle gracefully
-                                // The PIN dialog should have handled authentication
                             }
                         }
                     )
@@ -90,42 +87,32 @@ class SetupActivity : ComponentActivity() {
 fun SetupFlow(
     setupState: SetupState,
     onGetStarted: () -> Unit,
-    onRegister: () -> Unit,
     onUpdateRegistrationDetails: (String, String, String, String) -> Unit,
     onUpdateVerificationCode: (String) -> Unit,
     onVerifyEmail: () -> Unit,
     onConnectCamera: () -> Unit,
+    onAuthenticate: (Boolean) -> Unit,
     onStartStreaming: () -> Unit
 ) {
-
-
     when {
         // Show landing screen if no registration started
         !setupState.isNetworkConfigured -> {
-            Box(modifier = Modifier.fillMaxSize())
-            {
+            Box(modifier = Modifier.fillMaxSize()) {
                 LandingScreen(
                     onGetStarted = onGetStarted
                 )
             }
         }
-        // Show registration screen if network is configured but email not verified
-        !setupState.isEmailVerified && setupState.username.isEmpty() -> {
+        // Show login screen after landing
+        !setupState.isEmailVerified -> {
             LoginScreen(
                 setupState = setupState,
                 onNext = { /* Move to verification screen */ },
-                onUpdateDetails = onUpdateRegistrationDetails
+                onUpdateDetails = onUpdateRegistrationDetails,
+                onAuthenticate = onAuthenticate
             )
         }
-        // Show email verification screen
-        !setupState.isEmailVerified -> {
-            EmailVerificationScreen(
-                setupState = setupState,
-                onVerify = onVerifyEmail,
-                onUpdateCode = onUpdateVerificationCode
-            )
-        }
-        // Show camera connection screen after email verification
+        // Show camera connection screen after successful login
         !setupState.isCameraConfigured -> {
             CameraConnectionScreen(
                 onConnectCamera = onConnectCamera

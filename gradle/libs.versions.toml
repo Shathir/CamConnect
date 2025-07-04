@@ -15,6 +15,7 @@ lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.1"
 composeBom = "2024.04.01"
 lifecycleViewmodelCompose = "2.6.2"
+material3WindowSizeClass = "<version>"
 playServicesLocation = "21.3.0"
 playServicesMaps = "19.2.0"
 appcompatResources = "1.7.0"
@@ -23,6 +24,7 @@ appcompatResources = "1.7.0"
 android-sdk = { module = "org.maplibre.gl:android-sdk", version.ref = "androidSdk" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
+androidx-material3-window-size-class1 = { module = "androidx.compose.material3:material3-window-size-class", version.ref = "material3WindowSizeClass" }
 commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

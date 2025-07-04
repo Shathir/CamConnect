@@ -1,5 +1,6 @@
 package com.outdu.camconnect.ui.components.buttons
 
+import android.widget.Button
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,8 +27,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
+import com.outdu.camconnect.R
 
 /**
  * Data class for button configuration
@@ -51,6 +57,7 @@ fun CustomizableButton(
     config: ButtonConfig,
     modifier: Modifier = Modifier,
     showText: Boolean = true,
+    layout: String = "Row",
     isCompact: Boolean = false
 ) {
     // Determine button size
@@ -103,36 +110,62 @@ fun CustomizableButton(
                 }
             } else {
                 // Full mode with icon and text - arranged vertically to fit square shape
-                Column(
-                    modifier = Modifier.padding(4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    // Validate and render icon
-                    val resourceId = config.iconPlaceholder.toIntOrNull()
-                    if (resourceId != null && config.iconPlaceholder.isNotEmpty()) {
-                        Image(
-                            painter = painterResource(id = resourceId),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            colorFilter = ColorFilter.tint(config.color),
-                            contentScale = ContentScale.Fit
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
+                if(layout == "Row") {
+                    Row(
+                        modifier = Modifier.padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconLayout(config = config)
                     }
-                    
-                    // Text
-                    BasicText(
-                        text = config.text,
-                        color = config.color,
-                        fontSize = 10.sp
-                    )
+
+                }
+                else {
+                    Column(
+                        modifier = Modifier.padding(4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        IconLayout(config = config)
+                    }
                 }
 
             }
         }
     }
 }
+
+
+@Composable
+fun IconLayout(
+    config : ButtonConfig
+){
+    // Validate and render icon
+    val resourceId = config.iconPlaceholder.toIntOrNull()
+    if (resourceId != null && config.iconPlaceholder.isNotEmpty()) {
+        Image(
+            painter = painterResource(id = resourceId),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            colorFilter = ColorFilter.tint(config.color),
+            contentScale = ContentScale.Fit
+        )
+    }
+
+    // Text
+    Text(
+        text = config.text,
+        style = TextStyle(
+            color = config.color,
+            fontSize = 12.sp,
+            lineHeight = 14.02.sp,
+            fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+            fontWeight = FontWeight(500),
+            textAlign = TextAlign.Center
+        )
+    )
+}
+
 
 /**
  * Icon toggle button with drawable resource

@@ -148,26 +148,10 @@ fun MinimalControlContent(
                 isEnabled = systemStatus.isAiEnabled,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
-//            CustomizableButton(
-//                config = ButtonConfig(
-//                    id = "AiStatusIndicator",
-//                    iconPlaceholder = R.drawable.ai_line.toString(),
-//                    text = "AiStatus",
-//                    backgroundColor = Color(0xFF333333),
-//                    onClick = {}
-//                ),
-//                isCompact = true,
-//                showText = false
-//            )
 
             // Speed indicator
-            CompactSpeedIndicator(speed = systemStatus.currentSpeed)
+//            CompactSpeedIndicator(speed = systemStatus.currentSpeed)
         }
 
-        // Expand button
-//        ExpandButton(
-//            isExpanded = false,
-//            onClick = onExpandClick
-//        )
     }
 }

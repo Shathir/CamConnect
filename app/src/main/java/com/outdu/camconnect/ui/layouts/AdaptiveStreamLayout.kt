@@ -114,14 +114,14 @@ fun AdaptiveStreamLayout(
             ButtonConfig(
                 id = "picture-in-picture",
                 iconPlaceholder = R.drawable.picture_in_picture_line.toString(),
-                text = "Picture-in-Picture",
+                text = "PIP View",
                 backgroundColor = Color.Transparent, // Will be overridden with theme-aware color
                 onClick = { /* Handle snapshot */ }
             ),
             ButtonConfig(
                 id = "collapse-screen",
                 iconPlaceholder = R.drawable.expand_line.toString(),
-                text = "Collapse Screen",
+                text = "Immersive View",
                 backgroundColor = Color.Transparent, // Will be overridden with theme-aware color
                 color = Color.Transparent,
                 onClick = { /* Handle gallery */ }
@@ -136,7 +136,7 @@ fun AdaptiveStreamLayout(
             ButtonConfig(
                 id = "ir-cut-filter",
                 iconPlaceholder = R.drawable.headlights.toString(),
-                text = "IR-Cut-Filter",
+                text = "High Bream",
                 backgroundColor = Color.Transparent, // Will be overridden with theme-aware color
                 onClick = { /* Handle night mode */ }
             ),
@@ -329,57 +329,57 @@ private fun AnimatedRightPane(
             .background(DarkBackground2)
     ) {
         // Top bar with settings button (always visible)
-        AnimatedVisibility(
-            visible = layoutMode == LayoutMode.FULL_CONTROL,
-            enter = slideInHorizontally() + slideInVertically() +  fadeIn(),
-            exit = slideOutHorizontally() +  slideOutVertically() + fadeOut()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(4.dp)
-                    .background(DarkBackground2.copy(alpha = 0.8f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Back button
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .clickable { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) }
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Close",
-                            tint = Color.White
-                        )
-                    }
-                    // "Settings" text placeholder
-                    Box(
-                        modifier = Modifier
-                            .height(24.dp)
-                            .width(80.dp)
-                            .padding(start = 8.dp)
-                            .background(DarkBackground2.copy(alpha = 0.8f))
-                    )
-                    {
-                        Text(
-                            text = "Settings",
-                            color = Color.White,
-                            modifier = Modifier.padding(start = 8.dp)
-                                .align(Alignment.Center)
-                        )
-                    }
-                }
-            }
-
-        }
+//        AnimatedVisibility(
+//            visible = layoutMode == LayoutMode.FULL_CONTROL,
+//            enter = slideInHorizontally() + slideInVertically() +  fadeIn(),
+//            exit = slideOutHorizontally() +  slideOutVertically() + fadeOut()
+//        ) {
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .shadow(4.dp)
+//                    .background(DarkBackground2.copy(alpha = 0.8f))
+//                    .padding(horizontal = 8.dp, vertical = 4.dp)
+//            ) {
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    verticalAlignment = Alignment.CenterVertically
+//                ) {
+//                    // Back button
+//                    Box(
+//                        modifier = Modifier
+//                            .size(48.dp)
+//                            .clip(CircleShape)
+//                            .clickable { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) }
+//                            .padding(12.dp),
+//                        contentAlignment = Alignment.Center
+//                    ) {
+//                        Icon(
+//                            imageVector = Icons.Default.ArrowBack,
+//                            contentDescription = "Close",
+//                            tint = Color.White
+//                        )
+//                    }
+//                    // "Settings" text placeholder
+//                    Box(
+//                        modifier = Modifier
+//                            .height(24.dp)
+//                            .width(80.dp)
+//                            .padding(start = 8.dp)
+//                            .background(DarkBackground2.copy(alpha = 0.8f))
+//                    )
+//                    {
+//                        Text(
+//                            text = "Settings",
+//                            color = Color.White,
+//                            modifier = Modifier.padding(start = 8.dp)
+//                                .align(Alignment.Center)
+//                        )
+//                    }
+//                }
+//            }
+//
+//        }
         
         // Main content area with animated content
         AnimatedContent(
