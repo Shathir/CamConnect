@@ -22,6 +22,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
 import androidx.compose.material3.Text
 import androidx.compose.ui.unit.Dp
+import com.outdu.camconnect.ui.components.indicators.AiStatusIndicator
+import com.outdu.camconnect.ui.components.indicators.BatteryIndicator
+import com.outdu.camconnect.ui.components.indicators.WifiIndicator
+import com.outdu.camconnect.ui.models.SystemStatus
 import com.outdu.camconnect.ui.theme.*
 
 /**
@@ -285,35 +289,35 @@ fun ToggleableIconRow(
     ) {
         icons.take(icons.size).forEach { iconData ->
 
-            if(iconData.id == "viewmode")
-            {
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                )
-                {
-                    val resourceId = iconData.iconPlaceholder
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = resourceId),
-                        contentDescription = iconData.description,
-                        modifier = Modifier.size(iconData.iconSize),
-                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
-                            if (iconData.isSelected) iconData.colorOnSelect
-                            else MediumGray2.copy(alpha = 0.6f)
-                        ),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                    )
-                    Text(
-                        text = "Star Light",
-                        color = if(iconData.isSelected) iconData.colorOnSelect else MediumGray2.copy(alpha = 0.6f),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-            }
-            else {
+//            if(iconData.id == "viewmode")
+//            {
+//
+//                Row(
+//                    verticalAlignment = Alignment.CenterVertically,
+//                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+//                )
+//                {
+//                    val resourceId = iconData.iconPlaceholder
+//                    androidx.compose.foundation.Image(
+//                        painter = androidx.compose.ui.res.painterResource(id = resourceId),
+//                        contentDescription = iconData.description,
+//                        modifier = Modifier.size(iconData.iconSize),
+//                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+//                            if (iconData.isSelected) iconData.colorOnSelect
+//                            else MediumGray2.copy(alpha = 0.6f)
+//                        ),
+//                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
+//                    )
+//                    Text(
+//                        text = "Star Light",
+//                        color = if(iconData.isSelected) iconData.colorOnSelect else MediumGray2.copy(alpha = 0.6f),
+//                        fontSize = 12.sp,
+//                        fontWeight = FontWeight.Bold
+//                    )
+//                }
+//
+//            }
+//            else {
                 Box(
                     modifier = Modifier
                         .size(24.dp)
@@ -336,7 +340,7 @@ fun ToggleableIconRow(
                         contentScale = androidx.compose.ui.layout.ContentScale.Fit
                     )
                 }
-            }
+//            }
         }
     }
 }

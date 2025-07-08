@@ -34,6 +34,8 @@ import androidx.compose.ui.text.font.FontFamily
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.R
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 
 /**
  * Data class for button configuration
@@ -60,12 +62,22 @@ fun CustomizableButton(
     layout: String = "Row",
     isCompact: Boolean = false
 ) {
+
+    val deviceType = rememberDeviceType()
+
     // Determine button size
-    val buttonSize = if (isCompact) 48.dp else 56.dp
+    val buttonSize = if (isCompact) {
+
+        if(deviceType == DeviceType.TABLET) 76.dp else 48.dp
+    }else
+    {
+        if(deviceType == DeviceType.TABLET) 112.dp else 56.dp
+    }
     
     // Check if we're in dark theme
     val isDarkTheme = isSystemInDarkTheme()
-    
+
+
     // Outer box to ensure square shape
     Box(
         modifier = modifier
@@ -81,7 +93,7 @@ fun CustomizableButton(
                     else config.backgroundColor.copy(alpha = 0.5f)
                 )
                 .border(
-                    width = if (isDarkTheme) 0.dp else 2.dp, // No border in dark theme
+                    width = if (isDarkTheme) 0.dp else 1.dp, // No border in dark theme
                     color = config.BorderColor,
                     shape = RoundedCornerShape(20.dp)
                 )
@@ -142,11 +154,12 @@ fun IconLayout(
 ){
     // Validate and render icon
     val resourceId = config.iconPlaceholder.toIntOrNull()
+    val deviceType = rememberDeviceType()
     if (resourceId != null && config.iconPlaceholder.isNotEmpty()) {
         Image(
             painter = painterResource(id = resourceId),
             contentDescription = null,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(if(deviceType == DeviceType.TABLET) 24.dp else 16.dp),
             colorFilter = ColorFilter.tint(config.color),
             contentScale = ContentScale.Fit
         )
@@ -157,7 +170,7 @@ fun IconLayout(
         text = config.text,
         style = TextStyle(
             color = config.color,
-            fontSize = 12.sp,
+            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 12.sp,
             lineHeight = 14.02.sp,
             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
             fontWeight = FontWeight(500),

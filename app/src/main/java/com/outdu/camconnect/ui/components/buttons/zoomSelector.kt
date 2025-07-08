@@ -48,10 +48,18 @@ fun ZoomSelector(
 ) {
     val selectedIndex = remember { mutableStateOf(zoomLevels.indexOf(initialZoom)) }
 
+    // Update selected index when initialZoom changes (from successful API response)
+    LaunchedEffect(initialZoom) {
+        val newIndex = zoomLevels.indexOf(initialZoom)
+        if (newIndex != -1) {
+            selectedIndex.value = newIndex
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         zoomLevels.forEachIndexed { index, zoom ->
@@ -61,10 +69,11 @@ fun ZoomSelector(
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(20.dp))
                     .background(if (isSelected) ButtonSelectedBgColor else ButtonBgColor)
                     .clickable {
-                        selectedIndex.value = index
+                        // Don't update selectedIndex immediately
+                        // It will be updated via LaunchedEffect when initialZoom changes
                         onZoomChanged(zoom)
                     },
                 contentAlignment = Alignment.Center

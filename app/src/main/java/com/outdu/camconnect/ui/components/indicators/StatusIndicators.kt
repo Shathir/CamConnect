@@ -41,6 +41,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.VerticalAlignmentLine
 import com.outdu.camconnect.ui.theme.*
 
 
@@ -90,81 +91,103 @@ fun BatteryIndicator(
     val displayBatteryLevel = if (currentBatteryLevel != -1) currentBatteryLevel else batteryLevel
     
     val batteryColor = when {
-        displayBatteryLevel <= 10 -> BatteryRed
-        displayBatteryLevel <= 30 -> BatteryYellow
-        displayBatteryLevel <= 50 -> BatteryOrange
+        displayBatteryLevel <= 20 -> BatteryRed
+        displayBatteryLevel <= 70 -> Color(0xFFD08101)
         else -> BatteryGreen
     }
 
-    Column (
+    val icon = when {
+        displayBatteryLevel <= 20 -> R.drawable.batterylow
+        displayBatteryLevel <= 70 -> R.drawable.batterymedium
+        else -> R.drawable.batteryfull
+    }
+
+
+    Column(
         modifier = Modifier,
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
-    ){
-        Row(
-            modifier = modifier,
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            // Battery icon with realistic shape
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                // Battery body
-                Box(
-                    modifier = Modifier
-                        .size(width = 22.dp, height = 14.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(batteryColor)
-                        .padding(1.dp)
-                ) {
-                    // Inner battery fill area
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(1.dp))
-                            .background(DarkBackground2)
-                    ) {
-                        // Battery level fill
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(displayBatteryLevel / 100f)
-                                .background(
-                                    batteryColor,
-                                    RoundedCornerShape(
-                                        topStart = 1.dp,
-                                        bottomStart = 1.dp,
-                                        topEnd = if (displayBatteryLevel >= 95) 1.dp else 0.dp,
-                                        bottomEnd = if (displayBatteryLevel >= 95) 1.dp else 0.dp
-                                    )
-                                )
-                                .align(Alignment.CenterStart)
-                        )
-                    }
-                }
-                
-                // Battery terminal cap
-                Box(
-                    modifier = Modifier
-                        .size(width = 2.dp, height = 6.dp)
-                        .clip(RoundedCornerShape(topEnd = 1.dp, bottomEnd = 1.dp))
-                        .background(batteryColor)
-                )
-            }
-            
-            if (showPercentage) {
-                // Percentage text
-                Text(
-                    text = "$displayBatteryLevel%",
-                    color = White,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+    )
+    {
+
+        Image(
+            painter = painterResource(id = icon),
+            contentDescription = "Battery Icon",
+            colorFilter = ColorFilter.tint(batteryColor),
+            modifier = Modifier.size(24.dp)
+        )
+
     }
+
+//    Column (
+//        modifier = Modifier,
+//        verticalArrangement = Arrangement.Center,
+//        horizontalAlignment = Alignment.CenterHorizontally
+//    ){
+//        Row(
+//            modifier = modifier,
+//            verticalAlignment = Alignment.CenterVertically,
+//            horizontalArrangement = Arrangement.spacedBy(4.dp)
+//        ) {
+//            // Battery icon with realistic shape
+//            Row(
+//                verticalAlignment = Alignment.CenterVertically,
+//                horizontalArrangement = Arrangement.spacedBy(0.dp)
+//            ) {
+//                // Battery body
+//                Box(
+//                    modifier = Modifier
+//                        .size(width = 22.dp, height = 14.dp)
+//                        .clip(RoundedCornerShape(2.dp))
+//                        .background(batteryColor)
+//                        .padding(1.dp)
+//                ) {
+//                    // Inner battery fill area
+//                    Box(
+//                        modifier = Modifier
+//                            .fillMaxSize()
+//                            .clip(RoundedCornerShape(1.dp))
+//                            .background(DarkBackground2)
+//                    ) {
+//                        // Battery level fill
+//                        Box(
+//                            modifier = Modifier
+//                                .fillMaxHeight()
+//                                .fillMaxWidth(displayBatteryLevel / 100f)
+//                                .background(
+//                                    batteryColor,
+//                                    RoundedCornerShape(
+//                                        topStart = 1.dp,
+//                                        bottomStart = 1.dp,
+//                                        topEnd = if (displayBatteryLevel >= 95) 1.dp else 0.dp,
+//                                        bottomEnd = if (displayBatteryLevel >= 95) 1.dp else 0.dp
+//                                    )
+//                                )
+//                                .align(Alignment.CenterStart)
+//                        )
+//                    }
+//                }
+//
+//                // Battery terminal cap
+//                Box(
+//                    modifier = Modifier
+//                        .size(width = 2.dp, height = 6.dp)
+//                        .clip(RoundedCornerShape(topEnd = 1.dp, bottomEnd = 1.dp))
+//                        .background(batteryColor)
+//                )
+//            }
+//
+//            if (showPercentage) {
+//                // Percentage text
+//                Text(
+//                    text = "$displayBatteryLevel%",
+//                    color = White,
+//                    fontSize = 10.sp,
+//                    fontWeight = FontWeight.Bold
+//                )
+//            }
+//        }
+//    }
 }
 
 /**
@@ -267,98 +290,119 @@ fun WifiIndicator(
             context.unregisterReceiver(wifiReceiver)
         }
     }
-    
-    // WiFi icon placeholder
-    Box(
-        modifier = modifier.size(20.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // WiFi symbol with filled segments
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val centerX = size.width / 2
-            val bottomY = size.height * 0.85f
-            
-            // Define colors based on signal strength
-            val activeColor = when {
-                !currentIsConnected -> Color.Gray
-                currentSignalStrength >= 2 -> Color.Green
-                currentSignalStrength == 1 -> Color(0xFFFF9800) // Orange
-                else -> Color.Red
-            }
-            val inactiveColor = Color.Gray.copy(alpha = 0.3f)
-            
-            // Helper function to draw WiFi segment
-            fun drawWifiSegment(
-                startAngle: Float,
-                sweepAngle: Float,
-                radius: Float,
-                thickness: Float,
-                isActive: Boolean
-            ) {
-                // Outer arc
-                drawArc(
-                    color = if (isActive) activeColor else inactiveColor,
-                    startAngle = startAngle,
-                    sweepAngle = sweepAngle,
-                    useCenter = false,
-                    topLeft = Offset(centerX - radius, bottomY - radius),
-                    size = Size(radius * 2, radius * 2),
-                    style = Stroke(width = thickness)
-                )
-                
-                // Fill the segment by drawing multiple concentric arcs
-                var currentRadius = radius - thickness / 2
-                val step = thickness / 4
-                while (currentRadius > radius - thickness) {
-                    drawArc(
-                        color = if (isActive) activeColor else inactiveColor,
-                        startAngle = startAngle,
-                        sweepAngle = sweepAngle,
-                        useCenter = false,
-                        topLeft = Offset(centerX - currentRadius, bottomY - currentRadius),
-                        size = Size(currentRadius * 2, currentRadius * 2),
-                        style = Stroke(width = step)
-                    )
-                    currentRadius -= step
-                }
-            }
-            
-            // Draw WiFi segments (from smallest to largest)
-            // Segment 1 (smallest) - always visible when connected
-            drawWifiSegment(
-                startAngle = -135f,
-                sweepAngle = 90f,
-                radius = 5.dp.toPx(),
-                thickness = 3.dp.toPx(),
-                isActive = currentIsConnected && currentSignalStrength >= 1
-            )
-            
-            // Segment 2 (medium)
-            drawWifiSegment(
-                startAngle = -135f,
-                sweepAngle = 90f,
-                radius = 8.dp.toPx(),
-                thickness = 3.dp.toPx(),
-                isActive = currentIsConnected && currentSignalStrength >= 2
-            )
-            
-            // Segment 3 (largest)
-            drawWifiSegment(
-                startAngle = -135f,
-                sweepAngle = 90f,
-                radius = 11.dp.toPx(),
-                thickness = 3.dp.toPx(),
-                isActive = currentIsConnected && currentSignalStrength >= 3
-            )
-            
-            // Center dot (always filled when connected)
-            drawCircle(
-                color = if (currentIsConnected) activeColor else inactiveColor,
-                radius = 2.dp.toPx(),
-                center = Offset(centerX, bottomY)
-            )
-        }
+
+    val wifiColor = when {
+        !currentIsConnected -> Color(0xFF8E8E8E)
+        currentSignalStrength >=1 -> Color(0xFF4E8EFF)
+        else -> Color.Gray
     }
+
+    val wifiIcon = when {
+        !currentIsConnected -> R.drawable.wifi_off
+        currentSignalStrength >= 2 -> R.drawable.wifi_high
+        currentSignalStrength == 1 -> R.drawable.wifi_medium
+        else -> R.drawable.wifi_low
+    }
+
+
+    Image(
+        painter = painterResource(wifiIcon),
+        contentDescription = "Wifi Icon",
+        colorFilter = ColorFilter.tint(wifiColor),
+        modifier = modifier.size(24.dp)
+    )
+
+    // WiFi icon placeholder
+//    Box(
+//        modifier = modifier.size(20.dp),
+//        contentAlignment = Alignment.Center
+//    ) {
+//        // WiFi symbol with filled segments
+//        Canvas(modifier = Modifier.fillMaxSize()) {
+//            val centerX = size.width / 2
+//            val bottomY = size.height * 0.85f
+//
+//            // Define colors based on signal strength
+//            val activeColor = when {
+//                !currentIsConnected -> Color.Gray
+//                currentSignalStrength >= 2 -> Color.Green
+//                currentSignalStrength == 1 -> Color(0xFFFF9800) // Orange
+//                else -> Color.Red
+//            }
+//            val inactiveColor = Color.Gray.copy(alpha = 0.3f)
+//
+//            // Helper function to draw WiFi segment
+//            fun drawWifiSegment(
+//                startAngle: Float,
+//                sweepAngle: Float,
+//                radius: Float,
+//                thickness: Float,
+//                isActive: Boolean
+//            ) {
+//                // Outer arc
+//                drawArc(
+//                    color = if (isActive) activeColor else inactiveColor,
+//                    startAngle = startAngle,
+//                    sweepAngle = sweepAngle,
+//                    useCenter = false,
+//                    topLeft = Offset(centerX - radius, bottomY - radius),
+//                    size = Size(radius * 2, radius * 2),
+//                    style = Stroke(width = thickness)
+//                )
+//
+//                // Fill the segment by drawing multiple concentric arcs
+//                var currentRadius = radius - thickness / 2
+//                val step = thickness / 4
+//                while (currentRadius > radius - thickness) {
+//                    drawArc(
+//                        color = if (isActive) activeColor else inactiveColor,
+//                        startAngle = startAngle,
+//                        sweepAngle = sweepAngle,
+//                        useCenter = false,
+//                        topLeft = Offset(centerX - currentRadius, bottomY - currentRadius),
+//                        size = Size(currentRadius * 2, currentRadius * 2),
+//                        style = Stroke(width = step)
+//                    )
+//                    currentRadius -= step
+//                }
+//            }
+//
+//            // Draw WiFi segments (from smallest to largest)
+//            // Segment 1 (smallest) - always visible when connected
+//            drawWifiSegment(
+//                startAngle = -135f,
+//                sweepAngle = 90f,
+//                radius = 5.dp.toPx(),
+//                thickness = 3.dp.toPx(),
+//                isActive = currentIsConnected && currentSignalStrength >= 1
+//            )
+//
+//            // Segment 2 (medium)
+//            drawWifiSegment(
+//                startAngle = -135f,
+//                sweepAngle = 90f,
+//                radius = 8.dp.toPx(),
+//                thickness = 3.dp.toPx(),
+//                isActive = currentIsConnected && currentSignalStrength >= 2
+//            )
+//
+//            // Segment 3 (largest)
+//            drawWifiSegment(
+//                startAngle = -135f,
+//                sweepAngle = 90f,
+//                radius = 11.dp.toPx(),
+//                thickness = 3.dp.toPx(),
+//                isActive = currentIsConnected && currentSignalStrength >= 3
+//            )
+//
+//            // Center dot (always filled when connected)
+//            drawCircle(
+//                color = if (currentIsConnected) activeColor else inactiveColor,
+//                radius = 2.dp.toPx(),
+//                center = Offset(centerX, bottomY)
+//            )
+//        }
+//    }
 }
 
 /**
@@ -450,7 +494,7 @@ fun AiStatusIndicator(
 //        contentScale = ContentScale.Fit
 //    )
     Image(
-        painter = iconPainter,
+        iconPainter,
         contentDescription = "Ai Status Icon",
         modifier = modifier.size(24.dp),
         contentScale = ContentScale.Fit

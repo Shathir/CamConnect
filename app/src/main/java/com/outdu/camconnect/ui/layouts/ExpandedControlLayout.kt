@@ -1,5 +1,6 @@
 package com.outdu.camconnect.ui.layouts
 
+import android.bluetooth.BluetoothClass.Device
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,9 +33,11 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -46,6 +49,7 @@ import com.outdu.camconnect.communication.MotocamSocketClient
 import com.outdu.camconnect.network.HttpClientProvider
 import com.outdu.camconnect.ui.components.buttons.ScreenRecorderUI
 import com.outdu.camconnect.ui.components.buttons.ZoomSelector
+import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -434,7 +438,7 @@ fun ExpandedControlContent(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var currentZoom by remember { mutableFloatStateOf(1f) }
-
+    val deviceType = rememberDeviceType()
     DisposableEffect(Unit) {
         Log.d("ExpandedControlContent", "Component created")
         onDispose {
@@ -449,14 +453,14 @@ fun ExpandedControlContent(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isTablet = maxWidth > 600.dp
-        val padding = if (isTablet) 32.dp else 16.dp
-        val spacing = if (isTablet) 24.dp else 16.dp
+        val padding = if (deviceType == DeviceType.TABLET) 32.dp else 12.dp
+        val spacing = if (deviceType == DeviceType.TABLET) 22.dp else 12.dp
         val layoutModifier = Modifier
             .fillMaxSize()
             .padding(horizontal = padding, vertical = spacing)
 
         val layoutDirection: @Composable (@Composable () -> Unit) -> Unit =
-            if (isTablet) { content -> Row(modifier = layoutModifier, horizontalArrangement = Arrangement.spacedBy(spacing)) { content() } }
+            if (deviceType == DeviceType.TABLET) { content -> Row(modifier = layoutModifier, horizontalArrangement = Arrangement.spacedBy(spacing)) { content() } }
             else { content -> Column(modifier = layoutModifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(spacing)) { content() } }
 
         layoutDirection {
@@ -478,18 +482,30 @@ fun ExpandedControlContent(
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = "Scout",
-                        fontSize = if (isTablet) 20.sp else 16.sp,
+                        fontSize = if (deviceType == DeviceType.TABLET) 20.sp else 16.sp,
                         fontFamily = FontFamily(Font(R.font.onest_regular)),
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFC5C5C5)
                     )
                 }
 
+                var allButtons = listOf<List<ButtonConfig>>()
                 // Control Button Rows
-                val allButtons = listOf(
-                    customButtons.filter { it.id in listOf("ir", "ir-cut-filter", "Settings") },
-                    customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
-                )
+                if(deviceType == DeviceType.TABLET)
+                {
+                    allButtons = listOf(
+                        customButtons.filter { it.id in listOf("Settings") },
+                        customButtons.filter { it.id in listOf("ir", "ir-cut-filter") },
+                        customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
+                    )
+                }
+                else {
+                    allButtons = listOf(
+                        customButtons.filter { it.id in listOf("ir", "ir-cut-filter", "Settings") },
+                        customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
+                    )
+                }
+
 
                 allButtons.forEach { buttonSet ->
                     ButtonRow(
@@ -504,7 +520,8 @@ fun ExpandedControlContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .height(if(deviceType == DeviceType.TABLET) 112.dp else 56.dp)
+                        .clip(RoundedCornerShape(20.dp))
                         .background(if (cameraState.isRecording) RecordRed else MediumDarkBackground)
                         .clickable { onRecordingToggle() }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -522,7 +539,7 @@ fun ExpandedControlContent(
                         )
                         Text(
                             text = "RECORD",
-                            color = if (cameraState.isRecording) White else MediumLightGray,
+                            color = if (cameraState.isRecording) Color(0xFFFFFFFF) else MediumLightGray,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -533,28 +550,31 @@ fun ExpandedControlContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(if(deviceType == DeviceType.TABLET) 112.dp else 56.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(DarkBackground2),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ZoomSelector(
                         initialZoom = currentZoom,
-                        onZoomChanged = { zoom ->
-                            val zoomLevel = when (zoom) {
+                        onZoomChanged = { newZoom ->
+                            val zoomLevel = when (newZoom) {
                                 1f -> MotocamAPIHelper.ZOOM.X1
                                 2f -> MotocamAPIHelper.ZOOM.X2
                                 else -> MotocamAPIHelper.ZOOM.X4
                             }
+                            // Don't update currentZoom immediately
                             MotocamAPIAndroidHelper.setZoomAsync(
                                 scope = coroutineScope,
                                 zoom = zoomLevel
                             ) { result, error ->
                                 if (error == null && result) {
-                                    currentZoom = zoom
-                                    Log.d("Zoom", "Zoom set to $zoom X")
+                                    // Only update zoom state after successful API response
+                                    currentZoom = newZoom
+                                    Log.d("Zoom", "Zoom set to $newZoom X")
                                 } else {
                                     Log.e("Zoom", "Zoom Error: $error")
+                                    // Optionally show error to user
                                 }
                             }
                         }
@@ -569,18 +589,53 @@ fun ExpandedControlContent(
                         .background(DarkBackground2)
                         .padding(1.dp)
                 ) {
-                    ToggleableIconRow(
-                        icons = toggleableIcons,
-                        onToggle = onIconToggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     )
+                    {
+
+                            toggleableIcons.take(toggleableIcons.size).forEach{ iconData ->
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape)
+                                        .padding(1.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // Validate and render icon
+                                    val resourceId = iconData.iconPlaceholder
+                                    androidx.compose.foundation.Image(
+                                        painter = androidx.compose.ui.res.painterResource(id = resourceId),
+                                        contentDescription = iconData.description,
+                                        modifier = Modifier.size(iconData.iconSize),
+                                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                            if (iconData.isSelected) iconData.colorOnSelect
+                                            else Color(0xFF777777)
+
+                                        ),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                    )
+                                }
+
+                            }
+
+
+                            WifiIndicator(isConnected = systemStatus.isWifiConnected)
+                            AiStatusIndicator(
+                                isEnabled = systemStatus.isAiEnabled,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+
+                            BatteryIndicator(
+                                batteryLevel = systemStatus.batteryLevel,
+                                showPercentage = false
+                            )
+                    }
                 }
             }
-
-            // Optional: Add secondary UI or preview column if on tablet
-//            if (isTablet) {
-//                Spacer(modifier = Modifier.weight(1f))
-//                // Add live preview, map view, logs etc. here on larger screens
-//            }
         }
     }
 }
@@ -596,10 +651,10 @@ fun ButtonRow(buttons: List<ButtonConfig>,
               onCollapseClick: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-
+    val deviceType = rememberDeviceType()
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         buttons.forEach { buttonConfig ->
             val isSelected = buttonStates[buttonConfig.id] ?: false
@@ -654,13 +709,18 @@ fun ButtonRow(buttons: List<ButtonConfig>,
 
             val weight = when (buttonConfig.id) {
                 "Settings" -> 2f
+                "ir-cut-filter" -> {
+                    if (deviceType == DeviceType.TABLET) 1f else 2f
+                }
                 else -> 1f
 
             }
 
             val layout = when (buttonConfig.id) {
-                "ir" -> "Column"
-                "ir-cut-filter" -> "Column"
+                "ir" -> {
+                    if (deviceType == DeviceType.TABLET) "Row" else "Column"
+                }
+//                "ir-cut-filter" -> "Column"
                 else -> "Row"
             }
 

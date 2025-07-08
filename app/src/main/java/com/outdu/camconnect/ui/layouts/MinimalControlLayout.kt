@@ -32,6 +32,8 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
 import androidx.compose.runtime.DisposableEffect
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 
 
 /**
@@ -40,12 +42,15 @@ import androidx.compose.runtime.DisposableEffect
 @Composable
 fun MinimalControlContent(
     cameraState: CameraState,
+    customButtons: List<ButtonConfig>,
     systemStatus: SystemStatus,
     onSettingsClick: () -> Unit,
     onCameraSwitch: () -> Unit,
     onRecordingToggle: () -> Unit,
     onExpandClick: () -> Unit
 ) {
+
+    val deviceType = rememberDeviceType()
     // Cleanup when component is disposed
     DisposableEffect(Unit) {
         Log.d("MinimalControlContent", "Component created")
@@ -63,14 +68,14 @@ fun MinimalControlContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(8.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = if(deviceType == DeviceType.TABLET) Arrangement.SpaceAround else Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Top controls
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+//        Column(
+//            verticalArrangement = Arrangement.spacedBy(24.dp),
+//            horizontalAlignment = Alignment.CenterHorizontally
+//        ) {
             // Settings button
             CustomizableButton(
                 config = ButtonConfig(
@@ -114,24 +119,50 @@ fun MinimalControlContent(
                 showText = false
             )
 
+            CustomizableButton(
+                config = customButtons.first { it.id == "picture-in-picture" }.copy(
+                    BorderColor = ButtonBorderColor,
+                    enabled = false,
+                    color = Color(0xFF363636),
+                    backgroundColor = Color(0xFF272727)
+                ),
+                isCompact = true,
+                showText = false
+            )
+
+            CustomizableButton(
+                config = customButtons.first { it.id == "ir-cut-filter" }.copy(
+                    BorderColor = ButtonBorderColor,
+                    backgroundColor = MediumDarkBackground
+                ),
+                isCompact = true,
+                showText = false
+            )
+
+            CustomizableButton(
+                config = customButtons.first {it.id == "ir"}.copy(
+                    BorderColor = ButtonBorderColor,
+                    backgroundColor = MediumDarkBackground
+                ),
+                isCompact = true,
+                showText = false
+            )
+
             // Compass
 //            CompassIndicator(
 //                direction = systemStatus.compassDirection,
 //                size = 60.dp
 //            )
-        }
+//        }
 
         // Bottom indicators
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+//        Column(
+//            verticalArrangement = Arrangement.spacedBy(16.dp),
+//
+//            horizontalAlignment = Alignment.CenterHorizontally
+//        ) {
             // Battery indicator
-            BatteryIndicator(
-                batteryLevel = systemStatus.batteryLevel,
-                showPercentage = false
-            )
+
 
             // Connectivity indicators
             Column(
@@ -139,8 +170,6 @@ fun MinimalControlContent(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 WifiIndicator(isConnected = systemStatus.isWifiConnected)
-//                LteIndicator(isConnected = systemStatus.isLteConnected)
-
             }
 
             // AI status
@@ -149,9 +178,14 @@ fun MinimalControlContent(
                 modifier = Modifier.padding(vertical = 4.dp)
             )
 
+            BatteryIndicator(
+                batteryLevel = systemStatus.batteryLevel,
+                showPercentage = false
+            )
+
             // Speed indicator
 //            CompactSpeedIndicator(speed = systemStatus.currentSpeed)
-        }
+//        }
 
     }
 }

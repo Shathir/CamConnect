@@ -41,6 +41,7 @@ import com.outdu.camconnect.utils.MemoryManager
 import org.freedesktop.gstreamer.GStreamer
 import java.util.Locale
 import com.outdu.camconnect.ui.theme.*
+import android.content.res.Configuration
 
 
 class MainActivity : ComponentActivity() {
@@ -213,7 +214,19 @@ class MainActivity : ComponentActivity() {
         // Resume will be handled by surface callbacks when they become available
         Log.d("MainActivity", "Memory stats: ${MemoryManager.getMemoryStats()}")
     }
-    
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        try {
+            // Ensure clean pipeline shutdown before configuration change
+            MainActivitySingleton.nativePause()
+            MainActivitySingleton.nativeSurfaceFinalize()
+            MemoryManager.cleanupWeakReferences()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error during configuration change", e)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         // Force cleanup of all native resources

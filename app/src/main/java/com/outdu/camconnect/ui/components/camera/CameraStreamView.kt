@@ -2,6 +2,7 @@ package com.outdu.camconnect.ui.components.camera
 
 
 import android.content.Context
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,13 +15,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.layout.ContentScale
-
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.R
@@ -52,11 +59,10 @@ fun CameraStreamView(
             .clip(RoundedCornerShape(20.dp))
             .border(
                 width = 2.dp,
-                color = DarkBackground3, // Change to your desired border color
+                color = DarkBackground3,
                 shape = RoundedCornerShape(20.dp)
             )
             .background(Color.Transparent),
-
         contentAlignment = Alignment.Center
     ) {
         if (isConnected) {
@@ -75,8 +81,56 @@ fun CameraStreamView(
         } else {
             DisconnectedView()
         }
+
     }
 }
+
+
+@Composable
+fun RoundedCornerMaskOverlay(
+    cornerRadius: Dp = 20.dp,
+    color: Color = Color.Black
+) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val radius = cornerRadius.toPx()
+        
+        // First create a path for the rounded rectangle
+        val roundedRectPath = Path().apply {
+            addRoundRect(
+                RoundRect(
+                    rect = Rect(
+                        offset = Offset.Zero,
+                        size = size
+                    ),
+                    cornerRadius = CornerRadius(radius, radius)
+                )
+            )
+        }
+
+        // Create a path for the full rectangle
+        val fullRectPath = Path().apply {
+            addRect(
+                Rect(
+                    offset = Offset.Zero,
+                    size = size
+                )
+            )
+        }
+
+        // Subtract the rounded rect from the full rect to get only the corners
+        val cornersPath = Path()
+        cornersPath.op(fullRectPath, roundedRectPath, PathOperation.Difference)
+
+        // Draw only the corners
+        drawPath(
+            path = cornersPath,
+            color = color,
+            blendMode = BlendMode.SrcOver
+        )
+    }
+}
+
+
 
 /**
  * Placeholder for camera stream during development
@@ -199,14 +253,14 @@ fun VideoFeedSlot(
                         .clip(RoundedCornerShape(6.dp))
                 )
                 {
-                    Image(
-                        painter = painterResource(id = R.drawable.boat_hologram), // your .png file
-                        contentDescription = "My PNG Icon",
-                        modifier = Modifier.fillMaxSize(), // size like an icon
-                        contentScale = ContentScale.FillBounds,
-
-                        alignment = Alignment.Center,
-                    )
+//                    Image(
+//                        painter = painterResource(id = R.drawable.boat_hologram), // your .png file
+//                        contentDescription = "My PNG Icon",
+//                        modifier = Modifier.fillMaxSize(), // size like an icon
+//                        contentScale = ContentScale.FillBounds,
+//
+//                        alignment = Alignment.Center,
+//                    )
                 }
 //                Spacer(modifier = Modifier.height(8.dp))
 //                // Label text placeholder

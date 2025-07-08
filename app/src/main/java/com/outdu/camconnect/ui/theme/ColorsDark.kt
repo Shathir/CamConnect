@@ -53,8 +53,8 @@ object DarkColors {
     val BrightGreen = Color(0xFF00DD00)
 
     // AI & Gradient Colors - Dark Theme
-    val AiGradientStart = Color(0xFF46B7B1)
-    val AiGradientEnd = Color(0xFF0C59E0)
+    val AiGradientStart = Color(0xFFFFF399)
+    val AiGradientEnd = Color(0xFF4E8EFF)
     val SpyBlue = Color(0xFF0C59E0)
 
     // Gray Variations - Dark Theme

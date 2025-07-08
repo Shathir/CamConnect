@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.R
@@ -136,7 +137,7 @@ fun AdaptiveStreamLayout(
             ButtonConfig(
                 id = "ir-cut-filter",
                 iconPlaceholder = R.drawable.headlights.toString(),
-                text = "High Bream",
+                text = "High Beam",
                 backgroundColor = Color.Transparent, // Will be overridden with theme-aware color
                 onClick = { /* Handle night mode */ }
             ),
@@ -161,11 +162,9 @@ fun AdaptiveStreamLayout(
     // Toggleable icons for Layout 2 - Basic structure without theme-aware colors
     val toggleableIcons = remember {
         mutableStateListOf(
-            ToggleableIcon("viewmode", R.drawable.moonstars,"viewMode", true, colorOnSelect = DefaultColors.SpyBlue),
+            ToggleableIcon("viewmode", R.drawable.sun,"viewMode", true, colorOnSelect = DefaultColors.SpyBlue),
             ToggleableIcon("hdr", R.drawable.hd_line, description ="Hdr", true, colorOnSelect =  Color.White),
             ToggleableIcon("stabilize", R.drawable.git_commit_line, "Stabilize", true, colorOnSelect = Color.White),
-            ToggleableIcon("timer", R.drawable.spy_line, "Timer", true, colorOnSelect = DefaultColors.SpyBlue),
-            ToggleableIcon("dayNight", R.drawable.eye_2_line, "DayNight", true, colorOnSelect = Color.White)
         )
     }
 
@@ -187,6 +186,7 @@ fun AdaptiveStreamLayout(
     Box(
         modifier = Modifier.fillMaxSize()
             .background(VeryDarkBackground)
+            .clip(RoundedCornerShape(20.dp))
     )
     {
         ZoomableVideoTextureView(viewModel = AppViewModel(), context)
@@ -215,6 +215,13 @@ fun AdaptiveStreamLayout(
                     onSpeedUpdate = { speed -> currentSpeed = speed }
 
                 )
+
+                // Add the corner mask overlay
+                RoundedCornerMaskOverlay(
+                    cornerRadius = 20.dp,
+                    color = VeryDarkBackground // Match the border color
+                )
+
             }
 
             Box(
@@ -321,14 +328,19 @@ private fun AnimatedRightPane(
     onIconToggle: (String) -> Unit,
     onSpeedUpdate: (Float) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(paneWeight)
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(16.dp))
-            .background(DarkBackground2)
-    ) {
-        // Top bar with settings button (always visible)
+    Box(
+        modifier = Modifier.fillMaxWidth(paneWeight)
+            .background(VeryDarkBackground)
+    )
+    {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(16.dp))
+                .background(DarkBackground2)
+        ) {
+            // Top bar with settings button (always visible)
 //        AnimatedVisibility(
 //            visible = layoutMode == LayoutMode.FULL_CONTROL,
 //            enter = slideInHorizontally() + slideInVertically() +  fadeIn(),
@@ -380,63 +392,65 @@ private fun AnimatedRightPane(
 //            }
 //
 //        }
-        
-        // Main content area with animated content
-        AnimatedContent(
-            targetState = layoutMode,
-            transitionSpec = {
-                slideInVertically { height -> height } + fadeIn() with
-                slideOutVertically { height -> -height } + fadeOut()
-            },
-            modifier = Modifier.weight(1f),
-            label = "content_transition"
-        ) { mode ->
-            when (mode) {
-                LayoutMode.MINIMAL_CONTROL -> {
-                    MinimalControlContent(
-                        cameraState = cameraState,
-                        systemStatus = systemStatus,
-                        onSettingsClick = { onLayoutModeChange(LayoutMode.FULL_CONTROL) },
-                        onCameraSwitch = onCameraSwitch,
-                        onRecordingToggle = onRecordingToggle,
-                        onExpandClick = { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) }
-                    )
-                }
-                
-                LayoutMode.EXPANDED_CONTROL -> {
-                    ExpandedControlContent(
-                        cameraState = cameraState,
-                        systemStatus = systemStatus,
-                        customButtons = customButtons,
-                        toggleableIcons = toggleableIcons,
-                        buttonStates = buttonStates,
-                        onSettingsClick = { onLayoutModeChange(LayoutMode.FULL_CONTROL) },
-                        onCameraSwitch = onCameraSwitch,
-                        onRecordingToggle = onRecordingToggle,
-                        onZoomChange = onZoomChange,
-                        onIconToggle = onIconToggle,
-                        onCollapseClick = { onLayoutModeChange(LayoutMode.MINIMAL_CONTROL) },
-                        onSpeedUpdate = onSpeedUpdate
-                    )
-                }
-                
-                LayoutMode.FULL_CONTROL -> {
-                    SettingsControlLayout(
-                        cameraState = cameraState,
-                        systemStatus = systemStatus,
-                        detectionSettings = detectionSettings,
-                        customButtons = customButtons,
-                        selectedTab = selectedTab,
-                        onTabSelected = onTabSelected,
-                        onAutoDayNightToggle = onAutoDayNightToggle,
-                        onVisionModeSelected = onVisionModeSelected,
-                        onObjectDetectionToggle = onObjectDetectionToggle,
-                        onFarObjectDetectionToggle = onFarObjectDetectionToggle,
-                        onMotionDetectionToggle = onMotionDetectionToggle,
-                        onCameraModeSelected = onCameraModeSelected,
-                        onOrientationModeSelected = onOrientationModeSelected,
-                        onCollapseClick = {onLayoutModeChange(LayoutMode.EXPANDED_CONTROL)}
-                    )
+
+            // Main content area with animated content
+            AnimatedContent(
+                targetState = layoutMode,
+                transitionSpec = {
+                    slideInVertically { height -> height } + fadeIn() with
+                            slideOutVertically { height -> -height } + fadeOut()
+                },
+                modifier = Modifier.weight(1f),
+                label = "content_transition"
+            ) { mode ->
+                when (mode) {
+                    LayoutMode.MINIMAL_CONTROL -> {
+                        MinimalControlContent(
+                            cameraState = cameraState,
+                            systemStatus = systemStatus,
+                            customButtons = customButtons,
+                            onSettingsClick = { onLayoutModeChange(LayoutMode.FULL_CONTROL) },
+                            onCameraSwitch = onCameraSwitch,
+                            onRecordingToggle = onRecordingToggle,
+                            onExpandClick = { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) }
+                        )
+                    }
+
+                    LayoutMode.EXPANDED_CONTROL -> {
+                        ExpandedControlContent(
+                            cameraState = cameraState,
+                            systemStatus = systemStatus,
+                            customButtons = customButtons,
+                            toggleableIcons = toggleableIcons,
+                            buttonStates = buttonStates,
+                            onSettingsClick = { onLayoutModeChange(LayoutMode.FULL_CONTROL) },
+                            onCameraSwitch = onCameraSwitch,
+                            onRecordingToggle = onRecordingToggle,
+                            onZoomChange = onZoomChange,
+                            onIconToggle = onIconToggle,
+                            onCollapseClick = { onLayoutModeChange(LayoutMode.MINIMAL_CONTROL) },
+                            onSpeedUpdate = onSpeedUpdate
+                        )
+                    }
+
+                    LayoutMode.FULL_CONTROL -> {
+                        SettingsControlLayout(
+                            cameraState = cameraState,
+                            systemStatus = systemStatus,
+                            detectionSettings = detectionSettings,
+                            customButtons = customButtons,
+                            selectedTab = selectedTab,
+                            onTabSelected = onTabSelected,
+                            onAutoDayNightToggle = onAutoDayNightToggle,
+                            onVisionModeSelected = onVisionModeSelected,
+                            onObjectDetectionToggle = onObjectDetectionToggle,
+                            onFarObjectDetectionToggle = onFarObjectDetectionToggle,
+                            onMotionDetectionToggle = onMotionDetectionToggle,
+                            onCameraModeSelected = onCameraModeSelected,
+                            onOrientationModeSelected = onOrientationModeSelected,
+                            onCollapseClick = { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) }
+                        )
+                    }
                 }
             }
         }
