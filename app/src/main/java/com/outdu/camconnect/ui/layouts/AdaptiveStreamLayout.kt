@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.R
 import com.outdu.camconnect.Viewmodels.AppViewModel
+import com.outdu.camconnect.communication.CameraConfigurationManager
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
 import com.outdu.camconnect.ui.components.camera.*
@@ -69,7 +70,7 @@ fun AdaptiveStreamLayout(
                 isWifiConnected = true,
                 isLteConnected = false,
                 isOnline = true,
-                isAiEnabled = true,
+                isAiEnabled = CameraConfigurationManager.isObjectDetectionEnabled(),
                 currentSpeed = 0f, // Will be updated by GPS
                 compassDirection = 127f
             )
@@ -89,6 +90,11 @@ fun AdaptiveStreamLayout(
     
     // Persistent button states for expanded control - survives layout mode changes
     val buttonStates = remember { mutableStateMapOf<String, Boolean>() }
+
+    // Function to handle system status changes
+    val onSystemStatusChange: (SystemStatus) -> Unit = { newStatus ->
+        systemStatus = newStatus
+    }
     
     // Animated weights for the two panes
     val leftPaneWeight by animateFloatAsState(
@@ -269,6 +275,8 @@ fun AdaptiveStreamLayout(
                     detectionSettings = detectionSettings.copy(
                         isObjectDetectionEnabled = enabled
                     )
+                    // Also update system status when object detection changes
+                    systemStatus = systemStatus.copy(isAiEnabled = enabled)
                 },
                 onFarObjectDetectionToggle = { enabled ->
                     detectionSettings = detectionSettings.copy(
@@ -294,7 +302,8 @@ fun AdaptiveStreamLayout(
                         )
                     }
                 },
-                onSpeedUpdate = { speed -> currentSpeed = speed }
+                onSpeedUpdate = { speed -> currentSpeed = speed },
+                onSystemStatusChange = onSystemStatusChange
             )
         }
     }
@@ -328,13 +337,13 @@ private fun AnimatedRightPane(
     onCameraModeSelected: (CameraMode) -> Unit,
     onOrientationModeSelected: (OrientationMode) -> Unit,
     onIconToggle: (String) -> Unit,
-    onSpeedUpdate: (Float) -> Unit
+    onSpeedUpdate: (Float) -> Unit,
+    onSystemStatusChange: (SystemStatus) -> Unit
 ) {
     Box(
         modifier = Modifier.fillMaxWidth(paneWeight)
             .background(VeryDarkBackground)
-    )
-    {
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -342,60 +351,6 @@ private fun AnimatedRightPane(
                 .clip(RoundedCornerShape(16.dp))
                 .background(DarkBackground2)
         ) {
-            // Top bar with settings button (always visible)
-//        AnimatedVisibility(
-//            visible = layoutMode == LayoutMode.FULL_CONTROL,
-//            enter = slideInHorizontally() + slideInVertically() +  fadeIn(),
-//            exit = slideOutHorizontally() +  slideOutVertically() + fadeOut()
-//        ) {
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .shadow(4.dp)
-//                    .background(DarkBackground2.copy(alpha = 0.8f))
-//                    .padding(horizontal = 8.dp, vertical = 4.dp)
-//            ) {
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    verticalAlignment = Alignment.CenterVertically
-//                ) {
-//                    // Back button
-//                    Box(
-//                        modifier = Modifier
-//                            .size(48.dp)
-//                            .clip(CircleShape)
-//                            .clickable { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) }
-//                            .padding(12.dp),
-//                        contentAlignment = Alignment.Center
-//                    ) {
-//                        Icon(
-//                            imageVector = Icons.Default.ArrowBack,
-//                            contentDescription = "Close",
-//                            tint = Color.White
-//                        )
-//                    }
-//                    // "Settings" text placeholder
-//                    Box(
-//                        modifier = Modifier
-//                            .height(24.dp)
-//                            .width(80.dp)
-//                            .padding(start = 8.dp)
-//                            .background(DarkBackground2.copy(alpha = 0.8f))
-//                    )
-//                    {
-//                        Text(
-//                            text = "Settings",
-//                            color = Color.White,
-//                            modifier = Modifier.padding(start = 8.dp)
-//                                .align(Alignment.Center)
-//                        )
-//                    }
-//                }
-//            }
-//
-//        }
-
-            // Main content area with animated content
             AnimatedContent(
                 targetState = layoutMode,
                 transitionSpec = {
@@ -450,6 +405,7 @@ private fun AnimatedRightPane(
                             onMotionDetectionToggle = onMotionDetectionToggle,
                             onCameraModeSelected = onCameraModeSelected,
                             onOrientationModeSelected = onOrientationModeSelected,
+                            onSystemStatusChange = onSystemStatusChange,
                             onCollapseClick = { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) }
                         )
                     }

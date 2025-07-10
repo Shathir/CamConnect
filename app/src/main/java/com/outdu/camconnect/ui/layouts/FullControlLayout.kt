@@ -64,6 +64,7 @@ fun SettingsControlLayout(
     onMotionDetectionToggle: (Boolean) -> Unit,
     onCameraModeSelected: (CameraMode) -> Unit,
     onOrientationModeSelected: (OrientationMode) -> Unit,
+    onSystemStatusChange: (SystemStatus) -> Unit,
     modifier: Modifier = Modifier,
     onCollapseClick: () -> Unit
 ) {
@@ -172,7 +173,10 @@ fun SettingsControlLayout(
 
                     ControlTab.AI_CONTROL -> {
                         // Device control content placeholder
-                        AiLayout()
+                        AiLayout(
+                            systemStatus = systemStatus,
+                            onSystemStatusChange = onSystemStatusChange
+                        )
                     }
 
                     ControlTab.LICENSE_CONTROL -> {

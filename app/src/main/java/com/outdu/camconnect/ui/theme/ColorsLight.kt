@@ -31,6 +31,7 @@ object LightColors {
     val DisabledText = Color(0xFF999999)
     val OnBackground = Color(0xFF1C1B1F)
     val OnSurface = Color(0xFF1C1B1F)
+    val AIButtonTextColor = Color(0xFFAEAEAE)
 
     // Primary & Accent Colors - Light Theme (keeping same as requested)
     val BluePrimary = Color(0xFF2196F3)

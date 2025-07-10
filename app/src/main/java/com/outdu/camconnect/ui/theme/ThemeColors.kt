@@ -37,6 +37,7 @@ object AppColors {
     val DisabledText: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.DisabledText else LightColors.DisabledText
     val OnBackground: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.OnBackground else LightColors.OnBackground
     val OnSurface: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.OnSurface else LightColors.OnSurface
+    val AIButtonTextColor: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.AIButtonTextColor else LightColors.AIButtonTextColor
 
     // Primary & Accent Colors
     val BluePrimary: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.BluePrimary else LightColors.BluePrimary

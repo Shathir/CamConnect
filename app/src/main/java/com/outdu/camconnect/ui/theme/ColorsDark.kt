@@ -88,6 +88,10 @@ object DarkColors {
     val IconOnSelected = Color.White // Green
 
 
+
+    //Text Colors
+    val AIButtonTextColor = Color(0xFF2B2B2B)
+
     // XML Drawable Colors - Dark Theme
     val DrawableWhite = Color(0xFFFFFFFF)
     val DrawableBatteryYellow = Color(0xFFB4A215)
