@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.kotlin.parcelize)
+    alias(libs.plugins.kotlin.compose)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
     kotlin("plugin.serialization") version "1.9.0"
 }
@@ -75,6 +77,7 @@ dependencies {
 
 
     //MapLibre
+
     implementation(libs.android.sdk)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio) // or ktor-client-android
@@ -100,6 +103,8 @@ dependencies {
     
 //    implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.commons.net)
+    implementation(libs.androidx.window)
+    implementation(libs.androidx.lifecycle.runtime.compose.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

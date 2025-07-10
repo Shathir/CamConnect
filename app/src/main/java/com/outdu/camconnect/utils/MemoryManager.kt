@@ -54,10 +54,12 @@ object MemoryManager {
     fun forceCleanup() {
         Log.d(TAG, "Force cleanup initiated (Active surfaces: ${activeSurfaces.size})")
         try {
-            MainActivitySingleton.nativePause()
-            MainActivitySingleton.nativeSurfaceFinalize()
-            activeSurfaces.clear()
-            layoutChangeCount = 0
+            if(activeSurfaces.size > 0) {
+                MainActivitySingleton.nativePause()
+                MainActivitySingleton.nativeSurfaceFinalize()
+                activeSurfaces.clear()
+                layoutChangeCount = 0
+            }
             Log.d(TAG, "Force cleanup completed")
         } catch (e: Exception) {
             Log.e(TAG, "Error during force cleanup", e)

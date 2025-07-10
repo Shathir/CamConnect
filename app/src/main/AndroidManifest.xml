@@ -16,6 +16,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Camera features -->
     <uses-feature android:name="android.hardware.camera" android:required="true" />
@@ -40,11 +41,11 @@
             android:value="${MAPS_API_KEY}" />
 
         <service
-            android:name=".ScreenRecorderService"
+            android:name=".services.ScreenRecorderService"
             android:enabled="true"
             android:exported="false"
             android:label="Screen Recorder Service"
-            android:foregroundServiceType="mediaProjection" />
+            android:foregroundServiceType="mediaProjection"/>
 
         <activity
             android:name=".SplashActivity"

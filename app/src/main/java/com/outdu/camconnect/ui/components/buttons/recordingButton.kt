@@ -5,8 +5,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,16 +16,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.MainActivity.Companion.REQUEST_CODE_SCREEN_CAPTURE
 import com.outdu.camconnect.Viewmodels.RecorderViewModel
-import com.outdu.camconnect.services.ScreenRecordService
-import com.outdu.camconnect.utils.ScreenRecorder
+import com.outdu.camconnect.services.ScreenRecorderService
 
 @SuppressLint("ImplicitSamInstance")
 @Composable
@@ -51,7 +45,7 @@ fun ScreenRecorderUI(context: Context, viewModel: RecorderViewModel) {
 
         Button(onClick = {
             if (recording) {
-                context.stopService(Intent(context, ScreenRecordService::class.java))
+                context.stopService(Intent(context, ScreenRecorderService::class.java))
                 viewModel.stop()
             } else {
                 val mediaProjectionManager =

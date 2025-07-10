@@ -1,5 +1,6 @@
 package com.outdu.camconnect.ui.layouts
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
@@ -45,6 +46,7 @@ import com.outdu.camconnect.ui.theme.AppColors.IconOnSelected
  * Main adaptive layout container with animated individual components
  * Maintains consistent structure while animating individual elements
  */
+@SuppressLint("ViewModelConstructorInComposable")
 @Composable
 fun AdaptiveStreamLayout(
     modifier: Modifier = Modifier,

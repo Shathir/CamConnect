@@ -157,6 +157,20 @@ fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
     // Store TextureView reference for proper cleanup
     var textureView by remember { mutableStateOf<TextureView?>(null) }
 
+    var isSurfaceFinalized by remember { mutableStateOf(false) }
+
+    fun safelyFinalizeSurface() {
+        if (!isSurfaceFinalized) {
+            try {
+                MainActivitySingleton.nativePause()
+                MainActivitySingleton.nativeSurfaceFinalize()
+            } catch (e: Exception) {
+                Log.e("ZoomableTextureView", "Error during surface finalization", e)
+            }
+            isSurfaceFinalized = true
+        }
+    }
+
     // Cleanup when composable is disposed
     DisposableEffect(Unit) {
         onDispose {
@@ -166,12 +180,13 @@ fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
             textureView?.surfaceTextureListener = null
             textureView = null
             // Ensure native cleanup
-            try {
-                MainActivitySingleton.nativePause()
-                MainActivitySingleton.nativeSurfaceFinalize()
-            } catch (e: Exception) {
-                Log.e("ZoomableTextureView", "Error during cleanup", e)
-            }
+            safelyFinalizeSurface()
+//            try {
+//                MainActivitySingleton.nativePause()
+//                MainActivitySingleton.nativeSurfaceFinalize()
+//            } catch (e: Exception) {
+//                Log.e("ZoomableTextureView", "Error during cleanup", e)
+//            }
         }
     }
 
@@ -276,9 +291,11 @@ fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
                     surfaceTextureListener = object : TextureView.SurfaceTextureListener {
                         override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
                             try {
-                                MemoryManager.registerSurface(Surface(surface))
-                                MainActivitySingleton.nativeSurfaceInit(Surface(surface))
+                                val s = Surface(surface)
+                                MemoryManager.registerSurface(s)
+                                MainActivitySingleton.nativeSurfaceInit(s)
                                 MainActivitySingleton.nativePlay(width, height)
+                                isSurfaceFinalized = false
                             } catch (e: Exception) {
                                 Log.e("ZoomableTextureView", "Surface init error", e)
                             }
@@ -291,8 +308,7 @@ fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
                         override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
                             try {
                                 MemoryManager.unregisterSurface(Surface(surface))
-                                MainActivitySingleton.nativePause()
-                                MainActivitySingleton.nativeSurfaceFinalize()
+                                safelyFinalizeSurface()
                             } catch (e: Exception) {
                                 Log.e("ZoomableTextureView", "Surface destroy error", e)
                             }

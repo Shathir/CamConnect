@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.ui.layouts.AdaptiveStreamLayout
@@ -30,18 +29,26 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.ui.platform.LocalContext
-import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.Viewmodels.RecorderViewModel
-import com.outdu.camconnect.services.ScreenRecordService
 import com.outdu.camconnect.singleton.MainActivitySingleton
-import com.outdu.camconnect.ui.components.buttons.ScreenRecorderUI
-import com.outdu.camconnect.ui.layouts.streamer.ZoomableVideoTextureView
-import com.outdu.camconnect.ui.setupflow.SetupScreen
 import com.outdu.camconnect.utils.MemoryManager
 import org.freedesktop.gstreamer.GStreamer
 import java.util.Locale
 import com.outdu.camconnect.ui.theme.*
 import android.content.res.Configuration
+import android.media.projection.MediaProjectionManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.core.content.getSystemService
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.outdu.camconnect.services.RecordConfig
+import com.outdu.camconnect.services.ScreenRecorderService
+import com.outdu.camconnect.services.ScreenRecorderService.Companion.ACTION_START
+import com.outdu.camconnect.services.ScreenRecorderService.Companion.RECORD_CONFIG
+import com.outdu.camconnect.Viewmodels.AppViewModel
 
 
 class MainActivity : ComponentActivity() {
@@ -187,7 +194,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == REQUEST_CODE_SCREEN_CAPTURE && resultCode == RESULT_OK && data != null) {
-            val intent = Intent(this, ScreenRecordService::class.java).apply {
+            val intent = Intent(this, ScreenRecorderService::class.java).apply {
                 putExtra("resultCode", resultCode)
                 putExtra("data", data)
             }
@@ -202,7 +209,6 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         // Pause native streaming when app goes to background
         try {
-            MainActivitySingleton.nativePause()
             MemoryManager.cleanupWeakReferences()
         } catch (e: Exception) {
             Log.e("MainActivity", "Error during pause", e)
@@ -219,8 +225,6 @@ class MainActivity : ComponentActivity() {
         super.onConfigurationChanged(newConfig)
         try {
             // Ensure clean pipeline shutdown before configuration change
-            MainActivitySingleton.nativePause()
-            MainActivitySingleton.nativeSurfaceFinalize()
             MemoryManager.cleanupWeakReferences()
         } catch (e: Exception) {
             Log.e("MainActivity", "Error during configuration change", e)

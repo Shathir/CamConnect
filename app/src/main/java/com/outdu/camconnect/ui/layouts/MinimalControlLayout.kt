@@ -1,11 +1,17 @@
 package com.outdu.camconnect.ui.layouts
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,10 +23,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.outdu.camconnect.ui.components.camera.CameraStreamView
 import com.outdu.camconnect.ui.models.CameraState
 import com.outdu.camconnect.ui.models.SystemStatus
 import com.outdu.camconnect.R
+import com.outdu.camconnect.services.RecordConfig
+import com.outdu.camconnect.services.ScreenRecorderService
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
 import com.outdu.camconnect.ui.components.indicators.AiStatusIndicator
@@ -49,8 +59,55 @@ fun MinimalControlContent(
     onRecordingToggle: () -> Unit,
     onExpandClick: () -> Unit
 ) {
-
+    val context = LocalContext.current
     val deviceType = rememberDeviceType()
+    
+    val isServiceRunning by ScreenRecorderService
+        .isServiceRunning
+        .collectAsStateWithLifecycle()
+
+    var hasNotificationPermission by remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            mutableStateOf(
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            )
+        } else mutableStateOf(true)
+    }
+
+    val screenRecordLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val intent = result.data ?: return@rememberLauncherForActivityResult
+        val config = RecordConfig(
+            resultCode = result.resultCode,
+            data = intent
+        )
+
+        val serviceIntent = Intent(
+            context,
+            ScreenRecorderService::class.java
+        ).apply {
+            action = ScreenRecorderService.ACTION_START
+            putExtra(ScreenRecorderService.RECORD_CONFIG, config)
+        }
+        ContextCompat.startForegroundService(context, serviceIntent)
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasNotificationPermission = isGranted
+        if (hasNotificationPermission && !isServiceRunning) {
+            screenRecordLauncher.launch(
+                (context.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager)
+                    .createScreenCaptureIntent()
+            )
+        }
+    }
+
     // Cleanup when component is disposed
     DisposableEffect(Unit) {
         Log.d("MinimalControlContent", "Component created")
@@ -72,10 +129,6 @@ fun MinimalControlContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Top controls
-//        Column(
-//            verticalArrangement = Arrangement.spacedBy(24.dp),
-//            horizontalAlignment = Alignment.CenterHorizontally
-//        ) {
             // Settings button
             CustomizableButton(
                 config = ButtonConfig(
@@ -105,15 +158,37 @@ fun MinimalControlContent(
                 showText = false
             )
 
+            // Screen recording button
             CustomizableButton(
                 config = ButtonConfig(
-                    id = "RecordingToggle",
-                    iconPlaceholder = R.drawable.record_icon.toString(),
-                    color = RecordRed,
-                    text = "Recording",
-                    BorderColor = ButtonBorderColor,
+                    id = "screen-record",
+                    iconPlaceholder = if (isServiceRunning) R.drawable.record_circle_line.toString() else R.drawable.record_icon.toString(),
+                    color = if (isServiceRunning) RecordRed else RecordRed,
+                    text = if (isServiceRunning) "Stop Recording" else "Start Recording",
                     backgroundColor = MediumDarkBackground,
-                    onClick = onRecordingToggle
+                    BorderColor = ButtonBorderColor,
+                    onClick = {
+                        if (!hasNotificationPermission &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                        ) {
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            if (isServiceRunning) {
+                                Intent(
+                                    context,
+                                    ScreenRecorderService::class.java
+                                ).also {
+                                    it.action = ScreenRecorderService.ACTION_STOP
+                                    ContextCompat.startForegroundService(context, it)
+                                }
+                            } else {
+                                screenRecordLauncher.launch(
+                                    (context.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager)
+                                        .createScreenCaptureIntent()
+                                )
+                            }
+                        }
+                    }
                 ),
                 isCompact = true,
                 showText = false
@@ -148,44 +223,19 @@ fun MinimalControlContent(
                 showText = false
             )
 
-            // Compass
-//            CompassIndicator(
-//                direction = systemStatus.compassDirection,
-//                size = 60.dp
-//            )
-//        }
-
-        // Bottom indicators
-//        Column(
-//            verticalArrangement = Arrangement.spacedBy(16.dp),
-//
-//            horizontalAlignment = Alignment.CenterHorizontally
-//        ) {
-            // Battery indicator
-
-
-            // Connectivity indicators
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                WifiIndicator(isConnected = systemStatus.isWifiConnected)
-            }
+            // WiFi indicator
+            WifiIndicator(
+                isConnected = systemStatus.isWifiConnected
+            )
 
             // AI status
             AiStatusIndicator(
-                isEnabled = systemStatus.isAiEnabled,
-                modifier = Modifier.padding(vertical = 4.dp)
+                isEnabled = systemStatus.isAiEnabled
             )
 
+            // Battery indicator
             BatteryIndicator(
-                batteryLevel = systemStatus.batteryLevel,
-                showPercentage = false
+                batteryLevel = systemStatus.batteryLevel
             )
-
-            // Speed indicator
-//            CompactSpeedIndicator(speed = systemStatus.currentSpeed)
-//        }
-
     }
 }

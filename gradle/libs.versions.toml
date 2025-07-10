@@ -1,8 +1,8 @@
 [versions]
-agp = "8.5.0"
+agp = "8.7.2"
 androidSdk = "10.1.0"
 commonsNet = "3.3"
-kotlin = "1.9.0"
+kotlin = "2.1.0"
 coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -19,6 +19,8 @@ material3WindowSizeClass = "<version>"
 playServicesLocation = "21.3.0"
 playServicesMaps = "19.2.0"
 appcompatResources = "1.7.0"
+window = "1.4.0"
+lifecycleRuntimeComposeAndroid = "2.9.1"
 
 [libraries]
 android-sdk = { module = "org.maplibre.gl:android-sdk", version.ref = "androidSdk" }
@@ -47,8 +49,11 @@ lifecycle-viewmodel-compose = { module = "com.androidx.lifecycle:lifecycle-viewm
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }
 androidx-appcompat-resources = { group = "androidx.appcompat", name = "appcompat-resources", version.ref = "appcompatResources" }
+androidx-window = { group = "androidx.window", name = "window", version.ref = "window" }
+androidx-lifecycle-runtime-compose-android = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose-android", version.ref = "lifecycleRuntimeComposeAndroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize",  version.ref = "kotlin"  }
