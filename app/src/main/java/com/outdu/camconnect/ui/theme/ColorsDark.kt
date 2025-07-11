@@ -90,7 +90,7 @@ object DarkColors {
 
 
     //Text Colors
-    val AIButtonTextColor = Color(0xFF2B2B2B)
+    val AIButtonTextColor = Color(0xFF8E8E8E)
 
     // XML Drawable Colors - Dark Theme
     val DrawableWhite = Color(0xFFFFFFFF)

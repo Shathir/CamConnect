@@ -6,7 +6,8 @@ package com.outdu.camconnect.ui.models
 enum class CameraMode {
     HDR,
     EIS,
-    BOTH
+    BOTH,
+    OFF
 }
 
 /**

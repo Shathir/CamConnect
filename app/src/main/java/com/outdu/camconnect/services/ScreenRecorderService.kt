@@ -74,7 +74,7 @@ class ScreenRecorderService : Service() {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, "video_${System.currentTimeMillis()}.mp4")
                 put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/ScreenRecorder")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/nveyetech")
             }
             val videoCollection = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)

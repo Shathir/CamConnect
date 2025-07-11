@@ -1,5 +1,11 @@
 package com.outdu.camconnect.ui.components.settings
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,9 +18,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -29,6 +37,8 @@ import com.outdu.camconnect.ui.models.VisionMode
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonIconColor
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 
 
 /**
@@ -298,10 +308,12 @@ fun ControlTabSwitcher(
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = isSystemInDarkTheme()
+    val deviceType = rememberDeviceType()
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height( if(deviceType == DeviceType.TABLET) 76.dp else 48.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(DarkBackground2),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -311,6 +323,41 @@ fun ControlTabSwitcher(
             {
 
                 val isSelected = tab == selectedTab
+
+                val infiniteTransition = rememberInfiniteTransition(label = "gradient_anim")
+                val animatedOffsetX by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 300f, // controls the looping range
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 3000, easing = LinearEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ), label = "gradient_offset"
+                )
+
+                val animatedBrush = if (isSelected) {
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFF4E8EFF), Color(0xFFFFF399)),
+                        start = Offset(animatedOffsetX, 0f),
+                        end = Offset(animatedOffsetX + 200f, 100f) // create diagonal animation
+                    )
+                } else {
+                    Brush.linearGradient(
+                        colors = listOf(DarkBackground2, DarkBackground2)
+                    )
+                }
+
+                val borderBrush = if (isSelected) {
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFF4E8EFF), Color(0xFFFFF399)),
+                        start = Offset(animatedOffsetX, 0f),
+                        end = Offset(animatedOffsetX + 200f, 100f) // create diagonal animation
+                    )
+                } else {
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFF4E8EFF), Color(0xFFFFF399))
+                    )
+                }
+
                 val backgroundBrush = if(isSelected)
                 {
                     Brush.linearGradient(
@@ -331,13 +378,11 @@ fun ControlTabSwitcher(
                         .gradientBorder(
                             cornerRadius = if (isDarkTheme) 21.dp else 22.dp,
                             borderWidth = if (isDarkTheme) 1.dp else 2.dp,
-                            gradient = Brush.linearGradient(
-                                colors = listOf(Color(0xFF4E8EFF), Color(0xFFFFF399))
-                            )
+                            gradient = borderBrush
                         )
                         .clip(RoundedCornerShape(20.dp))
                         .background(
-                            backgroundBrush
+                            animatedBrush
                         )
                         .clickable { onTabSelected(tab) },
                     contentAlignment = Alignment.Center

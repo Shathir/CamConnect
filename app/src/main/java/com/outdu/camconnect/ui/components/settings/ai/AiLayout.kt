@@ -29,6 +29,8 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.DarkBackground3
 import com.outdu.camconnect.ui.theme.LightGray
 import com.outdu.camconnect.ui.theme.VeryDarkBackground
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 import kotlinx.coroutines.launch
 
 @Composable
@@ -46,6 +48,7 @@ fun YesNoButtons(
         Box(
             modifier = Modifier
                 .weight(1f)
+                .clip(RoundedCornerShape(20.dp))
                 .border(
                     width = if (isDarkTheme) 0.dp else 2.dp, // No border in dark theme
                     color = ButtonBorderColor,
@@ -53,18 +56,20 @@ fun YesNoButtons(
                 )
                 .background(if (isEnabled) Color(0xFF0C59E0) else DarkBackground3)
                 .clickable(onClick = { onValueChange(true) })
+                .align(Alignment.CenterVertically),
+            contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             )
             {
                 Icon(
-                    painter =painterResource(id = R.drawable.ai_line),
+                    painter =painterResource(id = R.drawable.yes_line),
                     contentDescription = null,
                     tint = if(isDarkTheme) Color.White else Color.Black,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
 
                 Text(
@@ -80,31 +85,34 @@ fun YesNoButtons(
         Box(
             modifier = Modifier
                 .weight(1f)
+                .clip(RoundedCornerShape(20.dp))
                 .border(
                     width = if (isDarkTheme) 0.dp else 2.dp, // No border in dark theme
                     color = ButtonBorderColor,
                     shape = RoundedCornerShape(20.dp)
                 )
                 .background(if (!isEnabled) Color(0xFF0C59E0) else DarkBackground3)
-                .clickable(onClick = { onValueChange(true) })
+                .clickable(onClick = { onValueChange(false) })
+                .align(Alignment.CenterVertically),
+            contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             )
             {
                 Icon(
-                    painter =painterResource(id = R.drawable.ai_line),
+                    painter =painterResource(id = R.drawable.no_line),
                     contentDescription = null,
                     tint = if(isDarkTheme) Color.White else Color.Black,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
 
                 Text(
-                    text = "ON",
+                    text = "OFF",
                     style = TextStyle(
-                        color = if (isEnabled) Color.White else AIButtonTextColor,
+                        color = if (!isEnabled) Color.White else AIButtonTextColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                     )
@@ -116,71 +124,6 @@ fun YesNoButtons(
 
 
 @Composable
-fun YesNoToggleBox(
-    isYesSelected: Boolean,
-    onValueChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    isDarkTheme: Boolean = isSystemInDarkTheme()
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // YES Box
-        ToggleBox(
-            text = "Yes",
-            isSelected = isYesSelected,
-            onClick = { onValueChange(true) },
-            selectedColor = if (isDarkTheme) Color(0xFF515151) else Color(0xFFD7D7D7),
-            unselectedColor = if (isDarkTheme) Color(0xFF333333) else Color(0xFFFFFFFF),
-            isDarkTheme = isDarkTheme
-        )
-
-        // NO Box
-        ToggleBox(
-            text = "No",
-            isSelected = !isYesSelected,
-            onClick = { onValueChange(false) },
-            selectedColor = if (isDarkTheme) Color(0xFF515151) else Color(0xFFD7D7D7),
-            unselectedColor = if (isDarkTheme) Color(0xFF333333) else Color(0xFFFFFFFF),
-            isDarkTheme = isDarkTheme
-        )
-    }
-}
-
-@Composable
-private fun ToggleBox(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    selectedColor: Color,
-    unselectedColor: Color,
-    isDarkTheme: Boolean
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .border(
-                width = if (isDarkTheme) 0.dp else 2.dp,
-                color = Color.Gray,
-                shape = RoundedCornerShape(20.dp)
-            )
-            .background(if (isSelected) selectedColor else unselectedColor)
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            color = if (isSelected) Color.Black else Color.Gray,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
-        )
-    }
-}
-
-
-
-@Composable
 fun AiLayout(
     systemStatus: SystemStatus = SystemStatus(),
     onSystemStatusChange: (SystemStatus) -> Unit = {}
@@ -188,7 +131,7 @@ fun AiLayout(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val isDarkTheme = isSystemInDarkTheme()
-    
+    val deviceType = rememberDeviceType()
     // Initial values using mutable state to allow updates after applying changes
     var initialObjectDetection by remember { mutableStateOf(CameraConfigurationManager.isObjectDetectionEnabled()) }
     var initialFarDetection by remember { mutableStateOf(CameraConfigurationManager.isFarDetectionEnabled()) }
@@ -239,12 +182,12 @@ fun AiLayout(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(Color.Transparent)
-            .padding(32.dp),
+            .padding(start = 16.dp, end = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Apply Changes Button - always visible, enabled only when there are changes
             Row(
@@ -256,84 +199,102 @@ fun AiLayout(
                     enabled = hasChanges,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
-                        disabledContainerColor = Color.Gray.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Text("Apply Changes")
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Object Detection
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        disabledContainerColor = Color(0xFF2C2C2C) // Dark theme disabled color
+                    ),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "Object Detection",
-                        style = TextStyle(
-                            fontSize = 16.sp,
-                            lineHeight = 14.02.sp,
-                            fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                            fontWeight = FontWeight(500),
-                            color = if(isDarkTheme) Color.White else Color.Black
-                        )
-                    )
-                    YesNoButtons(
-                        isEnabled = objectDetectionEnabled,
-                        onValueChange = { objectDetectionEnabled = it }
-                    )
-                }
-
-                // Far Detection
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Detect Far Away Objects",
-                        style = TextStyle(
-                            fontSize = 16.sp,
-                            lineHeight = 14.02.sp,
-                            fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                            fontWeight = FontWeight(500),
-                            color = if(isDarkTheme) Color.White else Color.Black
-                        )
-                    )
-                    YesNoButtons(
-                        isEnabled = farDetectionEnabled,
-                        onValueChange = { farDetectionEnabled = it }
-                    )
-                }
-
-                // Motion Detection
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Motion Detection",
-                        style = TextStyle(
-                            fontSize = 16.sp,
-                            lineHeight = 14.02.sp,
-                            fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                            fontWeight = FontWeight(500),
-                            color = if(isDarkTheme) Color.White else Color.Black
-                        )
-                    )
-                    YesNoButtons(
-                        isEnabled = motionDetectionEnabled,
-                        onValueChange = { motionDetectionEnabled = it }
+                        text = "Apply Changes",
+                        color = if (hasChanges) Color.White else Color(0xFF777777) // Gray text when disabled
                     )
                 }
             }
+
+//            Column()
+//            {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Object Detection
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Object Detection",
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                lineHeight = 14.02.sp,
+                                fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                                fontWeight = FontWeight(500),
+                                color = if (isDarkTheme) Color.White else Color.Black
+                            )
+                        )
+                        YesNoButtons(
+                            isEnabled = objectDetectionEnabled,
+                            onValueChange = { objectDetectionEnabled = it }
+                        )
+                    }
+
+
+                    // Far Detection
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Detect Far Away Objects",
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                lineHeight = 14.02.sp,
+                                fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                                fontWeight = FontWeight(500),
+                                color = if (isDarkTheme) Color.White else Color.Black
+                            )
+                        )
+                        YesNoButtons(
+                            isEnabled = farDetectionEnabled,
+                            onValueChange = { farDetectionEnabled = it }
+                        )
+                    }
+
+                    if(deviceType == DeviceType.TABLET)
+                    {
+                        Column(modifier = Modifier.weight(1f)){}
+                    }
+
+                }
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+//                )
+//                {
+//                    // Motion Detection
+//                    Column(
+//                        modifier = Modifier.weight(1f),
+//                        horizontalAlignment = Alignment.Start,
+//                        verticalArrangement = Arrangement.spacedBy(8.dp)
+//                    ) {
+//                        Text(
+//                            text = "Motion Detection",
+//                            style = TextStyle(
+//                                fontSize = 16.sp,
+//                                lineHeight = 14.02.sp,
+//                                fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+//                                fontWeight = FontWeight(500),
+//                                color = if (isDarkTheme) Color.White else Color.Black
+//                            )
+//                        )
+//                        YesNoButtons(
+//                            isEnabled = motionDetectionEnabled,
+//                            onValueChange = { motionDetectionEnabled = it }
+//                        )
+//                    }
+//                }
+//            }
         }
     }
 }

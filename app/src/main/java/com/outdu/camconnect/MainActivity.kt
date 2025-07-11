@@ -234,7 +234,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         // Force cleanup of all native resources
-        MemoryManager.forceCleanup()
+//        MemoryManager.forceCleanup()
         // Clear the singleton reference to prevent memory leaks
         MainActivitySingleton.clearMainActivity()
         // Cleanup native resources
