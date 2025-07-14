@@ -27,6 +27,8 @@ import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.res.painterResource
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.DarkBackground3
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 
 @Composable
 fun OptionButton(
@@ -39,7 +41,7 @@ fun OptionButton(
 ) {
 
     val isDarkTheme = isSystemInDarkTheme()
-
+    val deviceType = rememberDeviceType()
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
@@ -50,8 +52,8 @@ fun OptionButton(
             )
             .background(
                 when {
-                    isRed && isSelected -> Color(0xFFFF3B30)
-                    isSelected -> Color(0xFF424242)
+                    isRed && isSelected -> Color(0xFFF43823)
+                    isSelected -> if(!isDarkTheme) Color(0xFFD7D7D7) else Color(0xFF515151)
                     else -> DarkBackground3
                 }
             )
@@ -60,7 +62,7 @@ fun OptionButton(
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(if(deviceType == DeviceType.TABLET)16.dp else 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -68,18 +70,20 @@ fun OptionButton(
                 Icon(
                     painter = painterResource(iconVal),
                     contentDescription = null,
-                    tint = if(isDarkTheme) Color.White else Color.Black,
-                    modifier = Modifier.size(16.dp)
+                    tint = if(isSelected) {if(!isDarkTheme) Color(0xFF222222) else Color(0xFFFFFFFF)} else{ if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)},
+                    modifier = Modifier.size(if(deviceType == DeviceType.TABLET) (24.dp) else (16.dp))
+                        .padding(1.dp)
                 )
 //            }
             Text(
                 text = text,
                 style = TextStyle(
-                    fontSize = 14.sp,
+                    fontSize = if(deviceType == DeviceType.TABLET) 18.sp else 12.sp,
                     fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                     fontWeight = FontWeight(400),
-                    color = if (isSelected) Color.White else Color(0xFF777777)
-                )
+                    color = if(isSelected) {if(!isDarkTheme) Color(0xFF222222) else Color(0xFFFFFFFF)} else{ if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)}
+                ),
+                maxLines = 1
             )
         }
     }
@@ -100,6 +104,10 @@ fun CameraLayout(
     onOrientationModeSelected: (OrientationMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
+
+    val isDarkTheme = isSystemInDarkTheme()
+
+    val deviceType = rememberDeviceType()
     // Initial values
     var initialAutoDayNight by remember { mutableStateOf(cameraState.isAutoDayNightEnabled) }
     var initialVisionMode by remember { mutableStateOf(cameraState.visionMode) }
@@ -185,8 +193,7 @@ fun CameraLayout(
 
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp),
+            .fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // Apply Changes Button - always visible, enabled only when there are changes
@@ -226,12 +233,13 @@ fun CameraLayout(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Auto Day/Night",
+                        text = "Auto Low Light",
                         style = TextStyle(
-                            fontSize = 14.sp,
+                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                            lineHeight = 14.02.sp,
                             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                             fontWeight = FontWeight(500),
-                            color = Color(0xFFAAAAAA)
+                            color = if (isDarkTheme) Color.White else Color.Black
                         )
                     )
                     Row(
@@ -262,10 +270,11 @@ fun CameraLayout(
                     Text(
                         text = "Display Modes",
                         style = TextStyle(
-                            fontSize = 14.sp,
+                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                            lineHeight = 14.02.sp,
                             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                             fontWeight = FontWeight(500),
-                            color = Color(0xFFAAAAAA)
+                            color = if (isDarkTheme) Color.White else Color.Black
                         )
                     )
                     Row(
@@ -279,19 +288,12 @@ fun CameraLayout(
                             iconVal = R.drawable.eye_line
                         )
                         OptionButton(
-                            text = "Infra Red",
+                            text = "Low Light",
                             isSelected = currentVisionMode == VisionMode.INFRARED,
                             onClick = { currentVisionMode = VisionMode.INFRARED },
                             modifier = Modifier.weight(1f),
                             isRed = true,
                             iconVal = R.drawable.router_line
-                        )
-                        OptionButton(
-                            text = "Auto",
-                            isSelected = currentVisionMode == VisionMode.BOTH,
-                            onClick = { currentVisionMode = VisionMode.BOTH },
-                            modifier = Modifier.weight(1f),
-                            iconVal = R.drawable.eye_2_line
                         )
                     }
                 }
@@ -310,10 +312,11 @@ fun CameraLayout(
                     Text(
                         text = "Camera Capture",
                         style = TextStyle(
-                            fontSize = 14.sp,
+                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                            lineHeight = 14.02.sp,
                             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                             fontWeight = FontWeight(500),
-                            color = Color(0xFFAAAAAA)
+                            color = if (isDarkTheme) Color.White else Color.Black
                         )
                     )
                     Row(
@@ -321,17 +324,17 @@ fun CameraLayout(
                     ) {
                         OptionButton(
                             text = "EIS",
-                            isSelected = currentCameraMode == CameraMode.EIS || currentCameraMode == CameraMode.BOTH,
-                            onClick = { toggleCameraMode(CameraMode.EIS) },
+                            isSelected = currentCameraMode == CameraMode.EIS,
+                            onClick = { currentCameraMode = if (currentCameraMode == CameraMode.EIS) CameraMode.OFF else CameraMode.EIS },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.git_commit_line
                         )
                         OptionButton(
                             text = "HDR",
-                            isSelected = currentCameraMode == CameraMode.HDR || currentCameraMode == CameraMode.BOTH,
-                            onClick = { toggleCameraMode(CameraMode.HDR) },
+                            isSelected = currentCameraMode == CameraMode.HDR,
+                            onClick = { currentCameraMode = if (currentCameraMode == CameraMode.HDR) CameraMode.OFF else CameraMode.HDR },
                             modifier = Modifier.weight(1f),
-                            iconVal = R.drawable.hd_line
+                            iconVal = R.drawable.hd_settings_line
                         )
                     }
                 }
@@ -344,17 +347,18 @@ fun CameraLayout(
                     Text(
                         text = "Orientation",
                         style = TextStyle(
-                            fontSize = 14.sp,
+                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                            lineHeight = 14.02.sp,
                             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                             fontWeight = FontWeight(500),
-                            color = Color(0xFFAAAAAA)
+                            color = if (isDarkTheme) Color.White else Color.Black
                         )
                     )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OptionButton(
-                            text = "Flip Vertical",
+                            text = if(deviceType == DeviceType.TABLET) "Flip Vertical" else "Flip",
                             isSelected = currentOrientationMode == OrientationMode.FLIP || currentOrientationMode == OrientationMode.BOTH,
                             onClick = { toggleOrientationMode(OrientationMode.FLIP) },
                             modifier = Modifier.weight(1f),
@@ -375,11 +379,11 @@ fun CameraLayout(
             Text(
                 text = "To Activate Zoom Control, Disable WDR & EIS",
                 style = TextStyle(
-                    fontSize = 12.sp,
+                    fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
                     lineHeight = 10.51.sp,
                     fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                     fontWeight = FontWeight(500),
-                    color = Color(0xFF777777)
+                    color = if(isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF777777)
                 )
             )
         }

@@ -1,6 +1,7 @@
 package com.outdu.camconnect.ui.layouts
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothClass.Device
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -42,6 +43,12 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.outdu.camconnect.ui.components.recording.RecordingTimer
+import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 
 
 /**
@@ -70,7 +77,7 @@ fun SettingsControlLayout(
 ) {
     // Manage scroll state with proper cleanup
     val scrollState = rememberScrollState()
-    
+    val deviceType = rememberDeviceType()
     // Cleanup when component is disposed
     DisposableEffect(Unit) {
         Log.d("SettingsControlLayout", "Component created")
@@ -90,7 +97,7 @@ fun SettingsControlLayout(
             .padding(top = 16.dp)
             .fillMaxSize()
             .background(Color.Transparent), // Light gray background
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(if(deviceType == DeviceType.TABLET)24.dp else 12.dp)
     ) {
 
         // Row 2: Tab switcher
@@ -147,10 +154,8 @@ fun SettingsControlLayout(
                 .weight(1f)
                 .verticalScroll(scrollState)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(if(deviceType == DeviceType.TABLET)20.dp else 12.dp)
         ) {
-
-
             // Tab content with proper keying for memory management
             key(selectedTab) {
                 when (selectedTab) {
@@ -304,6 +309,15 @@ fun SettingRow(label: String, content: @Composable RowScope.() -> Unit) {
         Spacer(Modifier.height(4.dp))
         Row(content = content)
     }
+}
+
+@Composable
+fun FullControlLayout(
+    onCollapseClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Your existing full control layout content
+    // ... existing code ...
 }
 
 

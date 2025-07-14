@@ -39,7 +39,7 @@ fun YesNoButtons(
     onValueChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-
+    val deviceType = rememberDeviceType()
     val isDarkTheme = isSystemInDarkTheme()
     Row(
         modifier = modifier,
@@ -68,8 +68,9 @@ fun YesNoButtons(
                 Icon(
                     painter =painterResource(id = R.drawable.yes_line),
                     contentDescription = null,
-                    tint = if(isDarkTheme) Color.White else Color.Black,
-                    modifier = Modifier.size(18.dp)
+                    tint = if(isEnabled) {if(!isDarkTheme) Color(0xFF222222) else Color(0xFFFFFFFF)} else{ if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)},
+                    modifier = Modifier.size(if(deviceType == DeviceType.TABLET) (24.dp) else (16.dp))
+                        .padding(1.dp)
                 )
 
                 Text(
@@ -77,7 +78,7 @@ fun YesNoButtons(
                     style = TextStyle(
                         color = if (isEnabled) Color.White else AIButtonTextColor,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        fontSize = if(deviceType == DeviceType.TABLET) 18.sp else 14.sp,
                     )
                 )
             }
@@ -105,8 +106,9 @@ fun YesNoButtons(
                 Icon(
                     painter =painterResource(id = R.drawable.no_line),
                     contentDescription = null,
-                    tint = if(isDarkTheme) Color.White else Color.Black,
-                    modifier = Modifier.size(18.dp)
+                    tint = if(!isEnabled) {if(!isDarkTheme) Color(0xFF222222) else Color(0xFFFFFFFF)} else{ if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)},
+                    modifier = Modifier.size(if(deviceType == DeviceType.TABLET) (24.dp) else (16.dp))
+                        .padding(1.dp)
                 )
 
                 Text(
@@ -114,7 +116,7 @@ fun YesNoButtons(
                     style = TextStyle(
                         color = if (!isEnabled) Color.White else AIButtonTextColor,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        fontSize = if(deviceType == DeviceType.TABLET) 18.sp else 14.sp,
                     )
                 )
             }
@@ -181,8 +183,7 @@ fun AiLayout(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.Transparent)
-            .padding(start = 16.dp, end = 16.dp),
+            .background(Color.Transparent),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -225,7 +226,7 @@ fun AiLayout(
                         Text(
                             text = "Object Detection",
                             style = TextStyle(
-                                fontSize = 16.sp,
+                                fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
                                 lineHeight = 14.02.sp,
                                 fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                                 fontWeight = FontWeight(500),
@@ -245,20 +246,22 @@ fun AiLayout(
                         horizontalAlignment = Alignment.Start,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = "Detect Far Away Objects",
-                            style = TextStyle(
-                                fontSize = 16.sp,
-                                lineHeight = 14.02.sp,
-                                fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                                fontWeight = FontWeight(500),
-                                color = if (isDarkTheme) Color.White else Color.Black
+                        if(objectDetectionEnabled) {
+                            Text(
+                                text = "Detect Far Away Objects",
+                                style = TextStyle(
+                                    fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                                    lineHeight = 14.02.sp,
+                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                                    fontWeight = FontWeight(500),
+                                    color = if (isDarkTheme) Color.White else Color.Black
+                                )
                             )
-                        )
-                        YesNoButtons(
-                            isEnabled = farDetectionEnabled,
-                            onValueChange = { farDetectionEnabled = it }
-                        )
+                            YesNoButtons(
+                                isEnabled = farDetectionEnabled,
+                                onValueChange = { farDetectionEnabled = it }
+                            )
+                        }
                     }
 
                     if(deviceType == DeviceType.TABLET)

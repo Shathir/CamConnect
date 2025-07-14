@@ -13,6 +13,8 @@ import android.os.Build
 import android.os.IBinder
 import android.os.Parcelable
 import android.provider.MediaStore
+import android.util.Log
+import android.widget.Toast
 import androidx.window.layout.WindowMetricsCalculator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,23 +33,24 @@ data class RecordConfig(
     val data: Intent
 ): Parcelable
 
-
 class ScreenRecorderService : Service() {
-
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private val mediaRecorder by lazy {
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-           MediaRecorder(applicationContext)
-        }
-        else {
+            MediaRecorder(applicationContext)
+        } else {
             MediaRecorder()
         }
     }
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val outputFile by lazy {
-        File(cacheDir, "tmp.mp4")
+        File(cacheDir, "tmp.mp4").also {
+            if (it.exists()) {
+                it.delete()
+            }
+        }
     }
 
     private val mediaProjectionManager by lazy {
@@ -57,6 +60,7 @@ class ScreenRecorderService : Service() {
     private val mediaProjectionCallback = object : MediaProjection.Callback() {
         override fun onStop() {
             super.onStop()
+            Log.d(TAG, "MediaProjection stopped")
             releaseResources()
             stopService()
             saveToGallery()
@@ -65,34 +69,40 @@ class ScreenRecorderService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        // Create notification channel when service is created
+        Log.d(TAG, "Service created")
         NotificationHelper.createNotificationChannel(applicationContext)
     }
 
     private fun saveToGallery() {
         serviceScope.launch {
-            val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, "video_${System.currentTimeMillis()}.mp4")
-                put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/nveyetech")
-            }
-            val videoCollection = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-            } else {
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-            }
-
-            contentResolver.insert(videoCollection, contentValues)?.let { uri ->
-                contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    FileInputStream(outputFile).use { inputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
+            try {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, "video_${System.currentTimeMillis()}.mp4")
+                    put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/nveyetech")
                 }
+                val videoCollection = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                } else {
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                }
+
+                contentResolver.insert(videoCollection, contentValues)?.let { uri ->
+                    contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        FileInputStream(outputFile).use { inputStream ->
+                            inputStream.copyTo(outputStream)
+                        }
+                    }
+                    Log.d(TAG, "Video saved to gallery")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving video to gallery", e)
             }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "onStartCommand: ${intent?.action}")
         when(intent?.action) {
             ACTION_START -> {
                 val notification = NotificationHelper.createNotification(applicationContext)
@@ -100,9 +110,9 @@ class ScreenRecorderService : Service() {
                     startForeground(
                         NOTIFICATION_ID,
                         notification,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
-                }
-                else {
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                    )
+                } else {
                     startForeground(
                         NOTIFICATION_ID,
                         notification
@@ -116,45 +126,57 @@ class ScreenRecorderService : Service() {
                 stopRecording()
             }
         }
-
         return START_NOT_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 
     private fun startRecording(intent: Intent?) {
-        val config = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent?.getParcelableExtra<RecordConfig>(
-                RECORD_CONFIG,
-                RecordConfig::class.java)
+        try {
+            val config = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent?.getParcelableExtra(RECORD_CONFIG, RecordConfig::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent?.getParcelableExtra(RECORD_CONFIG)
+            }
+
+            if(config == null) {
+                Log.e(TAG, "No recording config provided")
+                stopSelf()
+                return
+            }
+
+            mediaProjection = mediaProjectionManager.getMediaProjection(
+                config.resultCode,
+                config.data
+            )
+
+            if (mediaProjection == null) {
+                Log.e(TAG, "MediaProjection is null")
+                stopSelf()
+                return
+            }
+
+            mediaProjection?.registerCallback(mediaProjectionCallback, null)
+            initializeRecorder()
+            mediaRecorder.start()
+            virtualDisplay = createVirtualDisplay()
+            Log.d(TAG, "Recording started successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting recording", e)
+            stopSelf()
         }
-        else {
-            intent?.getParcelableExtra<RecordConfig>(RECORD_CONFIG)
-        }
-
-        if(config == null) {
-            return
-        }
-
-        mediaProjection = mediaProjectionManager.getMediaProjection(
-            config.resultCode,
-            config.data
-        )
-
-        mediaProjection?.registerCallback(mediaProjectionCallback, null)
-
-        initializeRecorder()
-        mediaRecorder.start()
-
-        virtualDisplay = createVirtualDisplay()
     }
 
     private fun stopRecording() {
-        mediaRecorder.stop()
-        mediaProjection?.stop()
-        mediaRecorder.reset()
+        try {
+            mediaRecorder.stop()
+            mediaProjection?.stop()
+            mediaRecorder.reset()
+            Log.d(TAG, "Recording stopped successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping recording", e)
+        }
     }
 
     private fun stopService() {
@@ -166,13 +188,11 @@ class ScreenRecorderService : Service() {
     private fun getWindowSize(): Pair<Int, Int> {
         val calculator = WindowMetricsCalculator.getOrCreate()
         val metrics = calculator.computeMaximumWindowMetrics(applicationContext)
-
         return metrics.bounds.width() to metrics.bounds.height()
     }
 
-    private fun getScaledDimensions(maxWidth: Int, maxHeight: Int, scaleFactor: Float = 0.8f): Pair<Int,Int>{
+    private fun getScaledDimensions(maxWidth: Int, maxHeight: Int, scaleFactor: Float = 0.8f): Pair<Int,Int> {
         val aspectRatio = maxWidth / maxHeight.toFloat()
-
         var newWidth = (maxWidth * scaleFactor).toInt()
         var newHeight = (newWidth / aspectRatio).toInt()
 
@@ -180,54 +200,72 @@ class ScreenRecorderService : Service() {
             newHeight = (maxHeight * scaleFactor).toInt()
             newWidth = (newHeight * aspectRatio).toInt()
         }
-
         return newWidth to newHeight
     }
 
     private fun initializeRecorder() {
-        val (width, height) = getWindowSize()
-        val (scaledWidth, scaledHeight) = getScaledDimensions(
-            maxWidth = width,
-            maxHeight = height
-        )
-        with(mediaRecorder) {
-            setVideoSource(MediaRecorder.VideoSource.SURFACE)
-            setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
-            setOutputFile(outputFile)
-            setVideoSize(scaledWidth, scaledHeight)
-            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-            setVideoEncodingBitRate(VIDEO_BIT_RATE_KILOBITS * 1000)
-            setVideoFrameRate(VIDEO_FRAME_RATE)
-            prepare()
+        try {
+            val (width, height) = getWindowSize()
+            val (scaledWidth, scaledHeight) = getScaledDimensions(
+                maxWidth = width,
+                maxHeight = height
+            )
+            with(mediaRecorder) {
+                setVideoSource(MediaRecorder.VideoSource.SURFACE)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setOutputFile(outputFile.absolutePath)
+                setVideoSize(scaledWidth, scaledHeight)
+                setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+                setVideoEncodingBitRate(VIDEO_BIT_RATE_KILOBITS * 1000)
+                setVideoFrameRate(VIDEO_FRAME_RATE)
+                prepare()
+            }
+            Log.d(TAG, "MediaRecorder initialized with size: ${scaledWidth}x${scaledHeight}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing recorder", e)
+            throw e
         }
     }
 
     private fun createVirtualDisplay(): VirtualDisplay? {
-        val (width, height) = getWindowSize()
-        return mediaProjection?.createVirtualDisplay(
-            "Screen",
-            width,
-            height,
-            resources.displayMetrics.densityDpi,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            mediaRecorder.surface,
-            null,
-            null
-        )
+        try {
+            val (width, height) = getWindowSize()
+            return mediaProjection?.createVirtualDisplay(
+                "Screen",
+                width,
+                height,
+                resources.displayMetrics.densityDpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                mediaRecorder.surface,
+                null,
+                null
+            ).also {
+                Log.d(TAG, "VirtualDisplay created with size: ${width}x${height}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating virtual display", e)
+            throw e
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         _isServiceRunning.value = false
         serviceScope.coroutineContext.cancelChildren()
+        Log.d(TAG, "Service destroyed")
     }
 
     private fun releaseResources() {
-        mediaRecorder.release()
-        virtualDisplay?.release()
-        mediaProjection?.unregisterCallback(mediaProjectionCallback)
-        mediaProjection?.stop()
-        mediaProjection = null
+        try {
+            mediaRecorder.release()
+            virtualDisplay?.release()
+            mediaProjection?.unregisterCallback(mediaProjectionCallback)
+            mediaProjection?.stop()
+            mediaProjection = null
+            Log.d(TAG, "Resources released")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error releasing resources", e)
+        }
     }
 
     companion object {
@@ -235,8 +273,9 @@ class ScreenRecorderService : Service() {
         val isServiceRunning = _isServiceRunning.asStateFlow()
 
         private const val VIDEO_FRAME_RATE = 30
-        private const val VIDEO_BIT_RATE_KILOBITS = 512
+        private const val VIDEO_BIT_RATE_KILOBITS = 8192 // Increased for better quality
         private const val NOTIFICATION_ID = 1001
+        private const val TAG = "ScreenRecorderService"
 
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"

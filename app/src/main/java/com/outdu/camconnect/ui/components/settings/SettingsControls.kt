@@ -431,7 +431,10 @@ fun ControlTabSwitcher(
                             if (selectedTab == tab) if (isDarkTheme) Color(0xFF515151) else Color(0xFFD7D7D7)
                             else if (isDarkTheme) Color(0xFF333333) else Color(0xFFFFFFFF )
                         )
-                        .clickable { onTabSelected(tab) },
+                        .clickable(
+                            enabled = tab != ControlTab.LICENSE_CONTROL,
+                            onClick = { onTabSelected(tab) }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
@@ -446,15 +449,25 @@ fun ControlTabSwitcher(
                                 ControlTab.LICENSE_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                             },
                             contentDescription = tab.displayName,
-                            tint = if (selectedTab == tab) if(isDarkTheme) Color.White else Color.Black
-                            else if(isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF5C5C5C),
+                            tint = if (tab == ControlTab.LICENSE_CONTROL) {
+                                if (isDarkTheme) Color(0xFF4A4A4A) else Color(0xFFB0B0B0)
+                            } else if (selectedTab == tab) {
+                                if(isDarkTheme) Color.White else Color.Black
+                            } else {
+                                if(isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF5C5C5C)
+                            },
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = tab.displayName,
-                            color = if (selectedTab == tab) if(isDarkTheme) Color.White else Color.Black
-                            else if(isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF5C5C5C),
+                            color = if (tab == ControlTab.LICENSE_CONTROL) {
+                                if (isDarkTheme) Color(0xFF4A4A4A) else Color(0xFFB0B0B0)
+                            } else if (selectedTab == tab) {
+                                if(isDarkTheme) Color.White else Color.Black
+                            } else {
+                                if(isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF5C5C5C)
+                            },
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             maxLines = 1

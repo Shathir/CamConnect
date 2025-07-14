@@ -42,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.outdu.camconnect.R
 import com.outdu.camconnect.communication.MotocamAPIAndroidHelper
 import com.outdu.camconnect.communication.MotocamAPIHelper
@@ -60,6 +61,14 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
+import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.draw.scale
+import com.outdu.camconnect.ui.models.RecordingState
+import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
 
 
 /**
@@ -421,6 +430,7 @@ import kotlinx.coroutines.launch
 //}
 
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun ExpandedControlContent(
     cameraState: CameraState,
@@ -437,8 +447,13 @@ fun ExpandedControlContent(
     onSpeedUpdate: (Float) -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var currentZoom by remember { mutableFloatStateOf(1f) }
     val deviceType = rememberDeviceType()
+    val isDarkTheme = isSystemInDarkTheme()
+    val context = LocalContext.current
+    val recordingViewModel: RecordingViewModel = viewModel()
+    val isRecording by recordingViewModel.isRecording.collectAsStateWithLifecycle()
+    val recordingState by recordingViewModel.recordingState.collectAsStateWithLifecycle()
+
     DisposableEffect(Unit) {
         Log.d("ExpandedControlContent", "Component created")
         onDispose {
@@ -476,7 +491,7 @@ fun ExpandedControlContent(
                     Icon(
                         painter = painterResource(R.drawable.scout_logo),
                         contentDescription = "Scout Logo",
-                        tint = Color.White,
+                        tint = if(isDarkTheme) Color.White else Color(0xFFC5C5C5),
                         modifier = Modifier.size(width = 24.dp, height = 18.dp)
                     )
                     Spacer(Modifier.width(4.dp))
@@ -522,8 +537,22 @@ fun ExpandedControlContent(
                         .fillMaxWidth()
                         .height(if(deviceType == DeviceType.TABLET) 112.dp else 56.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(if (cameraState.isRecording) RecordRed else MediumDarkBackground)
-                        .clickable { onRecordingToggle() }
+                        .background(
+                            when (recordingState) {
+                                is RecordingState.Recording -> RecordRed
+                                is RecordingState.StoppingRecording -> RecordRed.copy(alpha = 0.7f)
+                                is RecordingState.SavedToGallery -> Color(0xFF4CAF50) // Green color for success
+                                RecordingState.NotRecording -> MediumDarkBackground
+                            }
+                        )
+                        .clickable { 
+                            if (!isRecording) {
+                                onCollapseClick() // First collapse to minimal layout
+                                recordingViewModel.toggleRecording(context) // Then start recording
+                            } else {
+                                recordingViewModel.toggleRecording(context) // Just stop recording if already recording
+                            }
+                        }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -531,18 +560,52 @@ fun ExpandedControlContent(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Record dot indicator with pulsing animation when recording
+                        val infiniteTransition = rememberInfiniteTransition()
+                        val scale by infiniteTransition.animateFloat(
+                            initialValue = 1f,
+                            targetValue = if (recordingState is RecordingState.Recording) 1.2f else 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(500),
+                                repeatMode = RepeatMode.Reverse
+                            )
+                        )
+
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
+                                .scale(if (recordingState is RecordingState.Recording) scale else 1f)
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(if (cameraState.isRecording) White else RedVariant)
+                                .background(
+                                    when (recordingState) {
+                                        is RecordingState.Recording -> White
+                                        is RecordingState.StoppingRecording -> White.copy(alpha = 0.7f)
+                                        is RecordingState.SavedToGallery -> Color(0xFF4CAF50)
+                                        RecordingState.NotRecording -> RedVariant
+                                    }
+                                )
                         )
-                        Text(
-                            text = "RECORD",
-                            color = if (cameraState.isRecording) Color(0xFFFFFFFF) else MediumLightGray,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+
+                        // Animated text content
+                        AnimatedContent(
+                            targetState = recordingState,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) with
+                                fadeOut(animationSpec = tween(300))
+                            }
+                        ) { state ->
+                            Text(
+                                text = when (state) {
+                                    is RecordingState.Recording -> "RECORDING ${state.duration}"
+                                    is RecordingState.StoppingRecording -> "STOPPING RECORDING..."
+                                    is RecordingState.SavedToGallery -> "SAVED TO GALLERY"
+                                    RecordingState.NotRecording -> "RECORD"
+                                },
+                                color = if (state is RecordingState.NotRecording) MediumLightGray else Color(0xFFFFFFFF),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
 
@@ -555,30 +618,18 @@ fun ExpandedControlContent(
                         .background(DarkBackground2),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ZoomSelector(
-                        initialZoom = currentZoom,
-                        onZoomChanged = { newZoom ->
-                            val zoomLevel = when (newZoom) {
-                                1f -> MotocamAPIHelper.ZOOM.X1
-                                2f -> MotocamAPIHelper.ZOOM.X2
-                                else -> MotocamAPIHelper.ZOOM.X4
+                    val cameraControlViewModel: CameraControlViewModel = viewModel()
+                    val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
+                    
+                    // Use key to force recomposition when zoom changes
+                    key(cameraControlState.currentZoom) {
+                        ZoomSelector(
+                            initialZoom = cameraControlState.currentZoom,
+                            onZoomChanged = { newZoom ->
+                                cameraControlViewModel.setZoom(newZoom)
                             }
-                            // Don't update currentZoom immediately
-                            MotocamAPIAndroidHelper.setZoomAsync(
-                                scope = coroutineScope,
-                                zoom = zoomLevel
-                            ) { result, error ->
-                                if (error == null && result) {
-                                    // Only update zoom state after successful API response
-                                    currentZoom = newZoom
-                                    Log.d("Zoom", "Zoom set to $newZoom X")
-                                } else {
-                                    Log.e("Zoom", "Zoom Error: $error")
-                                    // Optionally show error to user
-                                }
-                            }
-                        }
-                    )
+                        )
+                    }
                 }
 
                 // Toggle Icons
@@ -645,19 +696,28 @@ fun ExpandedControlContent(
 
 
 @Composable
-fun ButtonRow(buttons: List<ButtonConfig>,
-              buttonStates: MutableMap<String, Boolean>,
-              onSettingsClick: () -> Unit,
-              onCollapseClick: () -> Unit
+fun ButtonRow(
+    buttons: List<ButtonConfig>,
+    buttonStates: MutableMap<String, Boolean>,
+    onSettingsClick: () -> Unit,
+    onCollapseClick: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     val deviceType = rememberDeviceType()
+    val isDarkTheme = isSystemInDarkTheme()
+    val cameraControlViewModel: CameraControlViewModel = viewModel()
+    val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         buttons.forEach { buttonConfig ->
-            val isSelected = buttonStates[buttonConfig.id] ?: false
+            val isSelected = when (buttonConfig.id) {
+                "ir" -> cameraControlState.isIrEnabled
+                "ir-cut-filter" -> !cameraControlState.isLowIntensity
+                else -> buttonStates[buttonConfig.id] ?: false
+            }
             val isLoading = remember { mutableStateOf(false) }
 
             val config = when (buttonConfig.id) {
@@ -676,23 +736,26 @@ fun ButtonRow(buttons: List<ButtonConfig>,
                     text = buttonConfig.text
                 )
                 "ir" -> buttonConfig.copy(
-                    onClick = {
-                        if (isLoading.value) return@copy
-                        isLoading.value = true
-                        val flip = if (isSelected) MotocamAPIHelper.FLIP.OFF else MotocamAPIHelper.FLIP.ON
-                        MotocamAPIAndroidHelper.setFlipAsync(
-                            scope = coroutineScope,
-                            flip = flip
-                        ) { result, error ->
-                            isLoading.value = false
-                            if (error == null && result) {
-                                buttonStates[buttonConfig.id] = !isSelected
-                            }
-                        }
-                    },
+                    onClick = { cameraControlViewModel.toggleIR() },
                     backgroundColor = if (isSelected) RecordRed else ButtonBgColor,
                     BorderColor = if (isSelected) RecordRed else ButtonBorderColor,
-                    color = if (isSelected) ButtonSelectedIconColor else ButtonIconColor,
+                    color = if (isSelected) {if(isDarkTheme) ButtonSelectedIconColor else Color.White} else ButtonIconColor,
+                    text = buttonConfig.text
+                )
+                "ir-cut-filter" -> buttonConfig.copy(
+                    backgroundColor = if(cameraControlState.isIrEnabled) {if (!cameraControlState.isLowIntensity) ButtonSelectedBgColor else ButtonBgColor} else {Color(0xFF272727)},
+                    BorderColor = ButtonBorderColor,
+                    color = if (cameraControlState.isIrEnabled) { if(!cameraControlState.isLowIntensity) ButtonSelectedIconColor else ButtonIconColor} else Color(0xFF363636),
+                    enabled = cameraControlState.isIrEnabled,
+                    onClick = { cameraControlViewModel.toggleIrIntensity() },
+                    text = "IR Intensity"
+                )
+                "picture-in-picture" -> buttonConfig.copy(
+                    backgroundColor = Color(0xFF272727),
+                    BorderColor = ButtonBorderColor,
+                    color = Color(0xFF363636),
+                    enabled = false,
+                    onClick = {},
                     text = buttonConfig.text
                 )
                 else -> buttonConfig.copy(
@@ -713,14 +776,12 @@ fun ButtonRow(buttons: List<ButtonConfig>,
                     if (deviceType == DeviceType.TABLET) 1f else 2f
                 }
                 else -> 1f
-
             }
 
             val layout = when (buttonConfig.id) {
                 "ir" -> {
                     if (deviceType == DeviceType.TABLET) "Row" else "Column"
                 }
-//                "ir-cut-filter" -> "Column"
                 else -> "Row"
             }
 

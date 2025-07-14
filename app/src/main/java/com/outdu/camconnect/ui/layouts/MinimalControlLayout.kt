@@ -1,8 +1,10 @@
 package com.outdu.camconnect.ui.layouts
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,9 +43,18 @@ import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
+import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.outdu.camconnect.ui.theme.AppColors.ButtonBgColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonIconColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
+import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
+import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
+import com.outdu.camconnect.ui.components.recording.RecordingTimer
 
 
 /**
@@ -61,10 +72,11 @@ fun MinimalControlContent(
 ) {
     val context = LocalContext.current
     val deviceType = rememberDeviceType()
-    
-    val isServiceRunning by ScreenRecorderService
-        .isServiceRunning
-        .collectAsStateWithLifecycle()
+    val recordingViewModel: RecordingViewModel = viewModel()
+    val cameraControlViewModel: CameraControlViewModel = viewModel()
+    val isRecording by recordingViewModel.isRecording.collectAsStateWithLifecycle()
+    val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
+    val isDarkTheme = isSystemInDarkTheme()
 
     var hasNotificationPermission by remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -100,9 +112,9 @@ fun MinimalControlContent(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasNotificationPermission = isGranted
-        if (hasNotificationPermission && !isServiceRunning) {
+        if (hasNotificationPermission && !isRecording) {
             screenRecordLauncher.launch(
-                (context.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager)
+                (context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager)
                     .createScreenCaptureIntent()
             )
         }
@@ -162,33 +174,12 @@ fun MinimalControlContent(
             CustomizableButton(
                 config = ButtonConfig(
                     id = "screen-record",
-                    iconPlaceholder = if (isServiceRunning) R.drawable.record_circle_line.toString() else R.drawable.record_icon.toString(),
-                    color = if (isServiceRunning) RecordRed else RecordRed,
-                    text = if (isServiceRunning) "Stop Recording" else "Start Recording",
+                    iconPlaceholder = if (isRecording) R.drawable.record_circle_line.toString() else R.drawable.record_icon.toString(),
+                    color = if (isRecording) RecordRed else RecordRed,
+                    text = if (isRecording) "Stop Recording" else "Start Recording",
                     backgroundColor = MediumDarkBackground,
                     BorderColor = ButtonBorderColor,
-                    onClick = {
-                        if (!hasNotificationPermission &&
-                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                        ) {
-                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            if (isServiceRunning) {
-                                Intent(
-                                    context,
-                                    ScreenRecorderService::class.java
-                                ).also {
-                                    it.action = ScreenRecorderService.ACTION_STOP
-                                    ContextCompat.startForegroundService(context, it)
-                                }
-                            } else {
-                                screenRecordLauncher.launch(
-                                    (context.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager)
-                                        .createScreenCaptureIntent()
-                                )
-                            }
-                        }
-                    }
+                    onClick = { recordingViewModel.toggleRecording(context) }
                 ),
                 isCompact = true,
                 showText = false
@@ -206,18 +197,29 @@ fun MinimalControlContent(
             )
 
             CustomizableButton(
-                config = customButtons.first { it.id == "ir-cut-filter" }.copy(
-                    BorderColor = ButtonBorderColor,
-                    backgroundColor = MediumDarkBackground
+                config = ButtonConfig(
+                    id = "ir",
+                    iconPlaceholder = R.drawable.ir_line.toString(),
+                    color = if (cameraControlState.isIrEnabled) {if(isDarkTheme) ButtonSelectedIconColor else Color.White} else ButtonIconColor,
+                    text = "IR",
+                    BorderColor = if (cameraControlState.isIrEnabled) RecordRed else ButtonBorderColor,
+                    backgroundColor = if (cameraControlState.isIrEnabled) RecordRed else ButtonBgColor,
+                    onClick = { cameraControlViewModel.toggleIR() }
                 ),
                 isCompact = true,
                 showText = false
             )
 
             CustomizableButton(
-                config = customButtons.first {it.id == "ir"}.copy(
+                config = ButtonConfig(
+                    id = "ir-cut-filter",
+                    iconPlaceholder = R.drawable.headlights.toString(),
+                    color = if (cameraControlState.isIrEnabled) { if(!cameraControlState.isLowIntensity) ButtonSelectedIconColor else ButtonIconColor} else Color(0xFF363636),
+                    text = "IR Intensity",
                     BorderColor = ButtonBorderColor,
-                    backgroundColor = MediumDarkBackground
+                    backgroundColor = if(cameraControlState.isIrEnabled) {if (!cameraControlState.isLowIntensity) ButtonSelectedBgColor else ButtonBgColor} else {Color(0xFF272727)},
+                    enabled = cameraControlState.isIrEnabled,
+                    onClick = { cameraControlViewModel.toggleIrIntensity() }
                 ),
                 isCompact = true,
                 showText = false

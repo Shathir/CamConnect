@@ -49,6 +49,8 @@ import com.outdu.camconnect.services.ScreenRecorderService
 import com.outdu.camconnect.services.ScreenRecorderService.Companion.ACTION_START
 import com.outdu.camconnect.services.ScreenRecorderService.Companion.RECORD_CONFIG
 import com.outdu.camconnect.Viewmodels.AppViewModel
+import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
+import android.app.Activity
 
 
 class MainActivity : ComponentActivity() {
@@ -127,6 +129,7 @@ class MainActivity : ComponentActivity() {
 
     var actualCodecName: String = ""
     private val viewModel: RecorderViewModel by viewModels()
+    private val recordingViewModel: RecordingViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -193,15 +196,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == REQUEST_CODE_SCREEN_CAPTURE && resultCode == RESULT_OK && data != null) {
-            val intent = Intent(this, ScreenRecorderService::class.java).apply {
-                putExtra("resultCode", resultCode)
-                putExtra("data", data)
-            }
-            ContextCompat.startForegroundService(this, intent)
-            viewModel.start()
-        }
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                recordingViewModel.handleActivityResult(this, resultCode, data)
+            } else {
+                Toast.makeText(this, "Screen recording permission denied", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     

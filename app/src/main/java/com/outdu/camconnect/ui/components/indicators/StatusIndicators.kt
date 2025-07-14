@@ -43,6 +43,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.VerticalAlignmentLine
 import com.outdu.camconnect.ui.theme.*
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 
 
 /**
@@ -56,7 +58,7 @@ fun BatteryIndicator(
 ) {
     val context = LocalContext.current
     var currentBatteryLevel by remember { mutableStateOf(batteryLevel) }
-    
+    val deviceType = rememberDeviceType()
     DisposableEffect(context) {
         val batteryReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -114,7 +116,7 @@ fun BatteryIndicator(
             painter = painterResource(id = icon),
             contentDescription = "Battery Icon",
             colorFilter = ColorFilter.tint(batteryColor),
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(if(deviceType == DeviceType.TABLET) 24.dp else 16.dp)
         )
 
     }
@@ -202,7 +204,8 @@ fun WifiIndicator(
     val context = LocalContext.current
     var currentIsConnected by remember { mutableStateOf(isConnected) }
     var currentSignalStrength by remember { mutableStateOf(signalStrength) }
-    
+    val deviceType = rememberDeviceType()
+
     // Check if we have location permissions (required for detailed WiFi info on Android 8.1+)
     val hasLocationPermission = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -309,7 +312,7 @@ fun WifiIndicator(
         painter = painterResource(wifiIcon),
         contentDescription = "Wifi Icon",
         colorFilter = ColorFilter.tint(wifiColor),
-        modifier = modifier.size(24.dp)
+        modifier = modifier.size(if(deviceType == DeviceType.TABLET) 24.dp else 16.dp)
     )
 
     // WiFi icon placeholder
@@ -486,6 +489,7 @@ fun AiStatusIndicator(
     modifier: Modifier = Modifier
 ) {
     val iconPainter = rememberVectorPainter(image = aiIcon(isEnabled))
+    val deviceType = rememberDeviceType()
 //    Image(
 //        painter = painterResource(id = R.drawable.ai_line),
 //        contentDescription = "AI Indicator",
@@ -496,7 +500,7 @@ fun AiStatusIndicator(
     Image(
         iconPainter,
         contentDescription = "Ai Status Icon",
-        modifier = modifier.size(24.dp),
+        modifier = modifier.size(if(deviceType == DeviceType.TABLET) 24.dp else 16.dp),
         contentScale = ContentScale.Fit
     )
 

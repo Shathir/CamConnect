@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,13 +31,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.R
 import com.outdu.camconnect.Viewmodels.AppViewModel
+import com.outdu.camconnect.ui.components.recording.RecordingTimer
 import com.outdu.camconnect.ui.layouts.maps.LiveTrackingMap
 import com.outdu.camconnect.ui.layouts.maps.MapLibreTrackingScreen
 import com.outdu.camconnect.ui.layouts.streamer.VideoSurfaceView
 import com.outdu.camconnect.ui.layouts.streamer.ZoomableVideoTextureView
 import com.outdu.camconnect.ui.theme.*
+import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 
 
 /**
@@ -48,10 +53,13 @@ fun CameraStreamView(
     isConnected: Boolean = true,
     cameraName: String = "Camera 1",
     context: Context,
+    showTimer: Boolean = true,
     onSpeedUpdate: (Float) -> Unit = {}
 ) {
     // Use a single ViewModel instance scoped to this composable
     val viewModel = remember { AppViewModel() }
+    val recordingViewModel: RecordingViewModel = viewModel()
+    val recordingState by recordingViewModel.recordingState.collectAsStateWithLifecycle()
     
     Box(
         modifier = modifier
@@ -82,6 +90,15 @@ fun CameraStreamView(
             DisconnectedView()
         }
 
+        // Recording timer overlay in top-right corner
+        if (showTimer) {
+            RecordingTimer(
+                recordingState = recordingState,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            )
+        }
     }
 }
 

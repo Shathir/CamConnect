@@ -68,7 +68,7 @@ fun CustomizableButton(
     // Determine button size
     val buttonSize = if (isCompact) {
 
-        if(deviceType == DeviceType.TABLET) 76.dp else 48.dp
+        if(deviceType == DeviceType.TABLET) 76.dp else 40.dp
     }else
     {
         if(deviceType == DeviceType.TABLET) 112.dp else 56.dp
@@ -87,7 +87,7 @@ fun CustomizableButton(
         Box(
             modifier = Modifier
                 .fillMaxSize() // Fill the square parent
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(if(deviceType == DeviceType.TABLET)20.dp else 14.dp))
                 .background(
                     if (config.enabled) config.backgroundColor 
                     else config.backgroundColor.copy(alpha = 0.5f)
@@ -95,7 +95,7 @@ fun CustomizableButton(
                 .border(
                     width = if (isDarkTheme) 0.dp else 1.dp, // No border in dark theme
                     color = config.BorderColor,
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(if(deviceType == DeviceType.TABLET)20.dp else 14.dp)
                 )
                 .clickable(enabled = config.enabled) { config.onClick() },
             contentAlignment = Alignment.Center
@@ -108,7 +108,7 @@ fun CustomizableButton(
                     Image(
                         painter = painterResource(id = resourceId),
                         contentDescription = config.text,
-                        modifier = Modifier.size(if (isCompact) 20.dp else 24.dp),
+                        modifier = Modifier.size(if (deviceType == DeviceType.TABLET) 24.dp else 16.dp),
                         colorFilter = ColorFilter.tint(config.color),
                         contentScale = ContentScale.Fit
                     )

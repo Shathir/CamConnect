@@ -215,13 +215,13 @@ fun AdaptiveStreamLayout(
                     .fillMaxHeight()
             ) {
                 CameraStreamView(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize(),
                     isConnected = systemStatus.isOnline,
-//                isConnected = false,
                     cameraName = "Camera ${cameraState.currentCamera + 1}",
                     context = context,
+                    showTimer = layoutMode != LayoutMode.EXPANDED_CONTROL, // Only show timer in minimal and full layouts
                     onSpeedUpdate = { speed -> currentSpeed = speed }
-
                 )
 
                 // Add the corner mask overlay
