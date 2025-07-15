@@ -69,6 +69,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.draw.scale
 import com.outdu.camconnect.ui.models.RecordingState
 import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
+import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
+import com.outdu.camconnect.ui.models.VisionMode
 
 
 /**
@@ -451,8 +453,12 @@ fun ExpandedControlContent(
     val isDarkTheme = isSystemInDarkTheme()
     val context = LocalContext.current
     val recordingViewModel: RecordingViewModel = viewModel()
+    val cameraControlViewModel: CameraControlViewModel = viewModel()
+    val cameraLayoutViewModel: CameraLayoutViewModel = viewModel()
+    
     val isRecording by recordingViewModel.isRecording.collectAsStateWithLifecycle()
     val recordingState by recordingViewModel.recordingState.collectAsStateWithLifecycle()
+    val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
 
     DisposableEffect(Unit) {
         Log.d("ExpandedControlContent", "Component created")
@@ -511,13 +517,15 @@ fun ExpandedControlContent(
                     allButtons = listOf(
                         customButtons.filter { it.id in listOf("Settings") },
                         customButtons.filter { it.id in listOf("ir", "ir-cut-filter") },
-                        customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
+//                        customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
+                        customButtons.filter { it.id in listOf("collapse-screen") }
                     )
                 }
                 else {
                     allButtons = listOf(
                         customButtons.filter { it.id in listOf("ir", "ir-cut-filter", "Settings") },
-                        customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
+//                        customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
+                        customButtons.filter { it.id in listOf( "collapse-screen") }
                     )
                 }
 
@@ -615,7 +623,7 @@ fun ExpandedControlContent(
                         .fillMaxWidth()
                         .height(if(deviceType == DeviceType.TABLET) 112.dp else 56.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(DarkBackground2),
+                        .background(if (cameraControlState.isZoomEnabled) DarkBackground2 else DarkBackground2.copy(alpha = 0.5f)),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val cameraControlViewModel: CameraControlViewModel = viewModel()
@@ -623,12 +631,28 @@ fun ExpandedControlContent(
                     
                     // Use key to force recomposition when zoom changes
                     key(cameraControlState.currentZoom) {
-                        ZoomSelector(
-                            initialZoom = cameraControlState.currentZoom,
-                            onZoomChanged = { newZoom ->
-                                cameraControlViewModel.setZoom(newZoom)
+                        if (!cameraControlState.isZoomEnabled) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Zoom disabled when EIS or HDR is enabled",
+                                    color = ButtonIconColor,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Normal
+                                )
                             }
-                        )
+                        } else {
+                            ZoomSelector(
+                                initialZoom = cameraControlState.currentZoom,
+                                onZoomChanged = { newZoom ->
+                                    if (cameraControlState.isZoomEnabled) {
+                                        cameraControlViewModel.setZoom(newZoom)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
 
@@ -646,32 +670,36 @@ fun ExpandedControlContent(
                         verticalAlignment = Alignment.CenterVertically
                     )
                     {
-
-                            toggleableIcons.take(toggleableIcons.size).forEach{ iconData ->
-
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(CircleShape)
-                                        .padding(1.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    // Validate and render icon
-                                    val resourceId = iconData.iconPlaceholder
-                                    androidx.compose.foundation.Image(
-                                        painter = androidx.compose.ui.res.painterResource(id = resourceId),
-                                        contentDescription = iconData.description,
-                                        modifier = Modifier.size(iconData.iconSize),
-                                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
-                                            if (iconData.isSelected) iconData.colorOnSelect
-                                            else Color(0xFF777777)
-
-                                        ),
-                                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                                    )
-                                }
-
+                        toggleableIcons.take(toggleableIcons.size).forEach { iconData ->
+                            // Update icon selection state based on camera control state
+                            val isSelected = when (iconData.id) {
+                                "stabilize" -> cameraControlState.isEisEnabled
+                                "hdr" -> cameraControlState.isHdrEnabled
+                                "viewmode" -> cameraControlState.isAutoDayNightEnabled
+                                else -> iconData.isSelected
                             }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .padding(1.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                // Validate and render icon
+                                val resourceId = iconData.iconPlaceholder
+                                androidx.compose.foundation.Image(
+                                    painter = androidx.compose.ui.res.painterResource(id = resourceId),
+                                    contentDescription = iconData.description,
+                                    modifier = Modifier.size(iconData.iconSize),
+                                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                        if (isSelected) iconData.colorOnSelect
+                                        else Color(0xFF777777)
+                                    ),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                )
+                            }
+                        }
 
 
                             WifiIndicator(isConnected = systemStatus.isWifiConnected)
@@ -707,7 +735,7 @@ fun ButtonRow(
     val isDarkTheme = isSystemInDarkTheme()
     val cameraControlViewModel: CameraControlViewModel = viewModel()
     val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
-
+    val cameraLayoutViewModel: CameraLayoutViewModel = viewModel()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -737,9 +765,14 @@ fun ButtonRow(
                 )
                 "ir" -> buttonConfig.copy(
                     onClick = { cameraControlViewModel.toggleIR() },
-                    backgroundColor = if (isSelected) RecordRed else ButtonBgColor,
+                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFF272727)
+                                    else if (isSelected) RecordRed 
+                                    else ButtonBgColor,
                     BorderColor = if (isSelected) RecordRed else ButtonBorderColor,
-                    color = if (isSelected) {if(isDarkTheme) ButtonSelectedIconColor else Color.White} else ButtonIconColor,
+                    color = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFF363636)
+                           else if (isSelected) {if(isDarkTheme) ButtonSelectedIconColor else Color.White} 
+                           else ButtonIconColor,
+                    enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
                     text = buttonConfig.text
                 )
                 "ir-cut-filter" -> buttonConfig.copy(

@@ -1,7 +1,10 @@
 package com.outdu.camconnect.ui.components.settings.camera
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -10,21 +13,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.R
+import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.models.*
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.ui.focus.focusModifier
-import androidx.compose.ui.res.painterResource
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.DarkBackground3
 import com.outdu.camconnect.utils.DeviceType
@@ -91,105 +91,18 @@ fun OptionButton(
 
 @Composable
 fun CameraLayout(
-    cameraState: CameraState,
-    systemStatus: SystemStatus,
-    detectionSettings: DetectionSettings,
-    customButtons: List<ButtonConfig>,
-    onAutoDayNightToggle: (Boolean) -> Unit,
-    onVisionModeSelected: (VisionMode) -> Unit,
-    onObjectDetectionToggle: (Boolean) -> Unit,
-    onFarObjectDetectionToggle: (Boolean) -> Unit,
-    onMotionDetectionToggle: (Boolean) -> Unit,
-    onCameraModeSelected: (CameraMode) -> Unit,
-    onOrientationModeSelected: (OrientationMode) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: CameraLayoutViewModel = viewModel()
 ) {
-
     val isDarkTheme = isSystemInDarkTheme()
-
     val deviceType = rememberDeviceType()
-    // Initial values
-    var initialAutoDayNight by remember { mutableStateOf(cameraState.isAutoDayNightEnabled) }
-    var initialVisionMode by remember { mutableStateOf(cameraState.visionMode) }
-    var initialCameraMode by remember { mutableStateOf(cameraState.cameraMode) }
-    var initialOrientationMode by remember { mutableStateOf(cameraState.orientationMode) }
-    
-    // Current state
-    var autoDayNightEnabled by remember { mutableStateOf(initialAutoDayNight) }
-    var currentVisionMode by remember { mutableStateOf(initialVisionMode) }
-    var currentCameraMode by remember { mutableStateOf(initialCameraMode) }
-    var currentOrientationMode by remember { mutableStateOf(initialOrientationMode) }
-    
-    // Check if there are changes from initial values
-    val hasChanges = remember(
-        autoDayNightEnabled, currentVisionMode, currentCameraMode, currentOrientationMode,
-        initialAutoDayNight, initialVisionMode, initialCameraMode, initialOrientationMode
-    ) {
-        autoDayNightEnabled != initialAutoDayNight ||
-        currentVisionMode != initialVisionMode ||
-        currentCameraMode != initialCameraMode ||
-        currentOrientationMode != initialOrientationMode
-    }
-    
-    // Function to save changes
-    val saveChanges = {
-        onAutoDayNightToggle(autoDayNightEnabled)
-        onVisionModeSelected(currentVisionMode)
-        onCameraModeSelected(currentCameraMode)
-        onOrientationModeSelected(currentOrientationMode)
-        
-        // Update initial values
-        initialAutoDayNight = autoDayNightEnabled
-        initialVisionMode = currentVisionMode
-        initialCameraMode = currentCameraMode
-        initialOrientationMode = currentOrientationMode
-    }
 
-    // Function to toggle Camera Mode
-    fun toggleCameraMode(mode: CameraMode) {
-        currentCameraMode = when (mode) {
-            CameraMode.HDR -> {
-                when (currentCameraMode) {
-                    CameraMode.HDR -> CameraMode.OFF    // HDR → OFF
-                    CameraMode.EIS -> CameraMode.BOTH   // EIS → BOTH
-                    CameraMode.BOTH -> CameraMode.EIS   // BOTH → EIS
-                    CameraMode.OFF -> CameraMode.HDR    // OFF → HDR
-                }
-            }
-            CameraMode.EIS -> {
-                when (currentCameraMode) {
-                    CameraMode.EIS -> CameraMode.OFF    // EIS → OFF
-                    CameraMode.HDR -> CameraMode.BOTH   // HDR → BOTH
-                    CameraMode.BOTH -> CameraMode.HDR   // BOTH → HDR
-                    CameraMode.OFF -> CameraMode.EIS    // OFF → EIS
-                }
-            }
-            else -> currentCameraMode  // Keep current state for other modes
-        }
-    }
-
-    // Function to toggle Orientation Mode
-    fun toggleOrientationMode(mode: OrientationMode) {
-        currentOrientationMode = when (mode) {
-            OrientationMode.FLIP -> {
-                when (currentOrientationMode) {
-                    OrientationMode.FLIP -> OrientationMode.NORMAL  // FLIP → OFF
-                    OrientationMode.MIRROR -> OrientationMode.BOTH  // MIRROR → BOTH
-                    OrientationMode.BOTH -> OrientationMode.MIRROR  // BOTH → MIRROR
-                    OrientationMode.NORMAL -> OrientationMode.FLIP  // OFF → FLIP
-                }
-            }
-            OrientationMode.MIRROR -> {
-                when (currentOrientationMode) {
-                    OrientationMode.MIRROR -> OrientationMode.NORMAL  // MIRROR → OFF
-                    OrientationMode.FLIP -> OrientationMode.BOTH     // FLIP → BOTH
-                    OrientationMode.BOTH -> OrientationMode.FLIP     // BOTH → FLIP
-                    OrientationMode.NORMAL -> OrientationMode.MIRROR  // OFF → MIRROR
-                }
-            }
-            else -> currentOrientationMode  // Keep current state for other modes
-        }
-    }
+    // Observe states from ViewModel using collectAsState
+    val autoDayNightEnabled = viewModel.isAutoDayNightEnabled.value
+    val currentVisionMode = viewModel.currentVisionMode.value
+    val currentCameraMode = viewModel.currentCameraMode.value
+    val currentOrientationMode = viewModel.currentOrientationMode.value
+    val hasChanges = viewModel.hasUnsavedChanges.value
 
     Column(
         modifier = modifier
@@ -202,17 +115,17 @@ fun CameraLayout(
             horizontalArrangement = Arrangement.End
         ) {
             Button(
-                onClick = { saveChanges() },
+                onClick = { viewModel.applyChanges() },
                 enabled = hasChanges,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = Color(0xFF2C2C2C) // Dark theme disabled color
+                    disabledContainerColor = Color(0xFF2C2C2C)
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
                     text = "Apply Changes",
-                    color = if (hasChanges) Color.White else Color(0xFF777777) // Gray text when disabled
+                    color = if (hasChanges) Color.White else Color(0xFF777777)
                 )
             }
         }
@@ -221,12 +134,10 @@ fun CameraLayout(
         Column(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
-            )
-            {
+            ) {
                 // Auto Day/Night
                 Column(
                     modifier = Modifier.weight(1f),
@@ -248,14 +159,14 @@ fun CameraLayout(
                         OptionButton(
                             text = "ON",
                             isSelected = autoDayNightEnabled,
-                            onClick = { autoDayNightEnabled = true },
+                            onClick = { viewModel.setAutoDayNight(true) },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.yes_line
                         )
                         OptionButton(
                             text = "OFF",
                             isSelected = !autoDayNightEnabled,
-                            onClick = { autoDayNightEnabled = false },
+                            onClick = { viewModel.setAutoDayNight(false) },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.no_line
                         )
@@ -283,14 +194,14 @@ fun CameraLayout(
                         OptionButton(
                             text = "Visible",
                             isSelected = currentVisionMode == VisionMode.VISION,
-                            onClick = { currentVisionMode = VisionMode.VISION },
+                            onClick = { viewModel.setVisionMode(VisionMode.VISION) },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.eye_line
                         )
                         OptionButton(
                             text = "Low Light",
-                            isSelected = currentVisionMode == VisionMode.INFRARED,
-                            onClick = { currentVisionMode = VisionMode.INFRARED },
+                            isSelected = currentVisionMode == VisionMode.BOTH,
+                            onClick = { viewModel.setVisionMode(VisionMode.BOTH) },
                             modifier = Modifier.weight(1f),
                             isRed = true,
                             iconVal = R.drawable.router_line
@@ -302,8 +213,7 @@ fun CameraLayout(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
-            )
-            {
+            ) {
                 // Camera Capture section
                 Column(
                     modifier = Modifier.weight(1f),
@@ -324,15 +234,15 @@ fun CameraLayout(
                     ) {
                         OptionButton(
                             text = "EIS",
-                            isSelected = currentCameraMode == CameraMode.EIS,
-                            onClick = { currentCameraMode = if (currentCameraMode == CameraMode.EIS) CameraMode.OFF else CameraMode.EIS },
+                            isSelected = currentCameraMode == CameraMode.EIS || currentCameraMode == CameraMode.BOTH,
+                            onClick = { viewModel.toggleCameraMode(CameraMode.EIS) },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.git_commit_line
                         )
                         OptionButton(
                             text = "HDR",
-                            isSelected = currentCameraMode == CameraMode.HDR,
-                            onClick = { currentCameraMode = if (currentCameraMode == CameraMode.HDR) CameraMode.OFF else CameraMode.HDR },
+                            isSelected = currentCameraMode == CameraMode.HDR || currentCameraMode == CameraMode.BOTH,
+                            onClick = { viewModel.toggleCameraMode(CameraMode.HDR) },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.hd_settings_line
                         )
@@ -360,14 +270,14 @@ fun CameraLayout(
                         OptionButton(
                             text = if(deviceType == DeviceType.TABLET) "Flip Vertical" else "Flip",
                             isSelected = currentOrientationMode == OrientationMode.FLIP || currentOrientationMode == OrientationMode.BOTH,
-                            onClick = { toggleOrientationMode(OrientationMode.FLIP) },
+                            onClick = { viewModel.toggleOrientationMode(OrientationMode.FLIP) },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.flip_vertical_line
                         )
                         OptionButton(
                             text = "Mirror",
                             isSelected = currentOrientationMode == OrientationMode.MIRROR || currentOrientationMode == OrientationMode.BOTH,
-                            onClick = { toggleOrientationMode(OrientationMode.MIRROR) },
+                            onClick = { viewModel.toggleOrientationMode(OrientationMode.MIRROR) },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.flip_horizontal_line
                         )
@@ -377,7 +287,7 @@ fun CameraLayout(
 
             // Warning text for zoom control
             Text(
-                text = "To Activate Zoom Control, Disable WDR & EIS",
+                text = "To Activate Zoom Control, Disable HDR & EIS",
                 style = TextStyle(
                     fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
                     lineHeight = 10.51.sp,
@@ -387,5 +297,10 @@ fun CameraLayout(
                 )
             )
         }
+    }
+
+    // Effect to refresh settings when the composable enters composition
+    LaunchedEffect(Unit) {
+        viewModel.refreshSettings()
     }
 }

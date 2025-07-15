@@ -9,7 +9,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -35,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.R
 import com.outdu.camconnect.Viewmodels.AppViewModel
+import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 import com.outdu.camconnect.ui.components.recording.RecordingTimer
 import com.outdu.camconnect.ui.layouts.maps.LiveTrackingMap
 import com.outdu.camconnect.ui.layouts.maps.MapLibreTrackingScreen
@@ -42,6 +45,15 @@ import com.outdu.camconnect.ui.layouts.streamer.VideoSurfaceView
 import com.outdu.camconnect.ui.layouts.streamer.ZoomableVideoTextureView
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.animation.core.*
+import androidx.compose.runtime.LaunchedEffect
+import com.airbnb.lottie.compose.*
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.scale
 
 
 /**
@@ -60,6 +72,25 @@ fun CameraStreamView(
     val viewModel = remember { AppViewModel() }
     val recordingViewModel: RecordingViewModel = viewModel()
     val recordingState by recordingViewModel.recordingState.collectAsStateWithLifecycle()
+    val cameraLayoutViewModel: CameraLayoutViewModel = viewModel()
+    val isStreamReloading by cameraLayoutViewModel.isStreamReloading.collectAsStateWithLifecycle()
+
+    // Lottie animation setup
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.scout_intro)
+    )
+    val animationState = rememberLottieAnimatable()
+
+    // Start animation when loading starts
+    LaunchedEffect(isStreamReloading) {
+        if (isStreamReloading && composition != null) {
+            animationState.animate(
+                composition = composition,
+                speed = 1.2f,
+                iterations = LottieConstants.IterateForever
+            )
+        }
+    }
     
     Box(
         modifier = modifier
@@ -98,6 +129,42 @@ fun CameraStreamView(
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
             )
+        }
+
+        // Loading overlay with Lottie animation
+        AnimatedVisibility(
+            visible = isStreamReloading,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.7f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Lottie Animation
+                    LottieAnimation(
+                        composition = composition,
+                        progress = { animationState.progress },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .scale(1f)
+                    )
+                    Text(
+                        text = "Applying changes...",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
     }
 }

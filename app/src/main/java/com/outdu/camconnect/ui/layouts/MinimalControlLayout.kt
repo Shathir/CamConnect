@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.outdu.camconnect.ui.components.camera.CameraStreamView
 import com.outdu.camconnect.ui.models.CameraState
 import com.outdu.camconnect.ui.models.SystemStatus
+import com.outdu.camconnect.ui.models.VisionMode
 import com.outdu.camconnect.R
 import com.outdu.camconnect.services.RecordConfig
 import com.outdu.camconnect.services.ScreenRecorderService
@@ -55,6 +56,7 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
 import com.outdu.camconnect.ui.components.recording.RecordingTimer
+import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 
 
 /**
@@ -74,6 +76,8 @@ fun MinimalControlContent(
     val deviceType = rememberDeviceType()
     val recordingViewModel: RecordingViewModel = viewModel()
     val cameraControlViewModel: CameraControlViewModel = viewModel()
+    val cameraLayoutViewModel: CameraLayoutViewModel = viewModel()
+    
     val isRecording by recordingViewModel.isRecording.collectAsStateWithLifecycle()
     val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
     val isDarkTheme = isSystemInDarkTheme()
@@ -185,25 +189,30 @@ fun MinimalControlContent(
                 showText = false
             )
 
-            CustomizableButton(
-                config = customButtons.first { it.id == "picture-in-picture" }.copy(
-                    BorderColor = ButtonBorderColor,
-                    enabled = false,
-                    color = Color(0xFF363636),
-                    backgroundColor = Color(0xFF272727)
-                ),
-                isCompact = true,
-                showText = false
-            )
+//            CustomizableButton(
+//                config = customButtons.first { it.id == "picture-in-picture" }.copy(
+//                    BorderColor = ButtonBorderColor,
+//                    enabled = false,
+//                    color = Color(0xFF363636),
+//                    backgroundColor = Color(0xFF272727)
+//                ),
+//                isCompact = true,
+//                showText = false
+//            )
 
             CustomizableButton(
                 config = ButtonConfig(
                     id = "ir",
                     iconPlaceholder = R.drawable.ir_line.toString(),
-                    color = if (cameraControlState.isIrEnabled) {if(isDarkTheme) ButtonSelectedIconColor else Color.White} else ButtonIconColor,
+                    color = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFF363636) 
+                           else if (cameraControlState.isIrEnabled) {if(isDarkTheme) ButtonSelectedIconColor else Color.White} 
+                           else ButtonIconColor,
                     text = "IR",
                     BorderColor = if (cameraControlState.isIrEnabled) RecordRed else ButtonBorderColor,
-                    backgroundColor = if (cameraControlState.isIrEnabled) RecordRed else ButtonBgColor,
+                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFF272727)
+                                    else if (cameraControlState.isIrEnabled) RecordRed 
+                                    else ButtonBgColor,
+                    enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
                     onClick = { cameraControlViewModel.toggleIR() }
                 ),
                 isCompact = true,

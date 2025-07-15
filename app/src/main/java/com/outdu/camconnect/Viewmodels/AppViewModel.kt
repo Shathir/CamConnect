@@ -52,6 +52,11 @@ class AppViewModel : ViewModel() {
     //Playing State
     var isPlaying: State<Boolean> = IsPlaying
 
+    // Add function to control playing state
+    fun setPlaying(playing: Boolean) {
+        IsPlaying.value = playing
+    }
+
 
     //overlay points
 //    var overlayPoints: State<OverlayPoints> =OverlayPoints

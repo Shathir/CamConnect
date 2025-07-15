@@ -13,7 +13,11 @@ data class CameraControlState(
     val isIrEnabled: Boolean = false,
     val irBrightness: Int = 0,
     val isLowIntensity: Boolean = false, // true means high intensity (15), false means low intensity (5)
-    val currentZoom: Float = 1.0f
+    val currentZoom: Float = 1.0f,
+    val isEisEnabled: Boolean = false,
+    val isHdrEnabled: Boolean = false,
+    val isZoomEnabled: Boolean = true,
+    val isAutoDayNightEnabled: Boolean = false
 )
 
 class CameraControlViewModel : ViewModel() {
@@ -21,6 +25,11 @@ class CameraControlViewModel : ViewModel() {
     val cameraControlState = _cameraControlState.asStateFlow()
 
     init {
+        fetchInitialState()
+    }
+
+    // Add public function to refresh camera state
+    fun refreshCameraState() {
         fetchInitialState()
     }
 
@@ -158,14 +167,28 @@ class CameraControlViewModel : ViewModel() {
                         
                         val irEnabled = irBrightness > 0
                         val isLowIntensity = irBrightness == 15
+
+                        // Parse EIS and HDR states from MISC value
+                        val misc = conf["MISC"]?.toString()?.toIntOrNull() ?: 1
+                        val eisEnabled = misc % 4 == 2
+                        val hdrEnabled = misc % 4 == 3
+                        val zoomEnabled = !eisEnabled && !hdrEnabled
+
+                        // Parse DAYMODE for Auto Low Light
+                        val dayMode = conf["DAYMODE"]?.toString()
+                        val isAutoDayNightEnabled = dayMode == "ON"
                         
-                        Log.d(TAG, "Parsed values - IR Brightness: $irBrightness, IR Enabled: $irEnabled, Low Intensity: $isLowIntensity, Zoom: ${currentZoom}X")
+                        Log.d(TAG, "Parsed values - IR Brightness: $irBrightness, IR Enabled: $irEnabled, Low Intensity: $isLowIntensity, Zoom: ${currentZoom}X, EIS: $eisEnabled, HDR: $hdrEnabled, AutoDayNight: $isAutoDayNightEnabled")
                         
                         _cameraControlState.value = CameraControlState(
                             isIrEnabled = irEnabled,
                             irBrightness = irBrightness,
                             isLowIntensity = isLowIntensity,
-                            currentZoom = currentZoom
+                            currentZoom = currentZoom,
+                            isEisEnabled = eisEnabled,
+                            isHdrEnabled = hdrEnabled,
+                            isZoomEnabled = zoomEnabled,
+                            isAutoDayNightEnabled = isAutoDayNightEnabled
                         )
                     }
                 }

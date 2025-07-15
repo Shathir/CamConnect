@@ -58,26 +58,17 @@ import com.outdu.camconnect.utils.rememberDeviceType
  */
 @Composable
 fun SettingsControlLayout(
-    cameraState: CameraState,
-    systemStatus: SystemStatus,
-    detectionSettings: DetectionSettings,
-    customButtons: List<ButtonConfig>,
     selectedTab: ControlTab,
     onTabSelected: (ControlTab) -> Unit,
-    onAutoDayNightToggle: (Boolean) -> Unit,
-    onVisionModeSelected: (VisionMode) -> Unit,
-    onObjectDetectionToggle: (Boolean) -> Unit,
-    onFarObjectDetectionToggle: (Boolean) -> Unit,
-    onMotionDetectionToggle: (Boolean) -> Unit,
-    onCameraModeSelected: (CameraMode) -> Unit,
-    onOrientationModeSelected: (OrientationMode) -> Unit,
     onSystemStatusChange: (SystemStatus) -> Unit,
+    systemStatus: SystemStatus,
     modifier: Modifier = Modifier,
     onCollapseClick: () -> Unit
 ) {
     // Manage scroll state with proper cleanup
     val scrollState = rememberScrollState()
     val deviceType = rememberDeviceType()
+    
     // Cleanup when component is disposed
     DisposableEffect(Unit) {
         Log.d("SettingsControlLayout", "Component created")
@@ -138,19 +129,17 @@ fun SettingsControlLayout(
                     text = "Camera",
                     backgroundColor = ButtonBgColor,
                     BorderColor = ButtonBorderColor,
+                    enabled = false
                 ),
                 modifier = Modifier,
                 isCompact = true,
                 showText = false
             )
-
         }
-
 
         // Scrollable content with managed scroll state
         Column(
             modifier = Modifier
-
                 .weight(1f)
                 .verticalScroll(scrollState)
                 .padding(16.dp),
@@ -160,20 +149,8 @@ fun SettingsControlLayout(
             key(selectedTab) {
                 when (selectedTab) {
                     ControlTab.CAMERA_CONTROL -> {
-                        CameraLayout(
-                            cameraState = cameraState,
-                            systemStatus = systemStatus,
-                            detectionSettings = detectionSettings,
-                            customButtons = customButtons,
-                            onAutoDayNightToggle = onAutoDayNightToggle,
-                            onVisionModeSelected = onVisionModeSelected,
-                            onObjectDetectionToggle = onObjectDetectionToggle,
-                            onFarObjectDetectionToggle = onFarObjectDetectionToggle,
-                            onMotionDetectionToggle = onMotionDetectionToggle,
-                            onCameraModeSelected = onCameraModeSelected,
-                            onOrientationModeSelected = onOrientationModeSelected
-                        )
-
+                        // Using the new CameraLayout with ViewModel
+                        CameraLayout()
                     }
 
                     ControlTab.AI_CONTROL -> {
@@ -186,7 +163,6 @@ fun SettingsControlLayout(
 
                     ControlTab.LICENSE_CONTROL -> {
                         LicenseLayout()
-
                     }
                 }
             }
@@ -239,66 +215,6 @@ fun CustomSelectableButton(
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center
         )
-    }
-}
-
-class CameraControlViewModel : ViewModel() {
-    var autoDayNight by mutableStateOf(true)
-    var displayMode by mutableStateOf("Visible")
-    var objectDetection by mutableStateOf(true)
-    var detectFarObjects by mutableStateOf(true)
-    var motionDetection by mutableStateOf(true)
-    var captureMode by mutableStateOf("EIS")
-    var orientation by mutableStateOf("Flip")
-}
-
-@Composable
-fun CameraControlScreen(viewModel: CameraControlViewModel) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .padding(16.dp)
-    ) {
-
-        Text("Camera Control", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-
-        Spacer(Modifier.height(16.dp))
-
-        SettingRow("Auto Day/Night") {
-            CustomToggleButton(
-                "ON", viewModel.autoDayNight,
-                onClick = { viewModel.autoDayNight = true }
-            )
-            Spacer(Modifier.width(8.dp))
-            CustomToggleButton(
-                "OFF", !viewModel.autoDayNight,
-                onClick = { viewModel.autoDayNight = false }
-            )
-        }
-
-        SettingRow("Display Modes") {
-            CustomToggleButton(
-                "Visible", viewModel.displayMode == "Visible",
-                onClick = {
-                    viewModel.displayMode = "Visible"
-                }
-            )
-            Spacer(Modifier.width(8.dp))
-            CustomSelectableButton(
-                "Infra Red", viewModel.displayMode == "Infra Red",
-                onClick = {
-                    viewModel.displayMode = "Infra Red"
-                }
-            )
-            Spacer(Modifier.width(8.dp))
-            CustomToggleButton(
-                "Auto", viewModel.displayMode == "Auto",
-                onClick = {
-                    viewModel.displayMode = "Auto"
-                }
-            )
-        }
     }
 }
 

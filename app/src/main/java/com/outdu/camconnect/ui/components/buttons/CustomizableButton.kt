@@ -68,7 +68,7 @@ fun CustomizableButton(
     // Determine button size
     val buttonSize = if (isCompact) {
 
-        if(deviceType == DeviceType.TABLET) 76.dp else 40.dp
+        if(deviceType == DeviceType.TABLET) 76.dp else 48.dp
     }else
     {
         if(deviceType == DeviceType.TABLET) 112.dp else 56.dp
