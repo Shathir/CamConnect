@@ -475,7 +475,7 @@ fun ExpandedControlContent(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isTablet = maxWidth > 600.dp
         val padding = if (deviceType == DeviceType.TABLET) 32.dp else 12.dp
-        val spacing = if (deviceType == DeviceType.TABLET) 22.dp else 12.dp
+        val spacing = if (deviceType == DeviceType.TABLET) 22.dp else 14.dp
         val layoutModifier = Modifier
             .fillMaxSize()
             .padding(horizontal = padding, vertical = spacing)

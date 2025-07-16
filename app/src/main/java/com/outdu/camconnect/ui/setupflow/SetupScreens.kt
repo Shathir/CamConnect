@@ -508,7 +508,7 @@ fun SupportRow() {
             modifier = Modifier.clickable {
                 val emailIntent = Intent(
                     Intent.ACTION_SENDTO,
-                    "mailto:shathir.h@outdu.com".toUri() // replace with your actual email
+                    "mailto:info@outdu.com".toUri() // replace with your actual email
                 )
                 context.startActivity(Intent.createChooser(emailIntent, "Send email"))
             },

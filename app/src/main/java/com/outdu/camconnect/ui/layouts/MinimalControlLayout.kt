@@ -141,7 +141,8 @@ fun MinimalControlContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(8.dp),
-        verticalArrangement = if(deviceType == DeviceType.TABLET) Arrangement.SpaceAround else Arrangement.spacedBy(8.dp),
+//        verticalArrangement = if(deviceType == DeviceType.TABLET) Arrangement.SpaceAround else Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.SpaceAround,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Top controls
