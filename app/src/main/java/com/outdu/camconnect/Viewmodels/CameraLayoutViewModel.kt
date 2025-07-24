@@ -16,6 +16,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.outdu.camconnect.singleton.MainActivitySingleton
 import com.outdu.camconnect.utils.MemoryManager
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 class CameraLayoutViewModel : ViewModel() {
     // Auto Low Light (maps to DAYMODE)
@@ -47,6 +52,10 @@ class CameraLayoutViewModel : ViewModel() {
     // Add stream reload state
     private val _isStreamReloading = MutableStateFlow(false)
     val isStreamReloading = _isStreamReloading.asStateFlow()
+
+    // Add state to track if UI should be interactive
+    private val _isUIInteractive = MutableStateFlow(true)
+    val isUIInteractive = _isUIInteractive.asStateFlow()
 
     private var isSurfaceFinalized = false
 
@@ -146,7 +155,7 @@ class CameraLayoutViewModel : ViewModel() {
         }
     }
 
-    fun applyChanges() {
+    fun applyChanges1() {
         viewModelScope.launch {
             try {
                 // Check if only orientation (flip/mirror) has changed
@@ -157,58 +166,263 @@ class CameraLayoutViewModel : ViewModel() {
 
                 // If only orientation changed, apply changes without stream reload
                 if (onlyOrientationChanged) {
-                    applyOrientationChanges()
-                    saveInitialValues()
+                    _isUIInteractive.value = false
+                    val orientationSuccess = applyOrientationChanges()
+                    if (orientationSuccess) {
+                        saveInitialValues()
+                    }
+                    _isUIInteractive.value = true
                     return@launch
                 }
 
-                // For other changes, reload stream
+                // For other changes, reload stream and disable UI
                 _isStreamReloading.value = true
+                _isUIInteractive.value = false
+
+                // Track completion of all API calls
+                val apiCalls = mutableListOf<Deferred<Boolean>>()
 
                 // Execute MISC task
                 val miscVal = calculateMiscValue()
-                MotocamAPIAndroidHelper.setMiscAsync(
-                    scope = viewModelScope,
-                    miscValue = miscVal
-                ) { result, error ->
-                    if (error != null) {
-                        Log.e(TAG, "Error setting MISC value $error")
-                        return@setMiscAsync
+                val miscDeferred = async {
+                    var success = false
+                    MotocamAPIAndroidHelper.setMiscAsync(
+                        scope = viewModelScope,
+                        miscValue = miscVal
+                    ) { result, error ->
+                        if (error != null) {
+                            Log.e(TAG, "Error setting MISC value $error")
+                        } else {
+                            success = true
+                        }
                     }
+                    // Wait a bit for the async call to complete
+                    delay(500)
+                    success
                 }
+                apiCalls.add(miscDeferred)
 
                 // Execute DAYMODE task
-                MotocamAPIAndroidHelper.setDayModeAsync(
-                    scope = viewModelScope,
-                    dayMode = if (_isAutoDayNightEnabled.value) MotocamAPIHelper.DAYMODE.ON else MotocamAPIHelper.DAYMODE.OFF
-                ) { result, error ->
-                    if (error != null) {
-                        Log.e(TAG, "Error setting day mode $error")
-                        return@setDayModeAsync
+                val dayModeDeferred = async {
+                    var success = false
+                    MotocamAPIAndroidHelper.setDayModeAsync(
+                        scope = viewModelScope,
+                        dayMode = if (_isAutoDayNightEnabled.value) MotocamAPIHelper.DAYMODE.ON else MotocamAPIHelper.DAYMODE.OFF
+                    ) { result, error ->
+                        if (error != null) {
+                            Log.e(TAG, "Error setting day mode $error")
+                        } else {
+                            success = true
+                        }
                     }
+                    // Wait a bit for the async call to complete
+                    delay(500)
+                    success
                 }
+                apiCalls.add(dayModeDeferred)
 
                 // Apply orientation changes
-                applyOrientationChanges()
+                val orientationDeferred = async {
+                    var flipSuccess = false
+                    var mirrorSuccess = false
+                    
+                    // Execute FLIP task
+                    val flip = _currentOrientationMode.value == OrientationMode.FLIP || 
+                              _currentOrientationMode.value == OrientationMode.BOTH
+                    MotocamAPIAndroidHelper.setFlipAsync(
+                        scope = viewModelScope,
+                        flip = if (flip) MotocamAPIHelper.FLIP.ON else MotocamAPIHelper.FLIP.OFF
+                    ) { result, error ->
+                        if (error != null) {
+                            Log.e(TAG, "Error setting flip $error")
+                        } else {
+                            flipSuccess = true
+                        }
+                    }
 
-                // Save initial values after successful updates
-                saveInitialValues()
-                Log.d(TAG, "All camera settings applied successfully")
+                    // Execute MIRROR task
+                    val mirror = _currentOrientationMode.value == OrientationMode.MIRROR || 
+                                _currentOrientationMode.value == OrientationMode.BOTH
+                    MotocamAPIAndroidHelper.setMirrorAsync(
+                        scope = viewModelScope,
+                        mirror = if (mirror) MotocamAPIHelper.MIRROR.ON else MotocamAPIHelper.MIRROR.OFF
+                    ) { result, error ->
+                        if (error != null) {
+                            Log.e(TAG, "Error setting mirror $error")
+                        } else {
+                            mirrorSuccess = true
+                        }
+                    }
+                    
+                    // Wait for both orientation calls to complete
+                    delay(1000)
+                    flipSuccess && mirrorSuccess
+                }
+                apiCalls.add(orientationDeferred)
 
-                // Wait for 10 seconds
-                delay(10000)
+                // Wait for all API calls to complete
+                val results = apiCalls.awaitAll()
+                val allSuccessful = results.all { it }
 
-                // Reset loading state
+                if (allSuccessful) {
+                    // Save initial values after successful updates
+                    saveInitialValues()
+                    Log.d(TAG, "All camera settings applied successfully")
+                } else {
+                    Log.w(TAG, "Some camera settings failed to apply")
+                }
+
+                // Reset loading state and re-enable UI
                 _isStreamReloading.value = false
+                _isUIInteractive.value = true
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in applyChanges", e)
                 _isStreamReloading.value = false
+                _isUIInteractive.value = true
             }
         }
     }
 
-    private suspend fun applyOrientationChanges() {
+    fun applyChanges() {
+        viewModelScope.launch {
+            try {
+                val onlyOrientationChanged = initialVisionMode == _currentVisionMode.value &&
+                        initialCameraMode == _currentCameraMode.value &&
+                        initialAutoDayNight == _isAutoDayNightEnabled.value &&
+                        initialOrientationMode != _currentOrientationMode.value
+
+                if (onlyOrientationChanged) {
+                    _isUIInteractive.value = false
+                    val orientationSuccess = applyOrientationChanges()
+                    if (orientationSuccess) {
+                        saveInitialValues()
+                    }
+                    _isUIInteractive.value = true
+                    return@launch
+                }
+
+                _isStreamReloading.value = true
+                _isUIInteractive.value = false
+
+                val apiCalls = mutableListOf<Deferred<Boolean>>()
+
+                // MISC Task
+                val miscVal = calculateMiscValue()
+                val miscDeferred = async {
+                    val start = System.currentTimeMillis()
+                    val success = suspendCancellableCoroutine<Boolean> { cont ->
+                        MotocamAPIAndroidHelper.setMiscAsync(
+                            scope = viewModelScope,
+                            miscValue = miscVal
+                        ) { result, error ->
+                            if (error != null) {
+                                Log.e(TAG, "Error setting MISC value $error")
+                            }
+                            cont.resume(error == null)
+                        }
+                    }
+                    val end = System.currentTimeMillis()
+                    Log.d(TAG, "API TIME - MISC: ${end - start} ms")
+                    success
+                }
+                apiCalls.add(miscDeferred)
+
+                // DAYMODE Task
+                val dayModeDeferred = async {
+                    val start = System.currentTimeMillis()
+                    val success = suspendCancellableCoroutine<Boolean> { cont ->
+                        MotocamAPIAndroidHelper.setDayModeAsync(
+                            scope = viewModelScope,
+                            dayMode = if (_isAutoDayNightEnabled.value) MotocamAPIHelper.DAYMODE.ON else MotocamAPIHelper.DAYMODE.OFF
+                        ) { result, error ->
+                            if (error != null) {
+                                Log.e(TAG, "Error setting day mode $error")
+                            }
+                            cont.resume(error == null)
+                        }
+                    }
+                    val end = System.currentTimeMillis()
+                    Log.d(TAG, "API TIME - DAYMODE: ${end - start} ms")
+                    success
+                }
+                apiCalls.add(dayModeDeferred)
+
+                // Orientation (FLIP + MIRROR)
+                val orientationDeferred = async {
+                    val start = System.currentTimeMillis()
+
+                    val flipDeferred = async {
+                        suspendCancellableCoroutine<Boolean> { cont ->
+                            val flip = _currentOrientationMode.value == OrientationMode.FLIP ||
+                                    _currentOrientationMode.value == OrientationMode.BOTH
+                            MotocamAPIAndroidHelper.setFlipAsync(
+                                scope = viewModelScope,
+                                flip = if (flip) MotocamAPIHelper.FLIP.ON else MotocamAPIHelper.FLIP.OFF
+                            ) { result, error ->
+                                if (error != null) {
+                                    Log.e(TAG, "Error setting flip $error")
+                                }
+                                cont.resume(error == null)
+                            }
+                        }
+                    }
+
+                    val mirrorDeferred = async {
+                        suspendCancellableCoroutine<Boolean> { cont ->
+                            val mirror = _currentOrientationMode.value == OrientationMode.MIRROR ||
+                                    _currentOrientationMode.value == OrientationMode.BOTH
+                            MotocamAPIAndroidHelper.setMirrorAsync(
+                                scope = viewModelScope,
+                                mirror = if (mirror) MotocamAPIHelper.MIRROR.ON else MotocamAPIHelper.MIRROR.OFF
+                            ) { result, error ->
+                                if (error != null) {
+                                    Log.e(TAG, "Error setting mirror $error")
+                                }
+                                cont.resume(error == null)
+                            }
+                        }
+                    }
+
+                    val flipSuccess = flipDeferred.await()
+                    val mirrorSuccess = mirrorDeferred.await()
+
+                    val end = System.currentTimeMillis()
+                    Log.d(TAG, "API TIME - ORIENTATION (FLIP + MIRROR): ${end - start} ms")
+
+                    flipSuccess && mirrorSuccess
+                }
+                apiCalls.add(orientationDeferred)
+
+                val results = apiCalls.awaitAll()
+                val allSuccessful = results.all { it }
+
+                if (allSuccessful) {
+                    saveInitialValues()
+                    Log.d(TAG, "All camera settings applied successfully")
+                } else {
+                    Log.w(TAG, "Some camera settings failed to apply")
+                }
+
+                delay(1000)
+
+                _isStreamReloading.value = false
+                _isUIInteractive.value = true
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in applyChanges", e)
+                _isStreamReloading.value = false
+                _isUIInteractive.value = true
+            }
+        }
+    }
+
+
+
+    private suspend fun applyOrientationChanges(): Boolean {
+        var flipSuccess = false
+        var mirrorSuccess = false
+        
         // Execute FLIP task
         val flip = _currentOrientationMode.value == OrientationMode.FLIP || 
                   _currentOrientationMode.value == OrientationMode.BOTH
@@ -218,7 +432,8 @@ class CameraLayoutViewModel : ViewModel() {
         ) { result, error ->
             if (error != null) {
                 Log.e(TAG, "Error setting flip $error")
-                return@setFlipAsync
+            } else {
+                flipSuccess = true
             }
         }
 
@@ -231,9 +446,14 @@ class CameraLayoutViewModel : ViewModel() {
         ) { result, error ->
             if (error != null) {
                 Log.e(TAG, "Error setting mirror $error")
-                return@setMirrorAsync
+            } else {
+                mirrorSuccess = true
             }
         }
+        
+        // Wait for both calls to complete
+        delay(1000)
+        return flipSuccess && mirrorSuccess
     }
 
     private fun saveInitialValues() {
