@@ -382,6 +382,6 @@ object AuthConfig {
 ---
 
 **Document Version**: 1.0  
-**Last Updated**: {{02-07-2025}}  
+**Last Updated**: {02-07-2025}  
 **Author**: Shathir  
 **Status**: Implementation Ready 
