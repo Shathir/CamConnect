@@ -478,9 +478,22 @@ class CameraLayoutViewModel : ViewModel() {
     }
 
     fun setVisionMode(mode: VisionMode) {
+        // Handle Low Light mode logic
+        if (mode == VisionMode.BOTH) {
+            // When Low Light is selected, turn off EIS and turn on HDR
+            _currentCameraMode.value = CameraMode.HDR
+        } else if (_currentVisionMode.value == VisionMode.BOTH) {
+            // When switching away from Low Light mode, turn off HDR
+            _currentCameraMode.value = CameraMode.OFF
+        }
+        
         _currentVisionMode.value = mode
         checkForChanges()
     }
+
+    // Computed property to check if Low Light mode is active
+    val isLowLightModeActive: Boolean
+        get() = _currentVisionMode.value == VisionMode.BOTH
 
     fun setCameraMode(mode: CameraMode) {
         _currentCameraMode.value = mode

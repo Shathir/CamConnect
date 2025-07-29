@@ -37,7 +37,8 @@ fun OptionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isRed: Boolean = false,
-    iconVal: Int
+    iconVal: Int,
+    enabled: Boolean = true
 ) {
 
     val isDarkTheme = isSystemInDarkTheme()
@@ -57,7 +58,7 @@ fun OptionButton(
                     else -> DarkBackground3
                 }
             )
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -70,7 +71,14 @@ fun OptionButton(
                 Icon(
                     painter = painterResource(iconVal),
                     contentDescription = null,
-                    tint = if(isSelected) {if(!isDarkTheme) Color(0xFF222222) else Color(0xFFFFFFFF)} else{ if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)},
+                    tint = if(!enabled) {
+                        if(!isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF666666)
+                    } else if(isSelected) {
+                        if(!isDarkTheme) Color(0xFF222222) else Color(0xFFFFFFFF)
+                    } else {
+                        if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)
+                    }
+                ,
                     modifier = Modifier.size(if(deviceType == DeviceType.TABLET) (24.dp) else (16.dp))
                         .padding(1.dp)
                 )
@@ -81,7 +89,13 @@ fun OptionButton(
                     fontSize = if(deviceType == DeviceType.TABLET) 18.sp else 12.sp,
                     fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                     fontWeight = FontWeight(400),
-                    color = if(isSelected) {if(!isDarkTheme) Color(0xFF222222) else Color(0xFFFFFFFF)} else{ if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)}
+                    color = if(!enabled) {
+                        if(!isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF666666)
+                    } else if(isSelected) {
+                        if(!isDarkTheme) Color(0xFF222222) else Color(0xFFFFFFFF)
+                    } else {
+                        if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)
+                    }
                 ),
                 maxLines = 1
             )
@@ -103,6 +117,7 @@ fun CameraLayout(
     val currentCameraMode = viewModel.currentCameraMode.value
     val currentOrientationMode = viewModel.currentOrientationMode.value
     val hasChanges = viewModel.hasUnsavedChanges.value
+    val isLowLightModeActive = viewModel.isLowLightModeActive
 
     Column(
         modifier = modifier
@@ -234,17 +249,27 @@ fun CameraLayout(
                     ) {
                         OptionButton(
                             text = "EIS",
-                            isSelected = currentCameraMode == CameraMode.EIS || currentCameraMode == CameraMode.BOTH,
-                            onClick = { viewModel.toggleCameraMode(CameraMode.EIS) },
+                            isSelected = if (isLowLightModeActive) false else (currentCameraMode == CameraMode.EIS || currentCameraMode == CameraMode.BOTH),
+                            onClick = {
+                                if (!isLowLightModeActive) {
+                                    viewModel.toggleCameraMode(CameraMode.EIS)
+                                }
+                            },
                             modifier = Modifier.weight(1f),
-                            iconVal = R.drawable.git_commit_line
+                            iconVal = R.drawable.git_commit_line,
+                            enabled = !isLowLightModeActive
                         )
                         OptionButton(
                             text = "HDR",
-                            isSelected = currentCameraMode == CameraMode.HDR || currentCameraMode == CameraMode.BOTH,
-                            onClick = { viewModel.toggleCameraMode(CameraMode.HDR) },
+                            isSelected = if (isLowLightModeActive) true else (currentCameraMode == CameraMode.HDR || currentCameraMode == CameraMode.BOTH),
+                            onClick = {
+                                if (!isLowLightModeActive) {
+                                    viewModel.toggleCameraMode(CameraMode.HDR)
+                                }
+                            },
                             modifier = Modifier.weight(1f),
-                            iconVal = R.drawable.hd_settings_line
+                            iconVal = R.drawable.hd_settings_line,
+                            enabled = !isLowLightModeActive
                         )
                     }
                 }
