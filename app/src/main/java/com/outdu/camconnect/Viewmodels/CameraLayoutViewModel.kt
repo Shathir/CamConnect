@@ -91,7 +91,7 @@ class CameraLayoutViewModel : ViewModel() {
 
                         // Parse MISC for Vision Mode and Camera Mode
                         val misc = conf["MISC"]?.toString()?.toIntOrNull() ?: 1
-                        
+
                         // Parse Vision Mode from MISC
                         _currentVisionMode.value = when {
                             misc in 1..4 -> VisionMode.VISION
@@ -225,10 +225,10 @@ class CameraLayoutViewModel : ViewModel() {
                 val orientationDeferred = async {
                     var flipSuccess = false
                     var mirrorSuccess = false
-                    
+
                     // Execute FLIP task
-                    val flip = _currentOrientationMode.value == OrientationMode.FLIP || 
-                              _currentOrientationMode.value == OrientationMode.BOTH
+                    val flip = _currentOrientationMode.value == OrientationMode.FLIP ||
+                            _currentOrientationMode.value == OrientationMode.BOTH
                     MotocamAPIAndroidHelper.setFlipAsync(
                         scope = viewModelScope,
                         flip = if (flip) MotocamAPIHelper.FLIP.ON else MotocamAPIHelper.FLIP.OFF
@@ -241,8 +241,8 @@ class CameraLayoutViewModel : ViewModel() {
                     }
 
                     // Execute MIRROR task
-                    val mirror = _currentOrientationMode.value == OrientationMode.MIRROR || 
-                                _currentOrientationMode.value == OrientationMode.BOTH
+                    val mirror = _currentOrientationMode.value == OrientationMode.MIRROR ||
+                            _currentOrientationMode.value == OrientationMode.BOTH
                     MotocamAPIAndroidHelper.setMirrorAsync(
                         scope = viewModelScope,
                         mirror = if (mirror) MotocamAPIHelper.MIRROR.ON else MotocamAPIHelper.MIRROR.OFF
@@ -253,7 +253,7 @@ class CameraLayoutViewModel : ViewModel() {
                             mirrorSuccess = true
                         }
                     }
-                    
+
                     // Wait for both orientation calls to complete
                     delay(1000)
                     flipSuccess && mirrorSuccess
@@ -422,10 +422,10 @@ class CameraLayoutViewModel : ViewModel() {
     private suspend fun applyOrientationChanges(): Boolean {
         var flipSuccess = false
         var mirrorSuccess = false
-        
+
         // Execute FLIP task
-        val flip = _currentOrientationMode.value == OrientationMode.FLIP || 
-                  _currentOrientationMode.value == OrientationMode.BOTH
+        val flip = _currentOrientationMode.value == OrientationMode.FLIP ||
+                _currentOrientationMode.value == OrientationMode.BOTH
         MotocamAPIAndroidHelper.setFlipAsync(
             scope = viewModelScope,
             flip = if (flip) MotocamAPIHelper.FLIP.ON else MotocamAPIHelper.FLIP.OFF
@@ -438,8 +438,8 @@ class CameraLayoutViewModel : ViewModel() {
         }
 
         // Execute MIRROR task
-        val mirror = _currentOrientationMode.value == OrientationMode.MIRROR || 
-                    _currentOrientationMode.value == OrientationMode.BOTH
+        val mirror = _currentOrientationMode.value == OrientationMode.MIRROR ||
+                _currentOrientationMode.value == OrientationMode.BOTH
         MotocamAPIAndroidHelper.setMirrorAsync(
             scope = viewModelScope,
             mirror = if (mirror) MotocamAPIHelper.MIRROR.ON else MotocamAPIHelper.MIRROR.OFF
@@ -450,7 +450,7 @@ class CameraLayoutViewModel : ViewModel() {
                 mirrorSuccess = true
             }
         }
-        
+
         // Wait for both calls to complete
         delay(1000)
         return flipSuccess && mirrorSuccess
@@ -478,9 +478,22 @@ class CameraLayoutViewModel : ViewModel() {
     }
 
     fun setVisionMode(mode: VisionMode) {
+        // Handle Low Light mode logic
+        if (mode == VisionMode.BOTH) {
+            // When Low Light is selected, turn off EIS and turn on HDR
+            _currentCameraMode.value = CameraMode.HDR
+        } else if (_currentVisionMode.value == VisionMode.BOTH) {
+            // When switching away from Low Light mode, turn off HDR
+            _currentCameraMode.value = CameraMode.OFF
+        }
+
         _currentVisionMode.value = mode
         checkForChanges()
     }
+
+    // Computed property to check if Low Light mode is active
+    val isLowLightModeActive: Boolean
+        get() = _currentVisionMode.value == VisionMode.BOTH
 
     fun setCameraMode(mode: CameraMode) {
         _currentCameraMode.value = mode

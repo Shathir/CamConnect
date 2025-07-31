@@ -53,6 +53,7 @@ import com.outdu.camconnect.singleton.MainActivitySingleton
 import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
+import com.outdu.camconnect.OverlayPoints
 
 @Composable
 private fun LoadingOverlay(
@@ -102,7 +103,8 @@ private fun LoadingOverlay(
 @Composable
 fun AdaptiveStreamLayout(
     modifier: Modifier = Modifier,
-    context: Context
+    context: Context,
+    pointState: MutableState<OverlayPoints>
 ) {
     // Layout state - persists across theme changes and recompositions
     var layoutMode by rememberSaveable { mutableStateOf(LayoutMode.MINIMAL_CONTROL) }
@@ -288,7 +290,7 @@ fun AdaptiveStreamLayout(
             .clip(RoundedCornerShape(20.dp))
     ) {
         // The TextureView will handle its own lifecycle based on appViewModel.isPlaying
-        ZoomableVideoTextureView(viewModel = appViewModel, context)
+        ZoomableVideoTextureView(viewModel = appViewModel, context, pointState = pointState)
 
         // Show loading overlay when stream is reloading
 //        AnimatedVisibility(

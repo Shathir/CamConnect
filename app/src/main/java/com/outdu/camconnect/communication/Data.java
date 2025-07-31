@@ -14,7 +14,7 @@ public class Data {
     private static boolean OD=true;
     private static boolean DS=false;
     private static boolean AUDIO=false;
-    private static int   MODEL = 0;
+    private static int   MODEL = 1;
     private static float DS_THRESHOLD =0.8f;
 
     public static void loadData(Context context)

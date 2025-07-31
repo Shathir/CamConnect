@@ -186,7 +186,7 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0D0D0D))
+            .background(Color(0xFFFFFFFF))
     ) {
         Column(
             modifier = Modifier
@@ -197,24 +197,24 @@ fun LoginScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    painter = painterResource(R.drawable.scout_logo), // Replace with your logo
+                    painter = painterResource(R.drawable.stravion_logo), // Replace with your logo
                     contentDescription = "Scout Logo",
-                    tint = Color.Red,
+                    tint = Color(0xFF2061F2),
                     modifier = Modifier
-                        .width(25.dp)
+                        .width(132.dp)
                         .height(18.dp)
                 )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = "Scout",
-                    style = TextStyle(
-                        fontSize = 16.sp,
-                        lineHeight = 14.02.sp,
-                        fontFamily = FontFamily(Font(R.font.onest_regular)),
-                        fontWeight = FontWeight(700),
-                        color = Color(0xFFC5C5C5)
-                    )
-                )
+//                Spacer(Modifier.width(4.dp))
+//                Text(
+//                    text = "Scout",
+//                    style = TextStyle(
+//                        fontSize = 16.sp,
+//                        lineHeight = 14.02.sp,
+//                        fontFamily = FontFamily(Font(R.font.onest_regular)),
+//                        fontWeight = FontWeight(700),
+//                        color = Color(0xFFC5C5C5)
+//                    )
+//                )
             }
 
             Column(
@@ -225,25 +225,25 @@ fun LoginScreen(
             {
                 // Title
                 Text(
-                    text = "Welcome back,",
+                    text = "Hello",
                     style = TextStyle(
                         fontSize = 32.sp,
                         lineHeight = 14.02.sp,
                         fontFamily = FontFamily(Font(R.font.onest_regular)),
-                        fontWeight = FontWeight(700),
-                        color = Color(0xFFCFCFCF),
+                        fontWeight = FontWeight(400),
+                        color = Color(0xFF1A1A1C),
 
                         )
                 )
 
                 Text(
-                    text = "Please login to start streaming",
+                    text = "Please select how would you like to get started ?",
                     style = TextStyle(
-                        fontSize = 18.sp,
+                        fontSize = 14.sp,
                         lineHeight = 14.02.sp,
                         fontFamily = FontFamily(Font(R.font.onest_regular)),
-                        fontWeight = FontWeight(500),
-                        color = Color(0xFF7D7D7D),
+                        fontWeight = FontWeight(400),
+                        color = Color(0xFF9097A0),
 
                         )
                 )

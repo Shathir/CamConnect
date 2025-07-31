@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -66,7 +67,7 @@ class SplashActivity : ComponentActivity() {
 
 
 @Composable
-fun SplashScreen(
+fun SplashScreen1(
     onSplashComplete: () -> Unit
 ) {
     // Animation states
@@ -193,71 +194,57 @@ fun SplashScreen(
 }
 
 @Composable
-private fun LoadingSection() {
-    val loadingAlpha by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(
-            durationMillis = 500,
-            easing = EaseIn
-        ),
-        label = "loading_fade"
-    )
-    
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.alpha(loadingAlpha)
-    ) {
-        // Loading spinner
-        CircularProgressIndicator(
-            modifier = Modifier.size(32.dp),
-            color = MaterialTheme.colorScheme.primary,
-            strokeWidth = 3.dp
-        )
-        
-        // Loading text
-        Text(
-            text = "Initializing...",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                color = MediumLightGray,
-                fontSize = 14.sp
-            ),
-            modifier = Modifier.padding(top = 12.dp)
-        )
-    }
-}
-
-@Composable
-private fun FallbackLogo(
-    modifier: Modifier = Modifier
+fun SplashScreen(
+    onSplashComplete: () -> Unit
 ) {
-    // Simple animated fallback when Lottie fails
-    val rotation by rememberInfiniteTransition(label = "fallback_rotation").animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
-    )
-    
+    var showContent by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        // Show content with fade in
+        showContent = true
+
+        // Wait for the splash duration
+        delay(SplashActivity.SPLASH_DURATION)
+
+        // Navigate to next screen
+        onSplashComplete()
+    }
+
     Box(
-        modifier = modifier,
+        modifier = Modifier
+            .fillMaxSize()
+            .background( Color(0xFF2061F2)),
         contentAlignment = Alignment.Center
     ) {
-        // Simple rotating circle as fallback
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .padding(32.dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.stravion_logo),
+                contentDescription = "Stravion Logo",
+                tint = Color.White,
+                modifier = Modifier
+                    .size(140.dp)
+            )
+        }
+
+        // Version info at bottom
         Box(
             modifier = Modifier
-                .size(120.dp)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                        )
-                    ),
-                    shape = CircleShape
-                )
-        )
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "Version 1.1",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color.White,
+                    fontSize = 12.sp
+                ),
+                textAlign = TextAlign.Center
+            )
+        }
     }
-} 
+}

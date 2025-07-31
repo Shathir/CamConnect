@@ -29,8 +29,12 @@ android {
 
         externalNativeBuild{
             cmake{
+                val gstreamerRoot = project.file("src/main/gstreamer_1_0_android_1_22_4").absolutePath
+                if (!File(gstreamerRoot).exists()) {
+                    throw GradleException("GStreamer path not found: $gstreamerRoot")
+                }
                 arguments.add("-DANDROID_STL=c++_shared")
-                arguments.add("-DGSTREAMER_ROOT_ANDROID=/home/sr/sw/shathir_ws/android_ws/CamConnect/app/src/main/gstreamer_1_0_android_1_22_4")
+                arguments.add("-DGSTREAMER_ROOT_ANDROID=${gstreamerRoot}")
             }
         }
     }

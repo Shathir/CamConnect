@@ -167,8 +167,8 @@ fun MinimalControlContent(
                     iconPlaceholder = R.drawable.expand_line.toString(),
                     color = Color.White,
                     text = "Camera",
-                    BorderColor = DefaultColors.DarkGray,
-                    backgroundColor = DefaultColors.DarkGray,
+                    BorderColor = Color(0xFF2061F2),
+                    backgroundColor = Color(0xFF2061F2),
                     onClick = onExpandClick
                 ),
                 isCompact = true,
@@ -179,11 +179,11 @@ fun MinimalControlContent(
             CustomizableButton(
                 config = ButtonConfig(
                     id = "screen-record",
-                    iconPlaceholder = if (isRecording) R.drawable.record_circle_line.toString() else R.drawable.record_icon.toString(),
-                    color = if (isRecording) RecordRed else RecordRed,
+                    iconPlaceholder = if (isRecording) R.drawable.record_rectangle.toString() else R.drawable.record_icon.toString(),
+                    color = if (isRecording) Color.White else RecordRed,
                     text = if (isRecording) "Stop Recording" else "Start Recording",
-                    backgroundColor = MediumDarkBackground,
-                    BorderColor = ButtonBorderColor,
+                    backgroundColor = if(isRecording) RecordRed  else MediumDarkBackground,
+                    BorderColor = if(isRecording) RecordRed else ButtonBorderColor,
                     onClick = { recordingViewModel.toggleRecording(context) }
                 ),
                 isCompact = true,

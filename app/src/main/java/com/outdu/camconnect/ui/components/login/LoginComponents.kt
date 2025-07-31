@@ -2,6 +2,7 @@ package com.outdu.camconnect.ui.components.login
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -219,9 +220,10 @@ fun ViewerLoginCard(
 
     Box(
         modifier = Modifier
+            .border(width = 1.dp, color = Color(0xFFD7D7D7), shape = RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .fillMaxWidth()
-            .background(Color(0xFF222222)),
+            .background(Color(0xFFFFFFFF)),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -236,19 +238,19 @@ fun ViewerLoginCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.users_icon),
-                    contentDescription = "User Icon",
-                    tint = Color(0xFFF43823)
+                    painter = painterResource(id = R.drawable.viewer_icon),
+                    contentDescription = "Viewer Icon",
+                    tint = Color(0xFF2061F2)
                 )
 
                 Text(
-                    text = "Login as Viewer",
+                    text = "Start streaming as viewer",
                     style = TextStyle(
                         fontSize = 24.sp,
                         lineHeight = 14.02.sp,
                         fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                        fontWeight = FontWeight(500),
-                        color = Color.White
+                        fontWeight = FontWeight(400),
+                        color = Color(0xFF1A1A1C)
                     )
                 )
 
@@ -259,7 +261,7 @@ fun ViewerLoginCard(
                         lineHeight = 14.02.sp,
                         fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                         fontWeight = FontWeight(400),
-                        color = Color.White
+                        color = Color(0xFF9097A0)
                     )
                 )
             }
@@ -297,6 +299,17 @@ fun ViewerLoginCard(
                     errorMessage = errorMessage
                 )
             }
+
+            Text(
+                text = "Make sure your camera is nearby & switched ON",
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    lineHeight = 14.02.sp,
+                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                    fontWeight = FontWeight(400),
+                    color = Color(0xFF221F1F)
+                )
+            )
         }
     }
 }
