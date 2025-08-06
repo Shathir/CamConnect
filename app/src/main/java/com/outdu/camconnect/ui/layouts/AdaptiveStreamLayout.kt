@@ -53,6 +53,7 @@ import com.outdu.camconnect.singleton.MainActivitySingleton
 import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
+import com.outdu.camconnect.OverlayPoints
 
 @Composable
 private fun LoadingOverlay(
@@ -102,11 +103,12 @@ private fun LoadingOverlay(
 @Composable
 fun AdaptiveStreamLayout(
     modifier: Modifier = Modifier,
-    context: Context
+    context: Context,
+    pointState: MutableState<OverlayPoints>
 ) {
     // Layout state - persists across theme changes and recompositions
     var layoutMode by rememberSaveable { mutableStateOf(LayoutMode.MINIMAL_CONTROL) }
-    
+
     // Get reference to the AppViewModel and CameraControlViewModel
     val appViewModel: AppViewModel = viewModel()
     val cameraControlViewModel: CameraControlViewModel = viewModel()
@@ -122,15 +124,15 @@ fun AdaptiveStreamLayout(
             else -> {} // No refresh needed for FULL_CONTROL
         }
     }
-    
+
     // Camera state
     var cameraState by remember { mutableStateOf(CameraState()) }
-    
+
     // GPS Speed state (updated from LiveTrackingMap)
     var currentSpeed by remember { mutableStateOf(0f) }
-    
+
     // System status
-    var systemStatus by remember { 
+    var systemStatus by remember {
         mutableStateOf(
             SystemStatus(
                 batteryLevel = 75,
@@ -143,18 +145,18 @@ fun AdaptiveStreamLayout(
             )
         )
     }
-    
+
     // Update systemStatus when GPS speed changes
     LaunchedEffect(currentSpeed) {
         systemStatus = systemStatus.copy(currentSpeed = currentSpeed)
     }
-    
+
     // Detection settings
     var detectionSettings by remember { mutableStateOf(DetectionSettings()) }
-    
+
     // Settings tab state - persists across theme changes
     var selectedTab by rememberSaveable { mutableStateOf(ControlTab.CAMERA_CONTROL) }
-    
+
     // Persistent button states for expanded control - survives layout mode changes
     val buttonStates = remember { mutableStateMapOf<String, Boolean>() }
 
@@ -162,7 +164,7 @@ fun AdaptiveStreamLayout(
     val onSystemStatusChange: (SystemStatus) -> Unit = { newStatus ->
         systemStatus = newStatus
     }
-    
+
     // Animated weights for the two panes
     val leftPaneWeight by animateFloatAsState(
         targetValue = when (layoutMode) {
@@ -173,7 +175,7 @@ fun AdaptiveStreamLayout(
         animationSpec = tween(durationMillis = 300),
         label = "left_pane_weight"
     )
-    
+
     val rightPaneWeight by animateFloatAsState(
         targetValue = when (layoutMode) {
             LayoutMode.MINIMAL_CONTROL -> 0.1f
@@ -225,15 +227,15 @@ fun AdaptiveStreamLayout(
             )
         )
     }
-    
+
     // Apply theme-aware colors to custom buttons
     val themedCustomButtons = customButtons.map { button ->
-            button.copy(
-                backgroundColor = MediumDarkBackground,
-                color = MediumGray
-            )
+        button.copy(
+            backgroundColor = MediumDarkBackground,
+            color = MediumGray
+        )
     }
-    
+
     // Toggleable icons for Layout 2 - Basic structure without theme-aware colors
     val toggleableIcons = remember {
         mutableStateListOf(
@@ -288,7 +290,7 @@ fun AdaptiveStreamLayout(
             .clip(RoundedCornerShape(20.dp))
     ) {
         // The TextureView will handle its own lifecycle based on appViewModel.isPlaying
-        ZoomableVideoTextureView(viewModel = appViewModel, context)
+        ZoomableVideoTextureView(viewModel = appViewModel, context, pointState = pointState)
 
         // Show loading overlay when stream is reloading
 //        AnimatedVisibility(

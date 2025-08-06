@@ -239,4 +239,10 @@ object MotocamAPIHelperWrapper {
             Log.i(TAG, "Upload complete: $fileName")
         }
     }
+
+    suspend fun getHealthStatus(): HealthStatus = sendCommand(
+        MotocamAPIHelper.getHealthCheckCmd(),
+        MotocamAPIHelper::parseHealthCheckResponse
+    )
+
 }

@@ -11,11 +11,11 @@ import java.util.Properties;
 public class Data {
 
     private static boolean FAR=false;
-    private static boolean OD=true;
+    private static boolean OD=false;
     private static boolean DS=false;
     private static boolean AUDIO=false;
-    private static int   MODEL = 0;
-    private static float DS_THRESHOLD =0.8f;
+    private static int   MODEL = 1;
+    private static float DS_THRESHOLD =0.5f;
 
     public static void loadData(Context context)
     {

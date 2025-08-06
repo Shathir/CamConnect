@@ -64,6 +64,29 @@ class CameraControlViewModel : ViewModel() {
                         Log.d(TAG, "Zoom set to ${newZoom}X")
                     }
                 }
+
+                MotocamAPIAndroidHelper.getHealthStatusAsync(
+                    scope = viewModelScope
+                ) { status, error ->
+                    if (error != null) {
+                        Log.e(TAG, "Health check failed: $error")
+                        return@getHealthStatusAsync
+                    }
+
+                    status?.let {
+                        Log.d(TAG, "HealthStatus → RTSPS=${it.rtsps}, " +
+                                "CPU=${it.cpuUsage}%, " +
+                                "ISP Temp=${it.ispTemp}°C, " +
+                                "memory=${it.memoryUsage}%, " +
+                            "portablertc=${it.portableRtc}, " +
+                            "irTemp=${it.irTemp}, " +
+                        "sensorTemp=${it.sensorTemp} ")
+                        // Update your ViewModel or UI state
+                    }
+                }
+
+
+
             } catch (e: Exception) {
                 Log.e(TAG, "Error in setZoom", e)
             }

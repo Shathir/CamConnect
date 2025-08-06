@@ -29,8 +29,12 @@ android {
 
         externalNativeBuild{
             cmake{
+                val gstreamerRoot = project.file("src/main/gstreamer_1_0_android_1_22_4").absolutePath
+                if (!File(gstreamerRoot).exists()) {
+                    throw GradleException("GStreamer path not found: $gstreamerRoot")
+                }
                 arguments.add("-DANDROID_STL=c++_shared")
-                arguments.add("-DGSTREAMER_ROOT_ANDROID=/home/sr/sw/shathir_ws/android_ws/CamConnect/app/src/main/gstreamer_1_0_android_1_22_4")
+                arguments.add("-DGSTREAMER_ROOT_ANDROID=${gstreamerRoot}")
             }
         }
     }
@@ -101,10 +105,10 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
     implementation(libs.androidx.appcompat.resources)
-    
+
     // Lottie Animation
     implementation("com.airbnb.android:lottie-compose:6.1.0")
-    
+
 //    implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.commons.net)
     implementation(libs.androidx.window)

@@ -1,5 +1,6 @@
 package com.outdu.camconnect.ui.components.settings.ai
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,7 +21,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.R
+import com.outdu.camconnect.Viewmodels.AppViewModel
+import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 import com.outdu.camconnect.communication.CameraConfigurationManager
 import com.outdu.camconnect.ui.components.settings.ControlTab
 import com.outdu.camconnect.ui.models.SystemStatus
@@ -134,6 +138,7 @@ fun AiLayout(
     val scope = rememberCoroutineScope()
     val isDarkTheme = isSystemInDarkTheme()
     val deviceType = rememberDeviceType()
+    val appViewModel: AppViewModel = viewModel()
     // Initial values using mutable state to allow updates after applying changes
     var initialObjectDetection by remember { mutableStateOf(CameraConfigurationManager.isObjectDetectionEnabled()) }
     var initialFarDetection by remember { mutableStateOf(CameraConfigurationManager.isFarDetectionEnabled()) }
@@ -153,10 +158,15 @@ fun AiLayout(
         farDetectionEnabled != initialFarDetection ||
         motionDetectionEnabled != initialMotionDetection
     }
-    
+
     // Function to save changes
     val saveChanges = {
         scope.launch {
+            try {
+                appViewModel.setPlaying(false)
+            } catch (e: Exception) {
+                Log.e("AdaptiveStreamLayout", "Error stopping stream", e)
+            }
             val config = CameraConfigurationManager.CameraConfig(
                 farDetectionEnabled = farDetectionEnabled,
                 objectDetectionEnabled = objectDetectionEnabled,
@@ -175,6 +185,13 @@ fun AiLayout(
                 
                 // Update system status to reflect AI enabled state
                 onSystemStatusChange(systemStatus.copy(isAiEnabled = objectDetectionEnabled))
+
+                // Show success message
+                try {
+                    appViewModel.setPlaying(true)
+                } catch (e: Exception) {
+                    Log.e("AdaptiveStreamLayout", "Error starting stream", e)
+                }
             }
         }
     }

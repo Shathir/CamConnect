@@ -228,6 +228,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
     g_signal_emit_by_name (sink, "pull-sample", &sample);
     if (sample) {
         GST_DEBUG ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@got sample");
+        GST_DEBUG ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@got %d od", data->od);
         GstBuffer *buffer = gst_sample_get_buffer(sample);
         GstCaps* caps = NULL;
         const GstStructure* info = NULL;
@@ -254,6 +255,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
             ncnn::MutexLockGuard g(lock);
 
             if (data->od && g_yolo) {
+                GST_DEBUG ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@got %d x %d bgr", sample_width, sample_height);
                 std::vector<float> dep_thres;
                 int midas_ret=1;
 //                dep_thres.reserve(objects.size());
@@ -272,6 +274,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                     obj.rect.height=obj.rect.height/bgr.rows;
                 }
 
+                GST_DEBUG ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@got %d objects", objects.size());
                 if(data->ds && g_midas) {
                     if(midas_ret==0) {
                         g_midas->updatePoints(points2F);
@@ -279,6 +282,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                     }
                 }
 
+                GST_DEBUG ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@got %d objects", objects.size());
                 od_callback(objects, dep_thres, data);
             }
         }
@@ -304,6 +308,7 @@ static void *app_function (void *userdata) {
     /* Build pipeline */
     char rtsp_pipeline[1000];
     if(data->od) {
+
         sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
                                "queue leaky=2 max-size-buffers=2 ! "
@@ -340,7 +345,7 @@ static void *app_function (void *userdata) {
     } else {
         sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! amcviddec-%s  ! glimagesink",
-                                RTSP_URL, data->avc_decoder);
+                RTSP_URL, data->avc_decoder);
     }
     data->pipeline = gst_parse_launch(rtsp_pipeline, &error);
     if (error) {
@@ -356,6 +361,7 @@ static void *app_function (void *userdata) {
 //    g_signal_connect (glsink, "client-draw", G_CALLBACK (drawCallback), &data);
 
     if(data->od) {
+        GST_DEBUG("Using object detection");
         data->app_sink = gst_bin_get_by_name(GST_BIN(data->pipeline), "rtspappsink");
         GstCaps *caps = gst_caps_new_simple("video/x-raw",
                                             "width", G_TYPE_INT, 960,
@@ -452,10 +458,18 @@ static void gst_native_finalize (JNIEnv* env, jobject thiz) {
 }
 
 /* Set pipeline to PLAYING state */
-static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height) {
+static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height, jboolean od, jboolean ds) {
     CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     data->width = width;
     data->height = height;
+    data->od=od;
+    data->ds = ds;
+    if(data->od && g_yolo) {
+        g_yolo->useFarROI(true);
+    }
+    if(data->ds && g_midas) {
+        g_midas->useFarROI(true);
+    }
     if (!data) return;
     GST_DEBUG ("Setting state to PLAYING");
     pthread_create (&gst_app_thread, NULL, &app_function, data);
@@ -610,7 +624,7 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
 static JNINativeMethod native_methods[] = {
         { "nativeInit", "(Ljava/lang/String;)V", (void *) gst_native_init},
         { "nativeFinalize", "()V", (void *) gst_native_finalize},
-        { "nativePlay", "(II)V", (void *) gst_native_play},
+        { "nativePlay", "(IIZZ)V", (void *) gst_native_play},
         { "nativePause", "()V", (void *) gst_native_pause},
         { "nativeSurfaceInit", "(Ljava/lang/Object;)V", (void *) gst_native_surface_init},
         { "nativeSurfaceFinalize", "()V", (void *) gst_native_surface_finalize},

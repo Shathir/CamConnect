@@ -51,7 +51,17 @@ import com.outdu.camconnect.services.ScreenRecorderService.Companion.RECORD_CONF
 import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import android.app.Activity
+import com.outdu.camconnect.communication.Data
 
+data class OverlayPoints(
+    var labels: IntArray,
+    var probs: FloatArray,
+    var pointXs: IntArray,
+    var pointYs: IntArray,
+    var pointWs: IntArray,
+    var pointHs: IntArray,
+    var depThres: FloatArray
+)
 
 class MainActivity : ComponentActivity() {
 
@@ -61,7 +71,9 @@ class MainActivity : ComponentActivity() {
     var nativeCustomData: Long = 0 // Native code will use this to keep private data
     external fun nativePlay(
         width: Int,
-        height: Int
+        height: Int,
+        od: Boolean = false,
+        ds: Boolean = false
     )
     external fun nativeInit(avcDecoder: String) // Initialize native code, build pipeline, etc.
     external fun nativePause() // Set pipeline to PAUSED
@@ -91,8 +103,34 @@ class MainActivity : ComponentActivity() {
             nativeClassInit(System.currentTimeMillis())
         }
     }
+
+    fun loadODModel(modelId: Int) {
+        val retInit = nativeLoadOdModel(assets, 0,0, Data.isDS(), 0)
+        if (!retInit) {
+            Log.e("MainActivity", "yolov8ncnn loadModel failed")
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "yolov8ncnn loadModel failed", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+    }
+
+
+
     fun onGStreamerInitialized() {
     }
+
+    var odPointsState = mutableStateOf(
+        OverlayPoints(
+            labels = intArrayOf(),
+            probs = floatArrayOf(),
+            pointXs = intArrayOf(),
+            pointYs = intArrayOf(),
+            pointWs = intArrayOf(),
+            pointHs = intArrayOf(),
+            depThres = floatArrayOf()
+        )
+    )
 
     fun odCallback(
         labels: IntArray,
@@ -103,9 +141,21 @@ class MainActivity : ComponentActivity() {
         pointHs: IntArray,
         depThres: FloatArray
     ) {
+        odPointsState.value = OverlayPoints(
+            labels = labels,
+            probs = probs,
+            pointXs = pointXs,
+            pointYs = pointYs,
+            pointWs = pointWs,
+            pointHs = pointHs,
+            depThres = depThres
+        )
+
         Log.i("onCallback","onCallback is called")
+        Log.i("POint CallBack : ", odPointsState.value.labels.size.toString())
 
     }
+
     fun setMessage(message: String) {
         runOnUiThread {
             // Update UI with the message
@@ -116,7 +166,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val deniedPermissions = permissions.filterValues { !it }.keys
-        
+
         if (deniedPermissions.isNotEmpty()) {
             // Some permissions were denied
             Toast.makeText(
@@ -186,13 +236,16 @@ class MainActivity : ComponentActivity() {
                         )
                 ) {
 //                    ScreenRecorderUI(LocalContext.current, viewModel)
-                    AdaptiveStreamLayout(context = LocalContext.current)
+                    AdaptiveStreamLayout(context = LocalContext.current, pointState = odPointsState)
                 }
             }
         }
 
         nativeInit(actualCodecName)
+        Data.loadData(this)
         MainActivitySingleton.setMainActivity(this)
+        loadODModel(Data.getMODEL())
+
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -206,7 +259,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    
+
     override fun onPause() {
         super.onPause()
         // Pause native streaming when app goes to background
@@ -216,7 +269,7 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "Error during pause", e)
         }
     }
-    
+
     override fun onResume() {
         super.onResume()
         // Resume will be handled by surface callbacks when they become available
@@ -246,20 +299,20 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "Error during native cleanup", e)
         }
     }
-    
+
     private fun checkAndRequestPermissions() {
         // Check if we need to request permissions (only for Android 6.0+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val permissionsToRequest = mutableListOf<String>()
-            
+
             // Check each permission
             for (permission in REQUIRED_PERMISSIONS) {
-                if (ContextCompat.checkSelfPermission(this, permission) 
+                if (ContextCompat.checkSelfPermission(this, permission)
                     != PackageManager.PERMISSION_GRANTED) {
                     permissionsToRequest.add(permission)
                 }
             }
-            
+
             // Request permissions if needed
             if (permissionsToRequest.isNotEmpty()) {
                 requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())

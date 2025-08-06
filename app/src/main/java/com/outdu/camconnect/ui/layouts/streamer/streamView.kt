@@ -1,6 +1,9 @@
 package com.outdu.camconnect.ui.layouts.streamer
 
 import android.content.Context
+import android.graphics.Paint
+import android.graphics.PixelFormat
+import android.graphics.PorterDuff
 import android.graphics.SurfaceTexture
 import android.util.Log
 import android.view.Surface
@@ -14,6 +17,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.rememberSplineBasedDecay
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -24,6 +29,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,7 +39,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -45,14 +56,17 @@ import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.utils.MemoryManager
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import com.outdu.camconnect.OverlayPoints
+import com.outdu.camconnect.ui.modelLabels.BOAT_LABELS
+import com.outdu.camconnect.ui.modelLabels.COCO_LABELS
 
 @Composable
 fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
     if (viewModel.isPlaying.value) {
-        
+
         // Store SurfaceView reference for proper cleanup
         var surfaceView by remember { mutableStateOf<SurfaceView?>(null) }
-        
+
         // Cleanup when composable is disposed
         DisposableEffect(Unit) {
             onDispose {
@@ -72,7 +86,7 @@ fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
                 surfaceView = null
             }
         }
-        
+
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -105,7 +119,7 @@ fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
                                     MainActivitySingleton.nativeSurfaceInit(holder.surface)
                                     val recording_path = MainActivitySingleton.getRecordingPath()
                                     Log.i("Gstreamer MainActivity", "Playing Stream")
-                                    MainActivitySingleton.nativePlay(width = width, height = height)
+                                    MainActivitySingleton.nativePlay(width = width, height = height, od = Data.isOD(), ds = Data.isDS())
                                 } catch (e: Exception) {
                                     Log.e("VideoSurfaceView", "Surface changed error", e)
                                 }
@@ -138,7 +152,7 @@ fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
 }
 
 @Composable
-fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
+fun ZoomableVideoTextureView1(viewModel: AppViewModel, currentContext: Context, pointState: MutableState<OverlayPoints>) {
     if (!viewModel.isPlaying.value) return
 
     val scaleRange = 1f..8f
@@ -146,14 +160,14 @@ fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
 
     var scale by remember { mutableStateOf(defaultScale) }
     var offset by remember { mutableStateOf(Offset.Zero) }
-    
+
     // Animation state for smooth transitions
     val animatedScale = remember { Animatable(defaultScale) }
     val animatedOffset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
     val coroutineScope = rememberCoroutineScope()
 
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
-    
+
     // Store TextureView reference for proper cleanup
     var textureView by remember { mutableStateOf<TextureView?>(null) }
 
@@ -239,17 +253,17 @@ fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
                 detectTransformGestures(
                     onGesture = { centroid, pan, zoom, _ ->
                         val newScale = (scale * zoom).coerceIn(scaleRange)
-                        
+
                         // Calculate focal point zooming
                         if (zoom != 1f) {
                             // Convert centroid to offset from center
                             val viewCenter = Offset(viewSize.width / 2f, viewSize.height / 2f)
                             val focalPoint = centroid - viewCenter
-                            
+
                             // Calculate the offset adjustment for focal point zooming
                             val scaleDelta = newScale - scale
                             val focalOffset = focalPoint * scaleDelta / scale
-                            
+
                             // Apply the focal point adjustment
                             val adjustedOffset = offset - focalOffset + pan
                             offset = clampOffset(adjustedOffset, newScale, viewSize)
@@ -258,9 +272,9 @@ fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
                             val newOffset = offset + pan
                             offset = clampOffset(newOffset, scale, viewSize)
                         }
-                        
+
                         scale = newScale
-                        
+
                         // Update animated values to current state (for smooth interaction)
                         coroutineScope.launch {
                             try {
@@ -294,7 +308,7 @@ fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
                                 val s = Surface(surface)
                                 MemoryManager.registerSurface(s)
                                 MainActivitySingleton.nativeSurfaceInit(s)
-                                MainActivitySingleton.nativePlay(width, height)
+                                MainActivitySingleton.nativePlay(width, height, Data.isOD(), Data.isDS())
                                 isSurfaceFinalized = false
                             } catch (e: Exception) {
                                 Log.e("ZoomableTextureView", "Surface init error", e)
@@ -304,7 +318,7 @@ fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
                         override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
                             // Handle size changes if needed
                         }
-                        
+
                         override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
                             try {
                                 MemoryManager.unregisterSurface(Surface(surface))
@@ -332,6 +346,352 @@ fun ZoomableVideoTextureView(viewModel: AppViewModel, currentContext: Context) {
                 }
                 .fillMaxSize()
         )
+    }
+}
+
+
+@Composable
+fun ZoomableVideoTextureView(
+    viewModel: AppViewModel,
+    currentContext: Context,
+    pointState: MutableState<OverlayPoints>
+) {
+    if (!viewModel.isPlaying.value) return
+
+    val scaleRange = 1f..8f
+    val defaultScale = 1f
+
+    var scale by remember { mutableStateOf(defaultScale) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
+    val animatedScale = remember { Animatable(defaultScale) }
+    val animatedOffset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
+    val coroutineScope = rememberCoroutineScope()
+
+    var viewSize by remember { mutableStateOf(IntSize.Zero) }
+    var textureView by remember { mutableStateOf<TextureView?>(null) }
+    var overlaySurfaceView by remember { mutableStateOf<SurfaceView?>(null) }
+
+    var isSurfaceFinalized by remember { mutableStateOf(false) }
+
+    fun safelyFinalizeSurface() {
+        if (!isSurfaceFinalized) {
+            try {
+                MainActivitySingleton.nativePause()
+                MainActivitySingleton.nativeSurfaceFinalize()
+            } catch (e: Exception) {
+                Log.e("ZoomableTextureView", "Error during surface finalization", e)
+            }
+            isSurfaceFinalized = true
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            coroutineScope.cancel()
+            textureView?.surfaceTextureListener = null
+            textureView = null
+            overlaySurfaceView = null
+            safelyFinalizeSurface()
+        }
+    }
+
+    val doubleTapGesture = rememberUpdatedState {
+        coroutineScope.launch {
+            try {
+                val scaleJob = launch {
+                    animatedScale.animateTo(defaultScale, tween(300, easing = FastOutSlowInEasing))
+                }
+                val offsetJob = launch {
+                    animatedOffset.animateTo(Offset.Zero, tween(300, easing = FastOutSlowInEasing))
+                }
+                scaleJob.join()
+                offsetJob.join()
+                scale = animatedScale.value
+                offset = animatedOffset.value
+            } catch (e: Exception) {
+                Log.e("ZoomableTextureView", "Animation error", e)
+            }
+        }
+    }
+
+    fun clampOffset(offset: Offset, scale: Float, viewSize: IntSize): Offset {
+        val maxX = (viewSize.width * (scale - 1)) / 2
+        val maxY = (viewSize.height * (scale - 1)) / 2
+        return Offset(
+            x = offset.x.coerceIn(-maxX, maxX),
+            y = offset.y.coerceIn(-maxY, maxY)
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .aspectRatio(16f / 9f)
+            .onGloballyPositioned { viewSize = it.size }
+            .pointerInput(Unit) {
+                detectTransformGestures { centroid, pan, zoom, _ ->
+                    val newScale = (scale * zoom).coerceIn(scaleRange)
+                    val viewCenter = Offset(viewSize.width / 2f, viewSize.height / 2f)
+                    val focalPoint = centroid - viewCenter
+                    val scaleDelta = newScale - scale
+                    val focalOffset = focalPoint * scaleDelta / scale
+                    val adjustedOffset = offset - focalOffset + pan
+
+                    offset = clampOffset(adjustedOffset, newScale, viewSize)
+                    scale = newScale
+
+                    coroutineScope.launch {
+                        animatedScale.snapTo(scale)
+                        animatedOffset.snapTo(offset)
+                    }
+                }
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(onDoubleTap = { doubleTapGesture.value() })
+            }
+    ) {
+        // --- Video Stream (TextureView) ---
+        AndroidView(
+            factory = { context ->
+                TextureView(context).apply {
+                    layoutParams = FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                        override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+                            try {
+                                val s = Surface(surface)
+                                MemoryManager.registerSurface(s)
+                                MainActivitySingleton.nativeSurfaceInit(s)
+                                Data.loadData(currentContext)
+                                MainActivitySingleton.nativePlay(width, height, Data.isOD(), Data.isDS())
+                                isSurfaceFinalized = false
+                            } catch (e: Exception) {
+                                Log.e("ZoomableTextureView", "Surface init error", e)
+                            }
+                        }
+
+                        override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+                        override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+                            try {
+                                MemoryManager.unregisterSurface(Surface(surface))
+                                safelyFinalizeSurface()
+                            } catch (e: Exception) {
+                                Log.e("ZoomableTextureView", "Surface destroy error", e)
+                            }
+                            return true
+                        }
+
+                        override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
+//                            overlaySurfaceView?.holder?.let {
+//                                drawOverlay(it, pointState.value, viewSize.width, viewSize.height)
+//                            }
+                        }
+                    }
+                    textureView = this
+                }
+            },
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = animatedScale.value
+                    scaleY = animatedScale.value
+                    translationX = animatedOffset.value.x
+                    translationY = animatedOffset.value.y
+                }
+                .fillMaxSize()
+        )
+
+
+//        Canvas(
+//            modifier = Modifier
+//                .graphicsLayer {
+//                    scaleX = animatedScale.value
+//                    scaleY = animatedScale.value
+//                    translationX = animatedOffset.value.x
+//                    translationY = animatedOffset.value.y
+//                }
+//                .fillMaxSize()
+//        ) {
+//            val labels = pointState.value.labels
+//            val width = size.width
+//            val height = size.height
+//
+//            val paint = Paint().apply {
+//                style = android.graphics.Paint.Style.STROKE
+//                strokeWidth = 6f
+//                color = android.graphics.Color.RED
+//                isAntiAlias = true
+//            }
+//
+//            val textPaint = Paint().apply {
+//                style = android.graphics.Paint.Style.FILL
+//                textSize = 48f
+//                color = android.graphics.Color.RED
+//                isAntiAlias = true
+//            }
+//
+//            for (i in labels.indices) {
+//                val labelIndex = labels[i]
+//                val label = if (Data.getMODEL() == 0) COCO_LABELS[labelIndex] else BOAT_LABELS[labelIndex]
+//
+//                val x = pointState.value.pointXs[i] * width / 1920f
+//                val y = pointState.value.pointYs[i] * height / 1080f
+//                val w = pointState.value.pointWs[i] * width / 1920f
+//                val h = pointState.value.pointHs[i] * height / 1080f
+//
+//                val left = x
+//                val top = y
+//                val right = x + w
+//                val bottom = y + h
+//
+//                val depThresh = pointState.value.depThres.getOrNull(i)
+//                val isDanger = depThresh != null && depThresh > Data.getDsThreshold()
+//
+//                paint.color = if (isDanger) android.graphics.Color.RED else android.graphics.Color.YELLOW
+//                textPaint.color = paint.color
+//
+//                drawRect(
+//                    topLeft = Offset(left, top),
+//                    size = Size(w, h),
+//                    color = Color(paint.color),
+//                    style = Stroke(width = paint.strokeWidth)
+//                )
+//
+//                drawContext.canvas.nativeCanvas.drawText(label, left + 8f, top - 12f, textPaint)
+//            }
+//        }
+
+
+
+        // --- Overlay Layer (SurfaceView) ---
+//        AndroidView(
+//            factory = { context ->
+//                SurfaceView(context).apply {
+//                    setZOrderOnTop(true)
+//                    holder.setFormat(PixelFormat.TRANSPARENT)
+//                    overlaySurfaceView = this
+//                }
+//            },
+//            modifier = Modifier
+//                .graphicsLayer {
+//                    scaleX = animatedScale.value
+//                    scaleY = animatedScale.value
+//                    translationX = animatedOffset.value.x
+//                    translationY = animatedOffset.value.y
+//                }
+//                .fillMaxSize()
+//        )
+
+//        LaunchedEffect(pointState.value) {
+//            overlaySurfaceView?.holder?.let {
+//                drawOverlay(it, pointState.value, viewSize.width, viewSize.height)
+//            }
+//        }
+    }
+}
+
+fun drawOverlay1(
+    holder: SurfaceHolder,
+    pointState: OverlayPoints,
+    viewWidth: Int,
+    viewHeight: Int
+) {
+    val canvas = holder.lockCanvas() ?: return
+    try {
+        canvas.drawColor(android.graphics.Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+        val paint = Paint().apply {
+            color = android.graphics.Color.RED
+            style = Paint.Style.FILL
+            textSize = 50f
+            isAntiAlias = true
+        }
+
+        val labelList = pointState.labels
+        val size = labelList.size
+
+        for (i in 0 until size) {
+            val label = if (Data.getMODEL() == 0) COCO_LABELS[labelList[i]] else BOAT_LABELS[labelList[i]]
+
+            val x = pointState.pointXs[i] * viewWidth / 1920f
+            val y = pointState.pointYs[i] * viewHeight / 1080f
+            val w = pointState.pointWs[i] * viewWidth / 1920f
+            val h = pointState.pointHs[i] * viewHeight / 1080f
+
+            val centerX = x + w / 2f
+            val centerY = y + h / 2f
+            val textOffsetX = centerX + 40f
+            val textOffsetY = centerY
+
+            canvas.drawCircle(centerX, centerY, 20f, paint)
+            canvas.drawText(label, textOffsetX, textOffsetY, paint)
+        }
+    } catch (e: Exception) {
+        Log.e("OverlayDraw", "Error drawing overlay", e)
+    } finally {
+        holder.unlockCanvasAndPost(canvas)
+    }
+}
+
+fun drawOverlay(
+    holder: SurfaceHolder,
+    pointState: OverlayPoints,
+    viewWidth: Int,
+    viewHeight: Int
+) {
+    val canvas = holder.lockCanvas() ?: return
+    try {
+        canvas.drawColor(android.graphics.Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+
+        val boxPaint = Paint().apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 6f
+            color = android.graphics.Color.RED
+            isAntiAlias = true
+        }
+
+        val textPaint = Paint().apply {
+            style = Paint.Style.FILL
+            textSize = 48f
+            color = android.graphics.Color.RED
+            isAntiAlias = true
+        }
+
+        val labelSize = pointState.labels.size
+        for (index in 0 until labelSize) {
+            val labelIndex = pointState.labels[index]
+            val label = if (Data.getMODEL() == 0) COCO_LABELS[labelIndex] else BOAT_LABELS[labelIndex]
+
+            // Scale detection coordinates from model space to screen space
+            val x = pointState.pointXs[index] * viewWidth / 1920f
+            val y = pointState.pointYs[index] * viewHeight / 1080f
+            val w = pointState.pointWs[index] * viewWidth / 1920f
+            val h = pointState.pointHs[index] * viewHeight / 1080f
+
+            val left = x
+            val top = y
+            val right = x + w
+            val bottom = y + h
+
+            // Optional: color based on depth threshold
+            val depThresh = pointState.depThres.getOrNull(index)
+            val isDanger = depThresh != null && depThresh > Data.getDsThreshold()
+
+            boxPaint.color = if (isDanger) android.graphics.Color.RED else android.graphics.Color.YELLOW
+            textPaint.color = boxPaint.color
+
+            // Draw the bounding box
+            canvas.drawRect(left, top, right, bottom, boxPaint)
+
+            // Draw the label just above the top-left corner of the box
+            canvas.drawText(label, left + 8f, top - 12f, textPaint)
+        }
+
+    } catch (e: Exception) {
+        Log.e("OverlayDraw", "Error drawing overlay", e)
+    } finally {
+        holder.unlockCanvasAndPost(canvas)
     }
 }
 

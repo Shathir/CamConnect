@@ -27,8 +27,8 @@ object MainActivitySingleton {
         mainActivity?.nativeFinalize()
     }
 
-    fun nativePlay(width: Int, height: Int) {
-        mainActivity?.nativePlay(width, height)
+    fun nativePlay(width: Int, height: Int, od: Boolean, ds: Boolean) {
+        mainActivity?.nativePlay(width, height, od, ds)
     }
 
     fun nativePause() {
@@ -68,7 +68,7 @@ object MainActivitySingleton {
 //            return Pair(totalMemory.toLong(), availableMemoery.toLong())
 //        }
 //        else {
-            return Pair(0,0)
+        return Pair(0,0)
 //        }
     }
 

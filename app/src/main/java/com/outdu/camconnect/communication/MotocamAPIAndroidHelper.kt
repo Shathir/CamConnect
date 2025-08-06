@@ -5,6 +5,32 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.net.InetAddress
 
+
+
+data class HealthStatus(
+    val streamer: Boolean,
+    val rtsps: Boolean,
+    val portableRtc: Boolean,
+    val cpuUsage: Int,
+    val memoryUsage: Int,
+    val ispTemp: Int,
+    val irTemp: Int,
+    val sensorTemp: Int = -1
+)
+
+//data class HealthStatus(
+//    val rtsps: Boolean,
+//    val portableRtc: Boolean,
+//    val cpuUsage: Int,
+//    val memoryUsage: Int,
+//    val ispTemperature: Int,
+//    val irTemperature: Int,
+//    val sensorTemperature: Int = -1 // fallback for unavailable
+//)
+
+
+
+
 object MotocamAPIAndroidHelper {
 
     private const val TAG = "MotocamAPIAndroidHelper"
@@ -440,6 +466,23 @@ object MotocamAPIAndroidHelper {
             }
         }
     }
+
+
+    fun getHealthStatusAsync(
+        scope: CoroutineScope,
+        callback: (HealthStatus?, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val status = MotocamAPIHelperWrapper.getHealthStatus()
+                callback(status, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "getHealthStatusAsync failed", e)
+                callback(null, e.message)
+            }
+        }
+    }
+
 
 
 }

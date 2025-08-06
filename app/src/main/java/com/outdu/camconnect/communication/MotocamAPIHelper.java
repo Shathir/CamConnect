@@ -119,16 +119,44 @@ public class MotocamAPIHelper {
         }
     };
 
+//    public enum SystemSubCommands {
+//        SHUTDOWN(1);
+//        private final int val;
+//        SystemSubCommands(int i) {
+//            this.val = i;
+//        }
+//        public int getVal() {
+//            return this.val;
+//        }
+//    };
+
     public enum SystemSubCommands {
-        SHUTDOWN(1);
+        // GET Commands
+        CAMERA_NAME(1),
+        FIRMWARE(2),
+        MAC_ADDRESS(3),
+        LOGIN_PIN(4),
+        OTA_STATUS(5),
+        HEALTH_CHECK(6),
+
+        // SET Commands
+        SET_CAMERA_NAME(1),
+        SET_LOGIN_PIN(2),
+        FACTORY_RESET(3),
+        SHUTDOWN(4),
+        OTA_UPDATE(5);
+
         private final int val;
-        SystemSubCommands(int i) {
-            this.val = i;
+
+        SystemSubCommands(int val) {
+            this.val = val;
         }
+
         public int getVal() {
-            return this.val;
+            return val;
         }
-    };
+    }
+
 
     //Config seq hard coded in getConfigCmd
     public enum ConfigProperties {
@@ -1556,4 +1584,51 @@ public class MotocamAPIHelper {
             e.printStackTrace();
         }
     }*/
+
+
+    public static int[] getHealthCheckCmd() {
+        int[] cmd = new int[5];
+        cmd[0] = Header.GET.getVal();                  // 0x02
+        cmd[1] = Commands.SYSTEM.getVal();             // 0x06
+        cmd[2] = SystemSubCommands.HEALTH_CHECK.getVal(); // 0x06
+        cmd[3] = 0; // Data length = 0
+//        cmd[4] = 0; // CRC will be computed before send
+        return cmd;
+    }
+
+    public static HealthStatus parseHealthCheckResponse(int[] response, int length) throws Exception {
+        // Validate packet length
+        if (length < 14)
+            throw new Exception("Incomplete health check response. Expected 13, got " + length);
+
+        // Validate header
+        if (response[0] != Header.RESPONSE.getVal())
+            throw new Exception("Invalid header: " + response[0]);
+
+        // Validate command & sub-command
+        if (response[1] != Commands.SYSTEM.getVal() || response[2] != SystemSubCommands.HEALTH_CHECK.getVal())
+            throw new Exception("Command mismatch");
+
+        // Check success flag
+        if (response[4] != 0)
+            throw new Exception("Health check failed");
+
+        // Parse data
+        return new HealthStatus(
+                response[5] == 1,    // rtsps
+                response[6] == 1,    // portableRtc
+                response[7] == 1,         // CPU %
+                response[8],         // Memory %
+                response[9],         // ISP Temp
+                response[10],        // IR Temp
+                response[11],
+                response[12]
+        );
+    }
+
+
+
+
+
+
 }
