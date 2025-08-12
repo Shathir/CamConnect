@@ -21,6 +21,7 @@ playServicesMaps = "19.2.0"
 appcompatResources = "1.7.0"
 window = "1.4.0"
 lifecycleRuntimeComposeAndroid = "2.9.1"
+appcompat = "1.7.1"
 
 [libraries]
 android-sdk = { module = "org.maplibre.gl:android-sdk", version.ref = "androidSdk" }
@@ -51,6 +52,7 @@ play-services-maps = { module = "com.google.android.gms:play-services-maps", ver
 androidx-appcompat-resources = { group = "androidx.appcompat", name = "appcompat-resources", version.ref = "appcompatResources" }
 androidx-window = { group = "androidx.window", name = "window", version.ref = "window" }
 androidx-lifecycle-runtime-compose-android = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose-android", version.ref = "lifecycleRuntimeComposeAndroid" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

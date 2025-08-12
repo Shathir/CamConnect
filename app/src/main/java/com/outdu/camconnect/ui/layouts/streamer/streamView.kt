@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 import com.outdu.camconnect.OverlayPoints
 import com.outdu.camconnect.ui.modelLabels.BOAT_LABELS
 import com.outdu.camconnect.ui.modelLabels.COCO_LABELS
+import com.outdu.camconnect.communication.CameraConfigurationManager
 
 @Composable
 fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
@@ -108,18 +109,23 @@ fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
                             ) {
                                 try {
                                     Log.d("Gstreamer MainActivity", "Loading Data")
-                                    Log.d("Gstreamer MainActivity", Data.isOD().toString())
+                                    Log.d("Gstreamer MainActivity", CameraConfigurationManager.isObjectDetectionEnabled().toString())
                                     Log.d(
                                         "GStreamer MainActivity",
                                         "Surface changed to format " + format + " width "
                                                 + width + " height " + height
                                     )
-                                    Log.i("Data values : ", Data.isOD().toString())
+                                    Log.i("Data values : ", CameraConfigurationManager.isObjectDetectionEnabled().toString())
                                     MemoryManager.registerSurface(holder.surface)
                                     MainActivitySingleton.nativeSurfaceInit(holder.surface)
                                     val recording_path = MainActivitySingleton.getRecordingPath()
                                     Log.i("Gstreamer MainActivity", "Playing Stream")
-                                    MainActivitySingleton.nativePlay(width = width, height = height, od = Data.isOD(), ds = Data.isDS())
+                                    MainActivitySingleton.nativePlay(
+                                        width = width, 
+                                        height = height, 
+                                        od = CameraConfigurationManager.isObjectDetectionEnabled(), 
+                                        ds = CameraConfigurationManager.isDepthSensingEnabled(), CameraConfigurationManager.isFarDetectionEnabled()
+                                    )
                                 } catch (e: Exception) {
                                     Log.e("VideoSurfaceView", "Surface changed error", e)
                                 }
@@ -308,7 +314,7 @@ fun ZoomableVideoTextureView1(viewModel: AppViewModel, currentContext: Context, 
                                 val s = Surface(surface)
                                 MemoryManager.registerSurface(s)
                                 MainActivitySingleton.nativeSurfaceInit(s)
-                                MainActivitySingleton.nativePlay(width, height, Data.isOD(), Data.isDS())
+                                MainActivitySingleton.nativePlay(width, height, CameraConfigurationManager.isObjectDetectionEnabled(), CameraConfigurationManager.isDepthSensingEnabled(), CameraConfigurationManager.isFarDetectionEnabled())
                                 isSurfaceFinalized = false
                             } catch (e: Exception) {
                                 Log.e("ZoomableTextureView", "Surface init error", e)
@@ -465,8 +471,15 @@ fun ZoomableVideoTextureView(
                                 val s = Surface(surface)
                                 MemoryManager.registerSurface(s)
                                 MainActivitySingleton.nativeSurfaceInit(s)
-                                Data.loadData(currentContext)
-                                MainActivitySingleton.nativePlay(width, height, Data.isOD(), Data.isDS())
+                                // Load configuration synchronously for immediate use
+                                CameraConfigurationManager.loadConfiguration(currentContext)
+                                MainActivitySingleton.nativePlay(
+                                    width, 
+                                    height, 
+                                    CameraConfigurationManager.isObjectDetectionEnabled(), 
+                                    CameraConfigurationManager.isDepthSensingEnabled(),
+                                    CameraConfigurationManager.isFarDetectionEnabled()
+                                )
                                 isSurfaceFinalized = false
                             } catch (e: Exception) {
                                 Log.e("ZoomableTextureView", "Surface init error", e)
@@ -566,29 +579,31 @@ fun ZoomableVideoTextureView(
 
 
         // --- Overlay Layer (SurfaceView) ---
-//        AndroidView(
-//            factory = { context ->
-//                SurfaceView(context).apply {
-//                    setZOrderOnTop(true)
-//                    holder.setFormat(PixelFormat.TRANSPARENT)
-//                    overlaySurfaceView = this
-//                }
-//            },
-//            modifier = Modifier
-//                .graphicsLayer {
-//                    scaleX = animatedScale.value
-//                    scaleY = animatedScale.value
-//                    translationX = animatedOffset.value.x
-//                    translationY = animatedOffset.value.y
-//                }
-//                .fillMaxSize()
-//        )
+        AndroidView(
+            factory = { context ->
+                SurfaceView(context).apply {
+                    // Use setZOrderMediaOverlay instead of setZOrderOnTop
+                    // This makes the overlay appear above the video but below other UI elements
+                    setZOrderOnTop(true)
+                    holder.setFormat(PixelFormat.TRANSPARENT)
+                    overlaySurfaceView = this
+                }
+            },
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = animatedScale.value
+                    scaleY = animatedScale.value
+                    translationX = animatedOffset.value.x
+                    translationY = animatedOffset.value.y
+                }
+                .fillMaxSize()
+        )
 
-//        LaunchedEffect(pointState.value) {
-//            overlaySurfaceView?.holder?.let {
-//                drawOverlay(it, pointState.value, viewSize.width, viewSize.height)
-//            }
-//        }
+        LaunchedEffect(pointState.value) {
+            overlaySurfaceView?.holder?.let {
+                drawOverlay(it, pointState.value, viewSize.width, viewSize.height)
+            }
+        }
     }
 }
 
@@ -612,7 +627,7 @@ fun drawOverlay1(
         val size = labelList.size
 
         for (i in 0 until size) {
-            val label = if (Data.getMODEL() == 0) COCO_LABELS[labelList[i]] else BOAT_LABELS[labelList[i]]
+            val label = if (CameraConfigurationManager.getModelVersion() == 0) COCO_LABELS[labelList[i]] else BOAT_LABELS[labelList[i]]
 
             val x = pointState.pointXs[i] * viewWidth / 1920f
             val y = pointState.pointYs[i] * viewHeight / 1080f
@@ -661,7 +676,7 @@ fun drawOverlay(
         val labelSize = pointState.labels.size
         for (index in 0 until labelSize) {
             val labelIndex = pointState.labels[index]
-            val label = if (Data.getMODEL() == 0) COCO_LABELS[labelIndex] else BOAT_LABELS[labelIndex]
+            val label = if (CameraConfigurationManager.getModelVersion() == 0) BOAT_LABELS[labelIndex] else BOAT_LABELS[labelIndex]
 
             // Scale detection coordinates from model space to screen space
             val x = pointState.pointXs[index] * viewWidth / 1920f
@@ -676,7 +691,7 @@ fun drawOverlay(
 
             // Optional: color based on depth threshold
             val depThresh = pointState.depThres.getOrNull(index)
-            val isDanger = depThresh != null && depThresh > Data.getDsThreshold()
+            val isDanger = depThresh != null && depThresh > CameraConfigurationManager.getDepthSensingThreshold()
 
             boxPaint.color = if (isDanger) android.graphics.Color.RED else android.graphics.Color.YELLOW
             textPaint.color = boxPaint.color

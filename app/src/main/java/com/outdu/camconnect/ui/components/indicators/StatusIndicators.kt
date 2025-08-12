@@ -8,7 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,7 +24,6 @@ import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
 import com.outdu.camconnect.R
-import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -45,6 +45,10 @@ import androidx.compose.ui.layout.VerticalAlignmentLine
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
+import android.util.Log
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.delay
 
 
 /**
@@ -199,7 +203,8 @@ fun BatteryIndicator(
 fun WifiIndicator(
     isConnected: Boolean = true, // Default to true, will be updated by receiver
     signalStrength: Int = 3, // 0-3, default to max
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPermissionRequest: (() -> Unit)? = null // Callback to request permissions
 ) {
     val context = LocalContext.current
     var currentIsConnected by remember { mutableStateOf(isConnected) }
@@ -207,90 +212,137 @@ fun WifiIndicator(
     val deviceType = rememberDeviceType()
 
     // Check if we have location permissions (required for detailed WiFi info on Android 8.1+)
-    val hasLocationPermission = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true // Location permission not required for older versions
+    // Use derivedStateOf to react to permission changes
+    val hasLocationPermission by remember {
+        derivedStateOf {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true // Location permission not required for older versions
+            }
         }
     }
-    
-    DisposableEffect(context) {
+
+    // Simplified WiFi connectivity check
+    fun checkWifiConnectivity(): Pair<Boolean, Int> {
+        val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        
+        Log.d("WifiIndicator", "Checking WiFi connectivity. HasLocationPermission: $hasLocationPermission")
+        
+        // First check if WiFi is enabled
+        if (wifiManager?.isWifiEnabled != true) {
+            Log.d("WifiIndicator", "WiFi is not enabled")
+            return Pair(false, 0)
+        }
+        
+        var isConnected = false
+        var signalStrength = 2 // Default signal strength
+        
+        // Try to get detailed WiFi info if we have permissions
+        if (hasLocationPermission) {
+            try {
+                wifiManager.connectionInfo?.let { wifiInfo ->
+                    isConnected = wifiInfo.networkId != -1
+                    Log.d("WifiIndicator", "WiFi networkId: ${wifiInfo.networkId}, SSID: ${wifiInfo.ssid}")
+                    
+                    if (isConnected) {
+                        val rssi = wifiInfo.rssi
+                        signalStrength = when {
+                            rssi >= -50 -> 3  // Excellent signal
+                            rssi >= -60 -> 2  // Good signal
+                            rssi >= -70 -> 1  // Fair signal
+                            else -> 0         // Poor signal
+                        }
+                        Log.d("WifiIndicator", "WiFi RSSI: $rssi, Signal strength: $signalStrength")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("WifiIndicator", "Error getting WiFi info with location permission", e)
+                isConnected = false
+            }
+        }
+        
+        // If we don't have location permission or couldn't get WiFi info, use connectivity manager
+        if (!isConnected) {
+            try {
+                isConnected = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val network = connectivityManager?.activeNetwork
+                    val capabilities = connectivityManager?.getNetworkCapabilities(network)
+                    val hasWifi = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+                    Log.d("WifiIndicator", "ConnectivityManager WiFi transport: $hasWifi")
+                    hasWifi
+                } else {
+                    @Suppress("DEPRECATION")
+                    val networkInfo = connectivityManager?.activeNetworkInfo
+                    val isWifiConnected = networkInfo?.type == ConnectivityManager.TYPE_WIFI && networkInfo.isConnected
+                    Log.d("WifiIndicator", "Legacy WiFi check: $isWifiConnected")
+                    isWifiConnected
+                }
+            } catch (e: Exception) {
+                Log.w("WifiIndicator", "Error checking connectivity", e)
+                isConnected = false
+            }
+        }
+        
+        Log.d("WifiIndicator", "Final WiFi status - Connected: $isConnected, Signal: $signalStrength")
+        return Pair(isConnected, signalStrength)
+    }
+
+    // Update WiFi status periodically and on network changes
+    LaunchedEffect(hasLocationPermission) {
+        // Initial check
+        val (connected, strength) = checkWifiConnectivity()
+        currentIsConnected = connected
+        currentSignalStrength = strength
+        
+        // Set up periodic checks every 5 seconds
+        while (true) {
+            kotlinx.coroutines.delay(5000)
+            val (newConnected, newStrength) = checkWifiConnectivity()
+            if (newConnected != currentIsConnected || newStrength != currentSignalStrength) {
+                currentIsConnected = newConnected
+                currentSignalStrength = newStrength
+            }
+        }
+    }
+
+    // Also listen to network changes via broadcast receiver
+    DisposableEffect(context, hasLocationPermission) {
         val wifiReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                when (intent?.action) {
-                    WifiManager.RSSI_CHANGED_ACTION -> {
-                        val wifiManager = context?.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-                        
-                        // Only access WiFi info if we have permissions
-                        if (hasLocationPermission) {
-                            wifiManager?.connectionInfo?.let { wifiInfo ->
-                                // Check if WiFi is actually connected
-                                currentIsConnected = wifiInfo.networkId != -1
-                                
-                                if (currentIsConnected) {
-                                    // Convert RSSI to signal strength (0-3)
-                                    val rssi = wifiInfo.rssi
-                                    currentSignalStrength = when {
-                                        rssi >= -50 -> 3  // Excellent signal
-                                        rssi >= -60 -> 2  // Good signal
-                                        rssi >= -70 -> 1  // Fair signal
-                                        else -> 0         // Poor signal
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    ConnectivityManager.CONNECTIVITY_ACTION -> {
-                        // Additional check for connectivity status
-                        val connectivityManager = context?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            val network = connectivityManager?.activeNetwork
-                            val capabilities = connectivityManager?.getNetworkCapabilities(network)
-                            currentIsConnected = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
-                        } else {
-                            @Suppress("DEPRECATION")
-                            val networkInfo = connectivityManager?.activeNetworkInfo
-                            currentIsConnected = networkInfo?.type == ConnectivityManager.TYPE_WIFI && networkInfo.isConnected
-                        }
-                    }
-                }
+                Log.d("WifiIndicator", "Received broadcast: ${intent?.action}")
+                val (connected, strength) = checkWifiConnectivity()
+                currentIsConnected = connected
+                currentSignalStrength = strength
             }
         }
         
-        // Register for WiFi RSSI changes and connectivity changes
         val filter = IntentFilter().apply {
-            addAction(WifiManager.RSSI_CHANGED_ACTION)
+            addAction(WifiManager.WIFI_STATE_CHANGED_ACTION)
+            addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION)
             addAction(ConnectivityManager.CONNECTIVITY_ACTION)
         }
-        context.registerReceiver(wifiReceiver, filter)
         
-        // Get initial WiFi status
-        if (hasLocationPermission) {
-            val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-            wifiManager?.connectionInfo?.let { wifiInfo ->
-                currentIsConnected = wifiInfo.networkId != -1
-                if (currentIsConnected) {
-                    val rssi = wifiInfo.rssi
-                    currentSignalStrength = when {
-                        rssi >= -50 -> 3
-                        rssi >= -60 -> 2
-                        rssi >= -70 -> 1
-                        else -> 0
-                    }
-                }
-            }
+        try {
+            context.registerReceiver(wifiReceiver, filter)
+        } catch (e: Exception) {
+            Log.w("WifiIndicator", "Error registering WiFi receiver", e)
         }
         
         onDispose {
-            context.unregisterReceiver(wifiReceiver)
+            try {
+                context.unregisterReceiver(wifiReceiver)
+            } catch (e: IllegalArgumentException) {
+                Log.w("WifiIndicator", "Receiver was already unregistered", e)
+            }
         }
     }
 
@@ -516,7 +568,8 @@ fun StatusBar(
     isLteConnected: Boolean,
     isOnline: Boolean,
     isAiEnabled: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onWifiPermissionRequest: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier
@@ -526,7 +579,10 @@ fun StatusBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         BatteryIndicator(batteryLevel = batteryLevel)
-        WifiIndicator(isConnected = isWifiConnected)
+        WifiIndicator(
+            isConnected = isWifiConnected, 
+            onPermissionRequest = onWifiPermissionRequest
+        )
         LteIndicator(isConnected = isLteConnected)
         OnlineIndicator(isOnline = isOnline)
         AiStatusIndicator(isEnabled = isAiEnabled)

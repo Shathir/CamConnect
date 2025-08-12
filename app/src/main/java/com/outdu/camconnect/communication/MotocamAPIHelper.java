@@ -20,7 +20,7 @@ public class MotocamAPIHelper {
     };
 
     public enum Commands {
-        STREAMING(1), NETWORK(2), CONFIG(3), IMAGE(4), AUDIO(5), SYSTEM(6);
+        STREAMING(1), NETWORK(2), CONFIG(3), IMAGE(4), AUDIO(5), SYSTEM(6), LiCENSE(7);
         private final int val;
         Commands(int i) {
             this.val = i;
@@ -86,7 +86,7 @@ public class MotocamAPIHelper {
     };
 
     public enum ConfigGetSubCommands {
-        Factory(4), Default(8), Current(12);
+        Factory(4), Default(8), Current(12), StreamingConfig(10);
         private final int val;
         ConfigGetSubCommands(int i) {
             this.val = i;
@@ -118,17 +118,6 @@ public class MotocamAPIHelper {
             return this.val;
         }
     };
-
-//    public enum SystemSubCommands {
-//        SHUTDOWN(1);
-//        private final int val;
-//        SystemSubCommands(int i) {
-//            this.val = i;
-//        }
-//        public int getVal() {
-//            return this.val;
-//        }
-//    };
 
     public enum SystemSubCommands {
         // GET Commands
@@ -623,8 +612,6 @@ public class MotocamAPIHelper {
     };
 
     public enum EncryptionType {
-//        Open_Network(1, "Open Network"), WEP(2, "WEP"), WPA_TKIP(3, "WPA+TKIP"), WPA_AES(4, "WPA+AES"),
-//        WPA2_TKIP(5, "WPA2+TKIP"), WPA2_AES(6, "WPA2+AES"), WPA2_TKIP_AES(7, "WPA2+TKIP/AES");
         WEP(1, "WEP"),WPA(2, "WPA"),WPA2(3, "WPA2");
         private final int val;
         private final String displayVal;
@@ -1625,10 +1612,4 @@ public class MotocamAPIHelper {
                 response[12]
         );
     }
-
-
-
-
-
-
 }

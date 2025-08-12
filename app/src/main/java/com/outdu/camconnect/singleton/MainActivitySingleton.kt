@@ -2,6 +2,7 @@ package com.outdu.camconnect.singleton
 
 import com.outdu.camconnect.MainActivity
 import com.outdu.camconnect.communication.Data
+import com.outdu.camconnect.communication.CameraConfigurationManager
 
 object MainActivitySingleton {
 
@@ -27,8 +28,8 @@ object MainActivitySingleton {
         mainActivity?.nativeFinalize()
     }
 
-    fun nativePlay(width: Int, height: Int, od: Boolean, ds: Boolean) {
-        mainActivity?.nativePlay(width, height, od, ds)
+    fun nativePlay(width: Int, height: Int, od: Boolean, ds: Boolean, far_roi: Boolean) {
+        mainActivity?.nativePlay(width, height, od, ds, far_roi)
     }
 
     fun nativePause() {
@@ -74,37 +75,37 @@ object MainActivitySingleton {
 
     fun getOD():Boolean
     {
-        return Data.isOD()
+        return CameraConfigurationManager.isObjectDetectionEnabled()
     }
 
     fun getDS():Boolean
     {
-        return  Data.isDS()
+        return CameraConfigurationManager.isDepthSensingEnabled()
     }
 
     fun getODFar():Boolean
     {
-        return Data.isFAR()
+        return CameraConfigurationManager.isFarDetectionEnabled()
     }
 
     fun getMODEL():Int
     {
-        return Data.getMODEL()
+        return CameraConfigurationManager.getModelVersion()
     }
 
-    fun setOD(od: Boolean) {
-        Data.setOD(mainActivity, od)
+    suspend fun setOD(od: Boolean): Result<Unit>? {
+        return mainActivity?.let { CameraConfigurationManager.setObjectDetectionEnabled(it, od) }
     }
 
-    fun setDS(ds: Boolean) {
-        Data.setDS(mainActivity, ds)
+    suspend fun setDS(ds: Boolean): Result<Unit>? {
+        return mainActivity?.let { CameraConfigurationManager.setDepthSensingEnabled(it, ds) }
     }
 
-    fun setFar(odFar: Boolean) {
-        Data.setFAR(mainActivity, odFar);
+    suspend fun setFar(odFar: Boolean): Result<Unit>? {
+        return mainActivity?.let { CameraConfigurationManager.setFarDetectionEnabled(it, odFar) }
     }
 
-    fun setMODEL(model: Int) {
-        Data.setMODEL(mainActivity, model)
+    suspend fun setMODEL(model: Int): Result<Unit>? {
+        return mainActivity?.let { CameraConfigurationManager.setModelVersion(it, model) }
     }
 }

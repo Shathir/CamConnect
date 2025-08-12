@@ -154,39 +154,39 @@ fun CameraLayout(
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 // Auto Day/Night
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Auto Low Light",
-                        style = TextStyle(
-                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
-                            lineHeight = 14.02.sp,
-                            fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                            fontWeight = FontWeight(500),
-                            color = if (isDarkTheme) Color.White else Color.Black
-                        )
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OptionButton(
-                            text = "ON",
-                            isSelected = autoDayNightEnabled,
-                            onClick = { viewModel.setAutoDayNight(true) },
-                            modifier = Modifier.weight(1f),
-                            iconVal = R.drawable.yes_line
-                        )
-                        OptionButton(
-                            text = "OFF",
-                            isSelected = !autoDayNightEnabled,
-                            onClick = { viewModel.setAutoDayNight(false) },
-                            modifier = Modifier.weight(1f),
-                            iconVal = R.drawable.no_line
-                        )
-                    }
-                }
+//                Column(
+//                    modifier = Modifier.weight(1f),
+//                    verticalArrangement = Arrangement.spacedBy(12.dp)
+//                ) {
+//                    Text(
+//                        text = "Auto Low Light",
+//                        style = TextStyle(
+//                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+//                            lineHeight = 14.02.sp,
+//                            fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+//                            fontWeight = FontWeight(500),
+//                            color = if (isDarkTheme) Color.White else Color.Black
+//                        )
+//                    )
+//                    Row(
+//                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+//                    ) {
+//                        OptionButton(
+//                            text = "ON",
+//                            isSelected = autoDayNightEnabled,
+//                            onClick = { viewModel.setAutoDayNight(true) },
+//                            modifier = Modifier.weight(1f),
+//                            iconVal = R.drawable.yes_line
+//                        )
+//                        OptionButton(
+//                            text = "OFF",
+//                            isSelected = !autoDayNightEnabled,
+//                            onClick = { viewModel.setAutoDayNight(false) },
+//                            modifier = Modifier.weight(1f),
+//                            iconVal = R.drawable.no_line
+//                        )
+//                    }
+//                }
 
                 // Display Modes
                 Column(

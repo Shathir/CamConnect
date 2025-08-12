@@ -72,12 +72,12 @@ static JNIEnv *attach_current_thread (void) {
 
     GST_DEBUG ("Attaching thread %p", g_thread_self ());
     args.version = JNI_VERSION_1_6;
-    args.name = NULL;
-    args.group = NULL;
+    args.name = nullptr;
+    args.group = nullptr;
 
     if (java_vm->AttachCurrentThread (&env, &args) < 0) {
         GST_ERROR ("Failed to attach current thread");
-        return NULL;
+        return nullptr;
     }
 
     return env;
@@ -93,7 +93,7 @@ static void detach_current_thread (void *env) {
 static JNIEnv *get_jni_env (void) {
     JNIEnv *env;
 
-    if ((env = (JNIEnv *)pthread_getspecific (current_jni_env)) == NULL) {
+    if ((env = (JNIEnv *)pthread_getspecific (current_jni_env)) == nullptr) {
         env = attach_current_thread ();
         pthread_setspecific (current_jni_env, env);
     }
@@ -104,7 +104,6 @@ static JNIEnv *get_jni_env (void) {
 /* Change the content of the UI's TextView */
 static void set_ui_message (const gchar *message, CustomData *data) {
     JNIEnv *env = get_jni_env ();
-    GST_DEBUG ("Setting message to: %s", message);
     jstring jmessage = env->NewStringUTF(message);
     env->CallVoidMethod (data->app, set_message_method_id, jmessage);
     if (env->ExceptionCheck ()) {
@@ -116,7 +115,6 @@ static void set_ui_message (const gchar *message, CustomData *data) {
 
 static void od_callback(const std::vector<Object> &objects, const std::vector<float> &dep_thres, CustomData *data) {
     JNIEnv *env = get_jni_env ();
-    GST_DEBUG ("od_callback");
 
     jintArray labelArray = (env)->NewIntArray(objects.size());
     jfloatArray probArray = (env)->NewFloatArray(objects.size());
@@ -133,7 +131,7 @@ static void od_callback(const std::vector<Object> &objects, const std::vector<fl
         jint point_w = objects[i].rect.width*1920;//points[i].y;
         jint point_h = objects[i].rect.height*1080;//points[i].y;
         jfloat depThres = 0.;
-        if(data->ds && dep_thres.size()>0){
+        if(data->ds && !dep_thres.empty()){
             depThres=dep_thres[i];
         }
 
@@ -144,7 +142,7 @@ static void od_callback(const std::vector<Object> &objects, const std::vector<fl
         (env)->SetIntArrayRegion(pointwArray, i, 1, &point_w);
         (env)->SetIntArrayRegion(pointhArray, i, 1, &point_h);
         (env)->SetFloatArrayRegion(probArray, i, 1, &prob);
-        if(data->ds && dep_thres.size()>0){
+        if(data->ds && !dep_thres.empty()){
             (env)->SetFloatArrayRegion(depThresArray, i, 1, &depThres);
         }
     }
@@ -207,7 +205,6 @@ static void state_changed_cb (GstBus *bus, GstMessage *msg, CustomData *data) {
 static void check_initialization_complete (CustomData *data) {
     JNIEnv *env = get_jni_env ();
     if (!data->initialized && data->native_window && data->main_loop) {
-        GST_DEBUG ("Initialization complete, notifying application. main_loop:%p", data->main_loop);
 
         /* The main loop is running and we received a native window, inform the sink about it */
         gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (data->video_sink), (guintptr)data->native_window);
@@ -227,11 +224,9 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
     /* Retrieve the buffer */
     g_signal_emit_by_name (sink, "pull-sample", &sample);
     if (sample) {
-        GST_DEBUG ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@got sample");
-        GST_DEBUG ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@got %d od", data->od);
         GstBuffer *buffer = gst_sample_get_buffer(sample);
-        GstCaps* caps = NULL;
-        const GstStructure* info = NULL;
+        GstCaps* caps = nullptr;
+        const GstStructure* info = nullptr;
         caps = gst_sample_get_caps (sample);
         info = gst_caps_get_structure (caps, 0);
         int sample_width = 0;
@@ -255,7 +250,6 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
             ncnn::MutexLockGuard g(lock);
 
             if (data->od && g_yolo) {
-                GST_DEBUG ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@got %d x %d bgr", sample_width, sample_height);
                 std::vector<float> dep_thres;
                 int midas_ret=1;
 //                dep_thres.reserve(objects.size());
@@ -274,7 +268,6 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                     obj.rect.height=obj.rect.height/bgr.rows;
                 }
 
-                GST_DEBUG ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@got %d objects", objects.size());
                 if(data->ds && g_midas) {
                     if(midas_ret==0) {
                         g_midas->updatePoints(points2F);
@@ -282,7 +275,6 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                     }
                 }
 
-                GST_DEBUG ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@got %d objects", objects.size());
                 od_callback(objects, dep_thres, data);
             }
         }
@@ -295,11 +287,10 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
 static void *app_function (void *userdata) {
     JavaVMAttachArgs args;
     GstBus *bus;
-    CustomData *data = (CustomData *)userdata;
+    auto *data = (CustomData *)userdata;
     GSource *bus_source;
-    GError *error = NULL;
+    GError *error = nullptr;
 
-    GST_DEBUG ("Creating pipeline in CustomData at %p", data);
 
     /* Create our own GLib Main Context and make it the default one */
     data->context = g_main_context_new ();
@@ -309,10 +300,23 @@ static void *app_function (void *userdata) {
     char rtsp_pipeline[1000];
     if(data->od) {
 
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
+        /*sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
                                "queue leaky=2 max-size-buffers=2 ! "
                                "glimagesink t. ! "
+                               "queue leaky=2 max-size-buffers=2 ! "
+                               "glcolorconvert ! gldownload ! "
+                               "video/x-raw,width=1920,height=1080,format=BGR ! "
+                               "videoscale ! "
+                               "video/x-raw,width=960,height=540,format=BGR ! "
+                               "appsink max-buffers=2 drop=true name=rtspappsink",
+                RTSP_URL, data->avc_decoder);*/
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
+                               "rtph264depay ! h264parse ! "
+                               "amcviddec-%s ! tee name=t ! "
+                               "queue leaky=2 max-size-buffers=2 ! "
+//                               "identity single-segment=true sync=true ! "
+                               "glimagesink sync=false async=false t. ! "
                                "queue leaky=2 max-size-buffers=2 ! "
                                "glcolorconvert ! gldownload ! "
                                "video/x-raw,width=1920,height=1080,format=BGR ! "
@@ -353,22 +357,21 @@ static void *app_function (void *userdata) {
         g_clear_error (&error);
         set_ui_message(message, data);
         g_free (message);
-        return NULL;
+        return nullptr;
     }
 
 //    GstElement *glsink= gst_bin_get_by_name(GST_BIN(data->pipeline), "glimgsink");
-//    g_object_set (glsink, "emit-signals", TRUE, NULL);
+//    g_object_set (glsink, "emit-signals", TRUE, nullptr);
 //    g_signal_connect (glsink, "client-draw", G_CALLBACK (drawCallback), &data);
 
     if(data->od) {
-        GST_DEBUG("Using object detection");
         data->app_sink = gst_bin_get_by_name(GST_BIN(data->pipeline), "rtspappsink");
         GstCaps *caps = gst_caps_new_simple("video/x-raw",
                                             "width", G_TYPE_INT, 960,
                                             "height", G_TYPE_INT, 540,
-                                            "format", G_TYPE_STRING, "BGR", NULL);
+                                            "format", G_TYPE_STRING, "BGR", nullptr);
         gst_app_sink_set_caps(GST_APP_SINK(data->app_sink), caps);
-        g_object_set (data->app_sink, "emit-signals", TRUE, NULL);
+        g_object_set (data->app_sink, "emit-signals", TRUE, nullptr);
         g_signal_connect (data->app_sink, "new-sample", G_CALLBACK (new_sample), data);
     }
 
@@ -377,23 +380,23 @@ static void *app_function (void *userdata) {
     gst_element_set_state(data->pipeline, GST_STATE_PLAYING);
 
     data->video_sink = gst_bin_get_by_interface(GST_BIN(data->pipeline), GST_TYPE_VIDEO_OVERLAY);
-//    g_object_set(data->video_sink, "sync", FALSE, NULL);
-//    g_object_set(data->video_sink, "max-buffers", 2, NULL);
-//    g_object_set(data->video_sink, "drop", TRUE, NULL);
+//    g_object_set(data->video_sink, "sync", FALSE, nullptr);
+//    g_object_set(data->video_sink, "max-buffers", 2, nullptr);
+//    g_object_set(data->video_sink, "drop", TRUE, nullptr);
     if (!data->video_sink) {
         GST_ERROR ("Could not retrieve video sink/app sink");
-        return NULL;
+        return nullptr;
     }
 
     if (data->od && !data->app_sink) {
         GST_ERROR ("Could not retrieve video sink/app sink");
-        return NULL;
+        return nullptr;
     }
 
     /* Instruct the bus to emit signals for each received message, and connect to the interesting signals */
     bus = gst_element_get_bus (data->pipeline);
     bus_source = gst_bus_create_watch (bus);
-    g_source_set_callback (bus_source, (GSourceFunc) gst_bus_async_signal_func, NULL, NULL);
+    g_source_set_callback (bus_source, (GSourceFunc) gst_bus_async_signal_func, nullptr, nullptr);
     g_source_attach (bus_source, data->context);
     g_source_unref (bus_source);
     g_signal_connect (G_OBJECT (bus), "message::error", (GCallback)error_cb, data);
@@ -408,7 +411,7 @@ static void *app_function (void *userdata) {
     g_main_loop_run (data->main_loop);
     GST_DEBUG ("Exited main loop");
     g_main_loop_unref (data->main_loop);
-    data->main_loop = NULL;
+    data->main_loop = nullptr;
 
     /* Free resources */
     g_main_context_pop_thread_default(data->context);
@@ -418,7 +421,7 @@ static void *app_function (void *userdata) {
     gst_object_unref (data->app_sink);
     gst_object_unref (data->pipeline);
 
-    return NULL;
+    return nullptr;
 }
 
 /*
@@ -434,57 +437,58 @@ static void gst_native_init (JNIEnv* env, jobject thiz, jstring avc_decoder) {
     GST_DEBUG ("Created CustomData at %p", data);
     data->app = env->NewGlobalRef (thiz);
     GST_DEBUG ("Created GlobalRef for app object at %p", data->app);
-    const char* charArray = env->GetStringUTFChars(avc_decoder, NULL);
-    if(charArray != NULL) {
+    const char* charArray = env->GetStringUTFChars(avc_decoder, nullptr);
+    if(charArray != nullptr) {
         sprintf(data->avc_decoder, "%s", charArray);
     }
-//    pthread_create (&gst_app_thread, NULL, &app_function, data);
+//    pthread_create (&gst_app_thread, nullptr, &app_function, data);
 }
 
 /* Quit the main loop, remove the native thread and free resources */
 static void gst_native_finalize (JNIEnv* env, jobject thiz) {
-    CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
+    auto *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     if (!data) return;
     GST_DEBUG ("Quitting main loop...");
 //    g_main_loop_quit (data->main_loop);
 //    GST_DEBUG ("Waiting for thread to finish...");
-//    pthread_join (gst_app_thread, NULL);
+//    pthread_join (gst_app_thread, nullptr);
     GST_DEBUG ("Deleting GlobalRef for app object at %p", data->app);
     env->DeleteGlobalRef (data->app);
     GST_DEBUG ("Freeing CustomData at %p", data);
     g_free (data);
-    SET_CUSTOM_DATA (env, thiz, custom_data_field_id, NULL);
+    SET_CUSTOM_DATA (env, thiz, custom_data_field_id, nullptr);
     GST_DEBUG ("Done finalizing");
 }
 
 /* Set pipeline to PLAYING state */
-static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height, jboolean od, jboolean ds) {
-    CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
+static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height, jboolean od, jboolean ds, jboolean far_roi) {
+    auto *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     data->width = width;
     data->height = height;
     data->od=od;
     data->ds = ds;
+    data->far_roi=far_roi;
     if(data->od && g_yolo) {
-        g_yolo->useFarROI(true);
+        g_yolo->useFarROI(far_roi);
     }
     if(data->ds && g_midas) {
-        g_midas->useFarROI(true);
+        g_midas->useFarROI(far_roi);
     }
     if (!data) return;
     GST_DEBUG ("Setting state to PLAYING");
-    pthread_create (&gst_app_thread, NULL, &app_function, data);
+    pthread_create (&gst_app_thread, nullptr, &app_function, data);
 //    gst_element_set_state (data->pipeline, GST_STATE_PLAYING);
 }
 
 /* Set pipeline to PAUSED state */
 static void gst_native_pause (JNIEnv* env, jobject thiz) {
-    CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
+    auto *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     if (!data) return;
     GST_DEBUG ("Setting state to PAUSED");
     gst_element_set_state (data->pipeline, GST_STATE_PAUSED);
     g_main_loop_quit (data->main_loop);
     GST_DEBUG ("Waiting for thread to finish...");
-    pthread_join (gst_app_thread, NULL);
+    pthread_join (gst_app_thread, nullptr);
 }
 
 /* Static class initializer: retrieve method and field IDs */
@@ -506,7 +510,7 @@ static jboolean gst_native_class_init (JNIEnv* env, jclass klass, jlong currentT
 }
 
 static void gst_native_surface_init (JNIEnv *env, jobject thiz, jobject surface) {
-    CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
+    auto *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     if (!data) return;
     ANativeWindow *new_native_window = ANativeWindow_fromSurface(env, surface);
     GST_DEBUG ("Received surface %p (native window %p)", surface, new_native_window);
@@ -531,17 +535,17 @@ static void gst_native_surface_init (JNIEnv *env, jobject thiz, jobject surface)
 }
 
 static void gst_native_surface_finalize (JNIEnv *env, jobject thiz) {
-    CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
+    auto *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     if (!data) return;
     GST_DEBUG ("Releasing Native Window %p", data->native_window);
 
     if (data->pipeline) {
-        gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (data->pipeline), (guintptr)NULL);
+        gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (data->pipeline), (guintptr)nullptr);
         gst_element_set_state (data->pipeline, GST_STATE_READY);
     }
 
     ANativeWindow_release (data->native_window);
-    data->native_window = NULL;
+    data->native_window = nullptr;
     data->initialized = FALSE;
 }
 
@@ -590,7 +594,7 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %s %s", modeltype, modelName);
     int target_size = target_sizes[(int)modelid];
     bool use_gpu = (int)cpugpu == 1;
-    cv::Rect rect(180,180,640,320);
+    cv::Rect rect(0,0,640,540);
 
     // reload
     {
@@ -600,20 +604,19 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
         {
             // no gpu
             delete g_yolo;
-            g_yolo = 0;
+            g_yolo = nullptr;
         }
         else
         {
             if (!g_yolo) {
                 g_yolo = new Yolo(rect);
             }
-
             g_yolo->load(mgr, modeltype, modelName, target_size, mean_vals[(int)modelid], norm_vals[(int)modelid], use_gpu);
         }
 
         if(midas) {
             g_midas=new Midas(rect);
-            g_midas->load(mgr, 1);
+            g_midas->load(mgr, true);
         }
     }
 
@@ -624,7 +627,7 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
 static JNINativeMethod native_methods[] = {
         { "nativeInit", "(Ljava/lang/String;)V", (void *) gst_native_init},
         { "nativeFinalize", "()V", (void *) gst_native_finalize},
-        { "nativePlay", "(IIZZ)V", (void *) gst_native_play},
+        { "nativePlay", "(IIZZZ)V", (void *) gst_native_play},
         { "nativePause", "()V", (void *) gst_native_pause},
         { "nativeSurfaceInit", "(Ljava/lang/Object;)V", (void *) gst_native_surface_init},
         { "nativeSurfaceFinalize", "()V", (void *) gst_native_surface_finalize},

@@ -22,17 +22,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.outdu.camconnect.R
 import com.outdu.camconnect.Viewmodels.AppViewModel
-import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
-import com.outdu.camconnect.communication.CameraConfigurationManager
-import com.outdu.camconnect.ui.components.settings.ControlTab
 import com.outdu.camconnect.ui.models.SystemStatus
 import com.outdu.camconnect.ui.theme.AppColors.AIButtonTextColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.DarkBackground3
-import com.outdu.camconnect.ui.theme.LightGray
-import com.outdu.camconnect.ui.theme.VeryDarkBackground
+import com.outdu.camconnect.ui.viewmodels.AiConfigurationViewModel
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 import kotlinx.coroutines.launch
@@ -139,24 +136,22 @@ fun AiLayout(
     val isDarkTheme = isSystemInDarkTheme()
     val deviceType = rememberDeviceType()
     val appViewModel: AppViewModel = viewModel()
-    // Initial values using mutable state to allow updates after applying changes
-    var initialObjectDetection by remember { mutableStateOf(CameraConfigurationManager.isObjectDetectionEnabled()) }
-    var initialFarDetection by remember { mutableStateOf(CameraConfigurationManager.isFarDetectionEnabled()) }
-    var initialMotionDetection by remember { mutableStateOf(CameraConfigurationManager.isDrowsinessDetectionEnabled()) }
+    val aiConfigViewModel: AiConfigurationViewModel = viewModel()
     
-    // Current state
-    var objectDetectionEnabled by remember { mutableStateOf(initialObjectDetection) }
-    var farDetectionEnabled by remember { mutableStateOf(initialFarDetection) }
-    var motionDetectionEnabled by remember { mutableStateOf(initialMotionDetection) }
+    // Collect UI state
+    val uiState by aiConfigViewModel.uiState.collectAsStateWithLifecycle()
     
-    // Check if there are actual changes from initial values
-    val hasChanges = remember(
-        objectDetectionEnabled, farDetectionEnabled, motionDetectionEnabled,
-        initialObjectDetection, initialFarDetection, initialMotionDetection
-    ) {
-        objectDetectionEnabled != initialObjectDetection ||
-        farDetectionEnabled != initialFarDetection ||
-        motionDetectionEnabled != initialMotionDetection
+    // Load configuration on first composition
+    LaunchedEffect(Unit) {
+        aiConfigViewModel.loadConfiguration(context)
+    }
+    
+    // Show error message if any
+    uiState.errorMessage?.let { error ->
+        LaunchedEffect(error) {
+            Log.e("AiLayout", error)
+            // You can show a Snackbar or other error UI here
+        }
     }
 
     // Function to save changes
@@ -165,32 +160,18 @@ fun AiLayout(
             try {
                 appViewModel.setPlaying(false)
             } catch (e: Exception) {
-                Log.e("AdaptiveStreamLayout", "Error stopping stream", e)
+                Log.e("AiLayout", "Error stopping stream", e)
             }
-            val config = CameraConfigurationManager.CameraConfig(
-                farDetectionEnabled = farDetectionEnabled,
-                objectDetectionEnabled = objectDetectionEnabled,
-                drowsinessDetectionEnabled = motionDetectionEnabled,
-                audioEnabled = CameraConfigurationManager.isAudioEnabled(),
-                modelVersion = CameraConfigurationManager.getModelVersion(),
-                drowsinessThreshold = CameraConfigurationManager.getDrowsinessThreshold()
-            )
-            val result = CameraConfigurationManager.updateConfiguration(context, config)
             
-            // Update initial values and system status after successful save
-            if (result.isSuccess) {
-                initialObjectDetection = objectDetectionEnabled
-                initialFarDetection = farDetectionEnabled
-                initialMotionDetection = motionDetectionEnabled
-                
+            aiConfigViewModel.saveConfiguration(context) {
                 // Update system status to reflect AI enabled state
-                onSystemStatusChange(systemStatus.copy(isAiEnabled = objectDetectionEnabled))
+                onSystemStatusChange(systemStatus.copy(isAiEnabled = uiState.od))
 
-                // Show success message
+                // Restart stream after successful save
                 try {
                     appViewModel.setPlaying(true)
                 } catch (e: Exception) {
-                    Log.e("AdaptiveStreamLayout", "Error starting stream", e)
+                    Log.e("AiLayout", "Error starting stream", e)
                 }
             }
         }
@@ -214,34 +195,63 @@ fun AiLayout(
             ) {
                 Button(
                     onClick = { saveChanges() },
-                    enabled = hasChanges,
+                    enabled = uiState.hasUnsavedChanges && !uiState.isLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         disabledContainerColor = Color(0xFF2C2C2C) // Dark theme disabled color
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(
-                        text = "Apply Changes",
-                        color = if (hasChanges) Color.White else Color(0xFF777777) // Gray text when disabled
-                    )
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "Apply Changes",
+                            color = if (uiState.hasUnsavedChanges) Color.White else Color(0xFF777777) // Gray text when disabled
+                        )
+                    }
                 }
             }
 
-//            Column()
-//            {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Object Detection
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Object Detection
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
+                    Text(
+                        text = "Object Detection",
+                        style = TextStyle(
+                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                            lineHeight = 14.02.sp,
+                            fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                            fontWeight = FontWeight(500),
+                            color = if (isDarkTheme) Color.White else Color.Black
+                        )
+                    )
+                    YesNoButtons(
+                        isEnabled = uiState.od,
+                        onValueChange = { aiConfigViewModel.updateOD(it) }
+                    )
+                }
+
+                // Far Detection
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if(uiState.od) {
                         Text(
-                            text = "Object Detection",
+                            text = "Detect Far Away Objects",
                             style = TextStyle(
                                 fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
                                 lineHeight = 14.02.sp,
@@ -251,70 +261,16 @@ fun AiLayout(
                             )
                         )
                         YesNoButtons(
-                            isEnabled = objectDetectionEnabled,
-                            onValueChange = { objectDetectionEnabled = it }
+                            isEnabled = uiState.far,
+                            onValueChange = { aiConfigViewModel.updateFAR(it) }
                         )
                     }
-
-
-                    // Far Detection
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        if(objectDetectionEnabled) {
-                            Text(
-                                text = "Detect Far Away Objects",
-                                style = TextStyle(
-                                    fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
-                                    lineHeight = 14.02.sp,
-                                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                                    fontWeight = FontWeight(500),
-                                    color = if (isDarkTheme) Color.White else Color.Black
-                                )
-                            )
-                            YesNoButtons(
-                                isEnabled = farDetectionEnabled,
-                                onValueChange = { farDetectionEnabled = it }
-                            )
-                        }
-                    }
-
-                    if(deviceType == DeviceType.TABLET)
-                    {
-                        Column(modifier = Modifier.weight(1f)){}
-                    }
-
                 }
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-//                )
-//                {
-//                    // Motion Detection
-//                    Column(
-//                        modifier = Modifier.weight(1f),
-//                        horizontalAlignment = Alignment.Start,
-//                        verticalArrangement = Arrangement.spacedBy(8.dp)
-//                    ) {
-//                        Text(
-//                            text = "Motion Detection",
-//                            style = TextStyle(
-//                                fontSize = 16.sp,
-//                                lineHeight = 14.02.sp,
-//                                fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-//                                fontWeight = FontWeight(500),
-//                                color = if (isDarkTheme) Color.White else Color.Black
-//                            )
-//                        )
-//                        YesNoButtons(
-//                            isEnabled = motionDetectionEnabled,
-//                            onValueChange = { motionDetectionEnabled = it }
-//                        )
-//                    }
-//                }
-//            }
+
+                if(deviceType == DeviceType.TABLET) {
+                    Column(modifier = Modifier.weight(1f)){}
+                }
+            }
         }
     }
 }

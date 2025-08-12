@@ -46,6 +46,7 @@ class SplashActivity : ComponentActivity() {
                     onSplashComplete = {
                         // Navigate to SetupActivity
                         startActivity(Intent(this@SplashActivity, SetupActivity::class.java))
+//                        startActivity(Intent(this@SplashActivity, MainActivity::class.java))
                         finish()
                         // Add custom transition animation
                         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)

@@ -148,7 +148,7 @@ static void generate_proposals(std::vector<GridAndStride> grid_strides, const nc
     }
     else
     {
-        num_class = 8;
+        num_class = 5;
     }
     const int reg_max_1 = 16;
 
@@ -285,8 +285,10 @@ int Yolo::detect_far(const cv::Mat& rgb, std::vector<Object>& objects, float pro
 {
     std::vector<Object> objects1;
     std::vector<Object> objects2;
-    cv::Rect roi1(_roi.x,_roi.y,target_size,target_size);
-    cv::Rect roi2(_roi.x+target_size,_roi.y,target_size,target_size);
+//    cv::Rect roi1(_roi.x,_roi.y,target_size,target_size);
+//    cv::Rect roi2(_roi.x+target_size,_roi.y,target_size,target_size);
+    cv::Rect roi1(0,0,_roi.width,_roi.height);
+    cv::Rect roi2(_roi.width,0,target_size,_roi.height);
     detectPart(rgb, roi1, objects1, prob_threshold, nms_threshold);
     detectPart(rgb, roi2, objects2, prob_threshold, nms_threshold);
     for(Object object:objects1) {

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow HTTP for local network IP cameras (common requirement) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Private IPv4 address ranges (RFC 1918) -->
+        <!-- Class A: 10.0.0.0 to 10.255.255.255 -->
+        <domain includeSubdomains="true">10.0.0.0/8</domain>
+        
+        <!-- Class B: 172.16.0.0 to 172.31.255.255 -->
+        <domain includeSubdomains="true">172.16.0.0/12</domain>
+        
+        <!-- Class C: 192.168.0.0 to 192.168.255.255 -->
+        <domain includeSubdomains="true">192.168.0.0/16</domain>
+        
+        <!-- Link-local addresses (169.254.0.0/16) -->
+        <domain includeSubdomains="true">169.254.0.0/16</domain>
+        
+        <!-- Localhost and loopback -->
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        
+        <!-- Common IP camera default addresses -->
+        <domain includeSubdomains="false">192.168.1.100</domain>
+        <domain includeSubdomains="false">192.168.0.100</domain>
+        <domain includeSubdomains="false">192.168.1.64</domain>
+    </domain-config>
+    
+    <!-- Default secure configuration for external domains -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust system certificates -->
+            <certificates src="system"/>
+            <!-- Optionally add custom CA certificates for enterprise environments -->
+            <!-- <certificates src="user"/> -->
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Debug configuration - remove in production -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config> 

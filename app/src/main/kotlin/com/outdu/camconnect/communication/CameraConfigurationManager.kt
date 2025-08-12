@@ -20,15 +20,15 @@ import kotlin.concurrent.write
 object CameraConfigurationManager {
     
     private const val TAG = "CameraConfigManager"
-    private const val CONFIG_FILE_NAME = "camera_config.properties"
+    private const val CONFIG_FILE_NAME = "config.properties"
     
     // Configuration properties with default values
     @Volatile private var farDetectionEnabled = false
-    @Volatile private var objectDetectionEnabled = true
-    @Volatile private var drowsinessDetectionEnabled = false
+    @Volatile private var objectDetectionEnabled = false
+    @Volatile private var depthSensingEnabled = false
     @Volatile private var audioEnabled = false
     @Volatile private var modelVersion = 0
-    @Volatile private var drowsinessThreshold = 0.8f
+    @Volatile private var depthSensingThreshold = 0.8f
     
     // Thread-safe read-write lock for configuration access
     private val configLock = ReentrantReadWriteLock()
@@ -39,10 +39,10 @@ object CameraConfigurationManager {
     data class CameraConfig(
         val farDetectionEnabled: Boolean,
         val objectDetectionEnabled: Boolean,
-        val drowsinessDetectionEnabled: Boolean,
+        val depthSensingEnabled: Boolean,
         val audioEnabled: Boolean,
         val modelVersion: Int,
-        val drowsinessThreshold: Float
+        val depthSensingThreshold: Float
     )
     
     /**
@@ -73,14 +73,14 @@ object CameraConfigurationManager {
             }
             
             configLock.write {
-                properties.getProperty("far_detection")?.toBooleanStrictOrNull()?.let { farDetectionEnabled = it }
-                properties.getProperty("object_detection")?.toBooleanStrictOrNull()?.let { objectDetectionEnabled = it }
-                properties.getProperty("drowsiness_detection")?.toBooleanStrictOrNull()?.let { drowsinessDetectionEnabled = it }
-                properties.getProperty("audio_enabled")?.toBooleanStrictOrNull()?.let { audioEnabled = it }
-                properties.getProperty("model_version")?.toIntOrNull()?.let { modelVersion = it }
-                properties.getProperty("drowsiness_threshold")?.toFloatOrNull()?.let { 
-                    if (it in 0.0..1.0) drowsinessThreshold = it 
-                    else throw ConfigurationException.ValidationException("Drowsiness threshold must be between 0.0 and 1.0")
+                properties.getProperty("far")?.toBooleanStrictOrNull()?.let { farDetectionEnabled = it }
+                properties.getProperty("od")?.toBooleanStrictOrNull()?.let { objectDetectionEnabled = it }
+                properties.getProperty("ds")?.toBooleanStrictOrNull()?.let { depthSensingEnabled = it }
+                properties.getProperty("audio")?.toBooleanStrictOrNull()?.let { audioEnabled = it }
+                properties.getProperty("model")?.toIntOrNull()?.let { modelVersion = it }
+                properties.getProperty("ds_threshold")?.toFloatOrNull()?.let { 
+                    if (it in 0.0..1.0) depthSensingThreshold = it 
+                    else throw ConfigurationException.ValidationException("Depth sensing threshold must be between 0.0 and 1.0")
                 }
             }
             
@@ -131,12 +131,12 @@ object CameraConfigurationManager {
             
             val properties = Properties()
             configLock.read {
-                properties.setProperty("far_detection", farDetectionEnabled.toString())
-                properties.setProperty("object_detection", objectDetectionEnabled.toString())
-                properties.setProperty("drowsiness_detection", drowsinessDetectionEnabled.toString())
-                properties.setProperty("audio_enabled", audioEnabled.toString())
-                properties.setProperty("model_version", modelVersion.toString())
-                properties.setProperty("drowsiness_threshold", drowsinessThreshold.toString())
+                properties.setProperty("far", farDetectionEnabled.toString())
+                properties.setProperty("od", objectDetectionEnabled.toString())
+                properties.setProperty("ds", depthSensingEnabled.toString())
+                properties.setProperty("audio", audioEnabled.toString())
+                properties.setProperty("model", modelVersion.toString())
+                properties.setProperty("ds_threshold", depthSensingThreshold.toString())
             }
             
             configFile.outputStream().use { outputStream ->
@@ -171,10 +171,10 @@ object CameraConfigurationManager {
         return saveConfigurationAsync(context)
     }
     
-    fun isDrowsinessDetectionEnabled(): Boolean = configLock.read { drowsinessDetectionEnabled }
+    fun isDepthSensingEnabled(): Boolean = configLock.read { depthSensingEnabled }
     
-    suspend fun setDrowsinessDetectionEnabled(context: Context, enabled: Boolean): Result<Unit> {
-        configLock.write { drowsinessDetectionEnabled = enabled }
+    suspend fun setDepthSensingEnabled(context: Context, enabled: Boolean): Result<Unit> {
+        configLock.write { depthSensingEnabled = enabled }
         return saveConfigurationAsync(context)
     }
     
@@ -195,13 +195,13 @@ object CameraConfigurationManager {
         return saveConfigurationAsync(context)
     }
     
-    fun getDrowsinessThreshold(): Float = configLock.read { drowsinessThreshold }
+    fun getDepthSensingThreshold(): Float = configLock.read { depthSensingThreshold }
     
-    suspend fun setDrowsinessThreshold(context: Context, threshold: Float): Result<Unit> {
+    suspend fun setDepthSensingThreshold(context: Context, threshold: Float): Result<Unit> {
         if (threshold !in 0.0..1.0) {
-            return Result.failure(ConfigurationException.ValidationException("Drowsiness threshold must be between 0.0 and 1.0"))
+            return Result.failure(ConfigurationException.ValidationException("Depth sensing threshold must be between 0.0 and 1.0"))
         }
-        configLock.write { drowsinessThreshold = threshold }
+        configLock.write { depthSensingThreshold = threshold }
         return saveConfigurationAsync(context)
     }
     
@@ -212,10 +212,10 @@ object CameraConfigurationManager {
         CameraConfig(
             farDetectionEnabled = farDetectionEnabled,
             objectDetectionEnabled = objectDetectionEnabled,
-            drowsinessDetectionEnabled = drowsinessDetectionEnabled,
+            depthSensingEnabled = depthSensingEnabled,
             audioEnabled = audioEnabled,
             modelVersion = modelVersion,
-            drowsinessThreshold = drowsinessThreshold
+            depthSensingThreshold = depthSensingThreshold
         )
     }
     
@@ -224,8 +224,8 @@ object CameraConfigurationManager {
      */
     suspend fun updateConfiguration(context: Context, config: CameraConfig): Result<Unit> {
         // Validate configuration
-        if (config.drowsinessThreshold !in 0.0..1.0) {
-            return Result.failure(ConfigurationException.ValidationException("Invalid drowsiness threshold"))
+        if (config.depthSensingThreshold !in 0.0..1.0) {
+            return Result.failure(ConfigurationException.ValidationException("Invalid depth sensing threshold"))
         }
         if (config.modelVersion < 0) {
             return Result.failure(ConfigurationException.ValidationException("Invalid model version"))
@@ -234,10 +234,10 @@ object CameraConfigurationManager {
         configLock.write {
             farDetectionEnabled = config.farDetectionEnabled
             objectDetectionEnabled = config.objectDetectionEnabled
-            drowsinessDetectionEnabled = config.drowsinessDetectionEnabled
+            depthSensingEnabled = config.depthSensingEnabled
             audioEnabled = config.audioEnabled
             modelVersion = config.modelVersion
-            drowsinessThreshold = config.drowsinessThreshold
+            depthSensingThreshold = config.depthSensingThreshold
         }
         
         return saveConfigurationAsync(context)
@@ -250,10 +250,10 @@ object CameraConfigurationManager {
         configLock.write {
             farDetectionEnabled = false
             objectDetectionEnabled = true
-            drowsinessDetectionEnabled = false
+            depthSensingEnabled = false
             audioEnabled = false
             modelVersion = 0
-            drowsinessThreshold = 0.8f
+            depthSensingThreshold = 0.8f
         }
         return saveConfigurationAsync(context)
     }
@@ -270,8 +270,8 @@ object CameraConfigurationManager {
     @Deprecated("Use isObjectDetectionEnabled() instead", ReplaceWith("isObjectDetectionEnabled()"))
     fun isOD(): Boolean = isObjectDetectionEnabled()
     
-    @Deprecated("Use isDrowsinessDetectionEnabled() instead", ReplaceWith("isDrowsinessDetectionEnabled()"))
-    fun isDS(): Boolean = isDrowsinessDetectionEnabled()
+    @Deprecated("Use isDepthSensingEnabled() instead", ReplaceWith("isDepthSensingEnabled()"))
+    fun isDS(): Boolean = isDepthSensingEnabled()
     
     @Deprecated("Use isAudioEnabled() instead", ReplaceWith("isAudioEnabled()"))
     fun isAUDIO(): Boolean = isAudioEnabled()
@@ -279,6 +279,6 @@ object CameraConfigurationManager {
     @Deprecated("Use getModelVersion() instead", ReplaceWith("getModelVersion()"))
     fun getMODEL(): Int = getModelVersion()
     
-    @Deprecated("Use getDrowsinessThreshold() instead", ReplaceWith("getDrowsinessThreshold()"))
-    fun getDsThreshold(): Float = getDrowsinessThreshold()
+    @Deprecated("Use getDepthSensingThreshold() instead", ReplaceWith("getDepthSensingThreshold()"))
+    fun getDsThreshold(): Float = getDepthSensingThreshold()
 } 

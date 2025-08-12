@@ -51,7 +51,15 @@ import com.outdu.camconnect.services.ScreenRecorderService.Companion.RECORD_CONF
 import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import android.app.Activity
+import android.media.MediaCodecInfo
+import androidx.annotation.RequiresApi
 import com.outdu.camconnect.communication.Data
+import com.outdu.camconnect.communication.CameraConfigurationManager
+import com.outdu.camconnect.utils.ConfigurationMigrationHelper
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import android.net.Uri
+import android.provider.Settings
 
 data class OverlayPoints(
     var labels: IntArray,
@@ -73,7 +81,8 @@ class MainActivity : ComponentActivity() {
         width: Int,
         height: Int,
         od: Boolean = false,
-        ds: Boolean = false
+        ds: Boolean = false,
+        far_roi: Boolean = false
     )
     external fun nativeInit(avcDecoder: String) // Initialize native code, build pipeline, etc.
     external fun nativePause() // Set pipeline to PAUSED
@@ -105,7 +114,7 @@ class MainActivity : ComponentActivity() {
     }
 
     fun loadODModel(modelId: Int) {
-        val retInit = nativeLoadOdModel(assets, 0,0, Data.isDS(), 0)
+        val retInit = nativeLoadOdModel(assets, 0,1, CameraConfigurationManager.isDepthSensingEnabled(), 1)
         if (!retInit) {
             Log.e("MainActivity", "yolov8ncnn loadModel failed")
             runOnUiThread {
@@ -168,19 +177,46 @@ class MainActivity : ComponentActivity() {
         val deniedPermissions = permissions.filterValues { !it }.keys
 
         if (deniedPermissions.isNotEmpty()) {
-            // Some permissions were denied
-            Toast.makeText(
-                this,
-                "Location permissions are required for detailed WiFi information",
-                Toast.LENGTH_LONG
-            ).show()
+            // Show explanation dialog for denied permissions
+            showPermissionExplanationDialog(deniedPermissions)
         }
+    }
+
+    private fun showPermissionExplanationDialog(deniedPermissions: Set<String>) {
+        val hasLocationPermissions = deniedPermissions.any { 
+            it == Manifest.permission.ACCESS_FINE_LOCATION || 
+            it == Manifest.permission.ACCESS_COARSE_LOCATION 
+        }
+        
+        if (hasLocationPermissions) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Location Permission Required")
+                .setMessage("Location permission is needed to display WiFi signal strength information. Without this permission, the WiFi indicator will still show connection status but not signal strength.\n\nYou can grant this permission later in the app settings.")
+                .setPositiveButton("Open Settings") { _, _ ->
+                    // Open app settings
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    val uri = Uri.fromParts("package", packageName, null)
+                    intent.data = uri
+                    startActivity(intent)
+                }
+                .setNegativeButton("Continue Without") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .setCancelable(true)
+                .show()
+        }
+    }
+
+    // Public function to request location permissions from UI
+    fun requestLocationPermissions() {
+        checkAndRequestPermissions()
     }
 
     var actualCodecName: String = ""
     private val viewModel: RecorderViewModel by viewModels()
     private val recordingViewModel: RecordingViewModel by viewModels()
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -198,6 +234,10 @@ class MainActivity : ComponentActivity() {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         val mediaCodecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+        val codecInfos: Array<MediaCodecInfo> = mediaCodecList.codecInfos
+        for (codecInfo in codecInfos) {
+            Log.i("CODECLISTS", codecInfo.name + codecInfo.isHardwareAccelerated)
+        }
         val codecName = mediaCodecList.findDecoderForFormat(
             MediaFormat.createVideoFormat(
                 "video/avc",
@@ -205,6 +245,7 @@ class MainActivity : ComponentActivity() {
                 1080
             )
         )
+        Log.i("CODECLISTS", "codecName is : " + codecName)
         actualCodecName = codecName.replace(".", "").lowercase(Locale.getDefault())
 
         super.onCreate(savedInstanceState)
@@ -235,17 +276,36 @@ class MainActivity : ComponentActivity() {
                             bottom = 8.dp
                         )
                 ) {
-//                    ScreenRecorderUI(LocalContext.current, viewModel)
                     AdaptiveStreamLayout(context = LocalContext.current, pointState = odPointsState)
+//                    OnvifScreen()
                 }
             }
         }
 
         nativeInit(actualCodecName)
-        Data.loadData(this)
+        
+        // Migrate old configuration if needed, then load current configuration
+        lifecycleScope.launch {
+            // First try to migrate from old Data.java format
+            ConfigurationMigrationHelper.migrateIfNeeded(this@MainActivity)
+            
+            // Then load the current configuration
+            val result = CameraConfigurationManager.loadConfigurationAsync(this@MainActivity)
+            result.fold(
+                onSuccess = { config ->
+                    Log.d("MainActivity", "Configuration loaded successfully")
+                    // Load OD model after configuration is loaded
+                    loadODModel(config.modelVersion)
+                },
+                onFailure = { exception ->
+                    Log.e("MainActivity", "Failed to load configuration", exception)
+                    // Load with default model version if configuration fails
+                    loadODModel(CameraConfigurationManager.getModelVersion())
+                }
+            )
+        }
+        
         MainActivitySingleton.setMainActivity(this)
-        loadODModel(Data.getMODEL())
-
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
