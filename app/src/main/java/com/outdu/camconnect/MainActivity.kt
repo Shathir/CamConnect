@@ -276,7 +276,14 @@ class MainActivity : ComponentActivity() {
                             bottom = 8.dp
                         )
                 ) {
-                    AdaptiveStreamLayout(context = LocalContext.current, pointState = odPointsState)
+                    AdaptiveStreamLayout(
+                        context = LocalContext.current, 
+                        pointState = odPointsState,
+                        onLogout = {
+                            // Handle logout - navigate back to SetupActivity
+                            handleLogout()
+                        }
+                    )
 //                    OnvifScreen()
                 }
             }
@@ -306,6 +313,49 @@ class MainActivity : ComponentActivity() {
         }
         
         MainActivitySingleton.setMainActivity(this)
+    }
+
+    /**
+     * Handle logout - clear session, cleanup resources, and navigate to SetupActivity
+     */
+    private fun handleLogout() {
+        Log.i("MainActivity", "Handling logout...")
+        
+        lifecycleScope.launch {
+            try {
+                // Stop streaming and cleanup native resources
+                try {
+                    nativePause()
+                    nativeSurfaceFinalize()
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Error cleaning up native resources", e)
+                }
+                
+                // Clear MainActivitySingleton reference
+                MainActivitySingleton.clearMainActivity()
+                
+                // Navigate to SetupActivity (login screen)
+                val intent = Intent(this@MainActivity, SetupActivity::class.java).apply {
+                    // Clear the task stack so user can't go back to MainActivity
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+                startActivity(intent)
+                
+                // Finish this activity
+                finish()
+                
+                Log.i("MainActivity", "Logout completed - navigated to SetupActivity")
+                
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error during logout", e)
+                // Still try to navigate even if cleanup fails
+                val intent = Intent(this@MainActivity, SetupActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+                startActivity(intent)
+                finish()
+            }
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

@@ -104,7 +104,8 @@ private fun LoadingOverlay(
 fun AdaptiveStreamLayout(
     modifier: Modifier = Modifier,
     context: Context,
-    pointState: MutableState<OverlayPoints>
+    pointState: MutableState<OverlayPoints>,
+    onLogout: () -> Unit = {}
 ) {
     // Layout state - persists across theme changes and recompositions
     var layoutMode by rememberSaveable { mutableStateOf(LayoutMode.MINIMAL_CONTROL) }
@@ -376,7 +377,8 @@ fun AdaptiveStreamLayout(
                     }
                 },
                 onSpeedUpdate = { speed -> currentSpeed = speed },
-                onSystemStatusChange = onSystemStatusChange
+                onSystemStatusChange = onSystemStatusChange,
+                onLogout = onLogout
             )
         }
     }
@@ -404,7 +406,8 @@ private fun AnimatedRightPane(
     onTabSelected: (ControlTab) -> Unit,
     onIconToggle: (String) -> Unit,
     onSpeedUpdate: (Float) -> Unit,
-    onSystemStatusChange: (SystemStatus) -> Unit
+    onSystemStatusChange: (SystemStatus) -> Unit,
+    onLogout: () -> Unit
 ) {
     Box(
         modifier = Modifier.fillMaxWidth(paneWeight)
@@ -462,7 +465,8 @@ private fun AnimatedRightPane(
                             onTabSelected = onTabSelected,
                             systemStatus = systemStatus,
                             onSystemStatusChange = onSystemStatusChange,
-                            onCollapseClick = { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) }
+                            onCollapseClick = { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) },
+                            onLogout = onLogout
                         )
                     }
                 }

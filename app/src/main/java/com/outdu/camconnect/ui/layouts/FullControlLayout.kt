@@ -46,6 +46,7 @@ import android.util.Log
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.ui.components.recording.RecordingTimer
+import com.outdu.camconnect.ui.components.settings.logout.LogoutLayout
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
@@ -63,12 +64,13 @@ fun SettingsControlLayout(
     onSystemStatusChange: (SystemStatus) -> Unit,
     systemStatus: SystemStatus,
     modifier: Modifier = Modifier,
-    onCollapseClick: () -> Unit
+    onCollapseClick: () -> Unit,
+    onLogout: () -> Unit = {} // Add callback for logout success
 ) {
     // Manage scroll state with proper cleanup
     val scrollState = rememberScrollState()
     val deviceType = rememberDeviceType()
-    
+    var isLogoutClicked by remember { mutableStateOf(false)}
     // Cleanup when component is disposed
     DisposableEffect(Unit) {
         Log.d("SettingsControlLayout", "Component created")
@@ -91,81 +93,105 @@ fun SettingsControlLayout(
         verticalArrangement = Arrangement.spacedBy(if(deviceType == DeviceType.TABLET)24.dp else 12.dp)
     ) {
 
-        // Row 2: Tab switcher
-        Row(
-            modifier = Modifier
-                .padding(start = 8.dp, end = 8.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        if(!isLogoutClicked) {
+            // Row 2: Tab switcher
+            Row(
+                modifier = Modifier
+                    .padding(start = 8.dp, end = 8.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
 
-            CustomizableButton(
-                config = ButtonConfig(
-                    id = "settings-screen",
-                    iconPlaceholder = R.drawable.sliders_horizontal.toString(),
-                    color = ButtonSelectedIconColor,
-                    text = "Camera",
-                    backgroundColor = ButtonSelectedBgColor,
-                    BorderColor = ButtonBorderColor,
-                    onClick = onCollapseClick
-                ),
-                modifier = Modifier,
-                isCompact = true,
-                showText = false
-            )
+                CustomizableButton(
+                    config = ButtonConfig(
+                        id = "settings-screen",
+                        iconPlaceholder = R.drawable.sliders_horizontal.toString(),
+                        color = ButtonSelectedIconColor,
+                        text = "Camera",
+                        backgroundColor = ButtonSelectedBgColor,
+                        BorderColor = ButtonBorderColor,
+                        onClick = onCollapseClick
+                    ),
+                    modifier = Modifier,
+                    isCompact = true,
+                    showText = false
+                )
 
-            ControlTabSwitcher(
-                selectedTab = selectedTab,
-                onTabSelected = onTabSelected,
-                modifier = Modifier.weight(1f)
-            )
+                ControlTabSwitcher(
+                    selectedTab = selectedTab,
+                    onTabSelected = onTabSelected,
+                    modifier = Modifier.weight(1f)
+                )
 
-            CustomizableButton(
-                config = ButtonConfig(
-                    id = "logout",
-                    iconPlaceholder = R.drawable.signout.toString(),
-                    color = Color.Red,
-                    text = "Camera",
-                    backgroundColor = ButtonBgColor,
-                    BorderColor = ButtonBorderColor,
-                    enabled = false
-                ),
-                modifier = Modifier,
-                isCompact = true,
-                showText = false
-            )
-        }
 
-        // Scrollable content with managed scroll state
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(if(deviceType == DeviceType.TABLET)20.dp else 12.dp)
-        ) {
-            // Tab content with proper keying for memory management
-            key(selectedTab) {
-                when (selectedTab) {
-                    ControlTab.CAMERA_CONTROL -> {
-                        // Using the new CameraLayout with ViewModel
-                        CameraLayout()
-                    }
+                CustomizableButton(
+                    config = ButtonConfig(
+                        id = "logout",
+                        iconPlaceholder = R.drawable.signout.toString(),
+                        color = Color.Red,
+                        text = "Logout",
+                        backgroundColor = ButtonBgColor,
+                        BorderColor = Color.Red,
+                        enabled = true, // Enable the logout button
+                        onClick = {
+                            isLogoutClicked = true
+                        }
+                    ),
+                    modifier = Modifier,
+                    isCompact = true,
+                    showText = false
+                )
+            }
 
-                    ControlTab.AI_CONTROL -> {
-                        // Device control content placeholder
-                        AiLayout(
-                            systemStatus = systemStatus,
-                            onSystemStatusChange = onSystemStatusChange
-                        )
-                    }
 
-                    ControlTab.LICENSE_CONTROL -> {
-                        LicenseLayout()
+            // Scrollable content with managed scroll state
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(scrollState)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(if (deviceType == DeviceType.TABLET) 20.dp else 12.dp)
+            ) {
+                // Tab content with proper keying for memory management
+                key(selectedTab) {
+                    when (selectedTab) {
+                        ControlTab.CAMERA_CONTROL -> {
+                            // Using the new CameraLayout with ViewModel
+                            CameraLayout()
+                        }
+
+                        ControlTab.AI_CONTROL -> {
+                            // Device control content placeholder
+                            AiLayout(
+                                systemStatus = systemStatus,
+                                onSystemStatusChange = onSystemStatusChange
+                            )
+                        }
+
+                        ControlTab.LICENSE_CONTROL -> {
+                            LicenseLayout()
+                        }
                     }
                 }
             }
+        }
+        else {
+            LogoutLayout(
+                onCancelClick = {
+                    isLogoutClicked = false
+                },
+                onLogoutSuccess = {
+                    // Clear memory and navigate to login
+                    try {
+                        MemoryManager.cleanupWeakReferences()
+                        System.gc() // Suggest garbage collection
+                    } catch (e: Exception) {
+                        Log.e("SettingsControlLayout", "Error during logout cleanup", e)
+                    }
+                    onLogout()
+                }
+            )
         }
     }
 }

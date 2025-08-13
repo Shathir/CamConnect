@@ -428,6 +428,72 @@ object SessionManager {
             }
         }
     }
+
+    /**
+     * Perform logout - clear session and notify server
+     * @return Result<Boolean> indicating success or failure
+     */
+    suspend fun logout(): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            Log.i(TAG, "Starting logout process")
+            
+            // Get current session token before clearing
+            val sessionToken = currentSessionToken
+            
+            // Clear local session first (even if server call fails)
+            clearSession()
+            resetAllAttemptCounters()
+            
+            // If we had a session token, notify server
+            if (sessionToken != null) {
+                try {
+                    performServerLogout(sessionToken)
+                    Log.i(TAG, "Server logout completed successfully")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Server logout failed, but local session cleared: ${e.message}")
+                    // Don't fail the logout if server call fails - local session is already cleared
+                }
+            }
+            
+            Log.i(TAG, "Logout completed successfully")
+            Result.success(true)
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Unexpected error during logout", e)
+            // Even if there's an error, ensure local session is cleared
+            clearSession()
+            resetAllAttemptCounters()
+            Result.failure(AuthenticationNetworkException("Logout error", e))
+        }
+    }
+    
+    /**
+     * Perform server-side logout API call
+     */
+    private suspend fun performServerLogout(sessionToken: String) {
+        val httpClient = HttpClient(CIO) {
+            engine {
+                requestTimeout = LOGIN_TIMEOUT_MS
+                endpoint {
+                    connectTimeout = LOGIN_TIMEOUT_MS
+                    connectAttempts = 1
+                }
+            }
+        }
+        
+        try {
+            val logoutEndpoint = LOGIN_ENDPOINT.replace("/login", "/logout")
+            val response = httpClient.post(logoutEndpoint) {
+                contentType(ContentType.Application.Json)
+                header("Cookie", "session=$sessionToken")
+            }
+            
+            Log.d(TAG, "Server logout response: ${response.status}")
+            
+        } finally {
+            httpClient.close()
+        }
+    }
 }
 
 /**
