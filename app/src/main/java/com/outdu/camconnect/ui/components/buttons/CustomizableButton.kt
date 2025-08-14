@@ -90,7 +90,7 @@ fun CustomizableButton(
                 .clip(RoundedCornerShape(if(deviceType == DeviceType.TABLET)20.dp else 14.dp))
                 .background(
                     if (config.enabled) config.backgroundColor 
-                    else config.backgroundColor.copy(alpha = 0.5f)
+                    else config.backgroundColor
                 )
                 .border(
                     width = if (isDarkTheme) 0.dp else 1.dp, // No border in dark theme

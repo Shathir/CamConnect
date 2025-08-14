@@ -48,6 +48,7 @@ import com.outdu.camconnect.utils.rememberDeviceType
 import android.util.Log
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import kotlinx.coroutines.delay
 
 
@@ -542,19 +543,19 @@ fun AiStatusIndicator(
 ) {
     val iconPainter = rememberVectorPainter(image = aiIcon(isEnabled))
     val deviceType = rememberDeviceType()
-//    Image(
-//        painter = painterResource(id = R.drawable.ai_line),
-//        contentDescription = "AI Indicator",
-//        modifier = modifier.size(14.dp),
-////        colorFilter = ColorFilter.tint(if(isEnabled) Color.Green else Color.Gray),
-//        contentScale = ContentScale.Fit
-//    )
     Image(
-        iconPainter,
-        contentDescription = "Ai Status Icon",
+        painter = painterResource(id = R.drawable.ai_line),
+        contentDescription = "AI Indicator",
         modifier = modifier.size(if(deviceType == DeviceType.TABLET) 24.dp else 16.dp),
+        colorFilter = ColorFilter.tint(if(isEnabled) StravionBlue else Color.Gray),
         contentScale = ContentScale.Fit
     )
+//    Image(
+//        iconPainter,
+//        contentDescription = "Ai Status Icon",
+//        modifier = modifier.size(if(deviceType == DeviceType.TABLET) 24.dp else 16.dp),
+//        contentScale = ContentScale.Fit
+//    )
 
 }
 

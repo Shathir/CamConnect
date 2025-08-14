@@ -1,6 +1,6 @@
 # Settings Layout Documentation
 
-![Full Layout](images/layout-full.png)
+![Full Layout](images/camera-controls-layout.png)
 
 ## Overview
 The Settings Layout (`FullControlLayout.kt`) provides comprehensive configuration and control capabilities through a tabbed interface. This layout is designed for in-depth device and camera configuration, offering full access to all system settings and advanced features.
@@ -21,11 +21,17 @@ The Settings Layout (`FullControlLayout.kt`) provides comprehensive configuratio
 - **ID**: `settings-screen`
 - **Function**: Returns to the camera control interface
 - **Visual Styling**:
-  - Background: Selected button background (active state)
-  - Icon Color: Selected icon color
-  - Border: Standard button border color
+  - **Dark Theme**:
+    - Background: Dark gray selected (`AppColors.ButtonSelectedBgColor` - #515151)
+    - Icon Color: White (`AppColors.ButtonSelectedIconColor`)
+    - Border: Button border color (`AppColors.ButtonBorderColor`)
+  - **Light Theme**:
+    - Background: Light gray selected (`AppColors.ButtonSelectedBgColor` - #D7D7D7)
+    - Icon Color: Dark gray (`AppColors.ButtonSelectedIconColor` - #3F3F3F)
+    - Border: Light gray border
 - **Click Action**: Triggers `onCollapseClick()` callback
 - **Compact Mode**: Yes (icon only, no text)
+- **Size**: 48dp (phone) / 76dp (tablet) when compact
 - **Always Enabled**: Yes
 - **API Used**: No direct API - UI navigation only
 
@@ -34,18 +40,34 @@ The Settings Layout (`FullControlLayout.kt`) provides comprehensive configuratio
 - **Weight**: Takes remaining space in header row (`weight(1f)`)
 - **Integration**: Uses `ControlTabSwitcher` component
 - **State Management**: Controlled by `selectedTab` and `onTabSelected`
+- **Visual Styling**:
+  - **Tab Background**:
+    - **Dark Theme**: Dark background (`AppColors.DarkBackground2` - #222222)
+    - **Light Theme**: Light background
+  - **Selected Tab**:
+    - **Dark Theme**: Stravion Blue (`AppColors.StravionBlue` - #2061F2) with white text
+    - **Light Theme**: Stravion Blue with white text
+  - **Unselected Tab**:
+    - **Dark Theme**: Medium gray text (`AppColors.MediumGray` - #808080)
+    - **Light Theme**: Medium gray text
 - **API Used**: No direct API - UI state management only
 
 #### Logout Button
 - **ID**: `logout`
-- **Function**: User logout functionality (currently disabled)
+- **Function**: User logout functionality
 - **Visual Styling**:
-  - Background: Standard button background
-  - Icon Color: Red
-  - Border: Standard button border color
-  - **Enabled**: False (feature not implemented)
+  - **Dark Theme**:
+    - Background: Medium dark background (`AppColors.ButtonBgColor` - #333333)
+    - Icon Color: Red (`Color.Red`)
+    - Border: Red (`Color.Red`)
+  - **Light Theme**:
+    - Background: White
+    - Icon Color: Red
+    - Border: Red
+- **Enabled**: True (feature implemented)
 - **Compact Mode**: Yes (icon only, no text)
-- **API Used**: Not implemented - placeholder for future logout functionality
+- **Size**: 48dp (phone) / 76dp (tablet) when compact
+- **API Used**: Triggers logout flow with memory cleanup
 
 ## Tab Navigation System
 
@@ -60,32 +82,117 @@ The layout implements a sophisticated tab system for organizing different catego
 ### Tab Content Areas
 
 #### Camera Control Tab (`ControlTab.CAMERA_CONTROL`)
+
+![DayMode Layout](images/camera-controls-layout-1.png)
+
+
+![NightMode Layout](images/camera-controls-layout-2.png)
+
+
 - **Content**: Advanced camera configuration settings
 - **Component**: `CameraLayout()`
 - **Features**: 
   - Camera parameter adjustments
   - Image quality settings
-  - Exposure and focus controls
-  - Advanced camera features
-- **State Management**: Integrated with camera ViewModels
+  - Vision mode controls (Visible, Infrared, Both)
+  - Camera mode settings (Normal, EIS, HDR)
+  - Orientation controls (Normal, Flip, Mirror, Both)
+- **State Management**: Integrated with `CameraLayoutViewModel`
 - **API Used**:
   - **Configuration APIs**: `MotocamAPIAndroidHelper` suite of camera control functions
   - **Primary APIs**:
-    - `setResolutionAsync()` - Image resolution settings
-    - `setRotationAsync()` - Image rotation settings
-    - `setTiltAsync()` - Image tilt adjustments
+    - `setMiscAsync()` - Combined settings control for HDR/EIS and Vision Mode
+      ```
+      Request: | SET(1) | IMAGE(4) | MISC(13) | 1 | calculated_value | CRC |
+      Response: | ACK(3) | IMAGE(4) | MISC(13) | 2 | Success(0) | Data | CRC |
+      ```
+      **MISC Value Calculation Logic**:
+      ```kotlin
+      // Base WDR/EIS value
+      val wdreisval = when {
+          !hdr && !eis -> 1    // No HDR, No EIS
+          !hdr && eis -> 2     // No HDR, Yes EIS  
+          hdr && !eis -> 3     // Yes HDR, No EIS
+          else -> 1            // Default if both set
+      }
+      
+      // Final MISC value based on vision mode
+      val miscValue = when {
+          visible && !infrared -> wdreisval           // Only visible (1-3)
+          visible && infrared -> 4 + wdreisval        // Both visible and infrared (5-7)
+          !visible && infrared -> 8 + wdreisval       // Only infrared (9-11)
+          else -> 1                                   // Default to visible mode
+      }
+      ```
+      **Usage Conditions**:
+      - Called when camera mode changes (EIS/HDR selection)
+      - Called when vision mode changes (Visible/Infrared/Both)
+      - Always used in combination with stream restart
+      - Mutually exclusive HDR and EIS enforcement
     - `setMirrorAsync()` - Image mirroring controls
+      ```
+      Request: | SET(1) | IMAGE(4) | MIRROR(7) | 1 | 0/1 | CRC |
+      Response: | ACK(3) | IMAGE(4) | MIRROR(7) | 2 | Success(0) | Data | CRC |
+      ```
+      **Usage Conditions**:
+      - Called when orientation mode includes Mirror (Mirror, Both)
+      - Can be applied without stream restart if only orientation changes
     - `setFlipAsync()` - Image flip controls
-    - `setWdrAsync()` - Wide Dynamic Range settings
-    - `setEisAsync()` - Electronic Image Stabilization
+      ```
+      Request: | SET(1) | IMAGE(4) | FLIP(8) | 1 | 0/1 | CRC |
+      Response: | ACK(3) | IMAGE(4) | FLIP(8) | 2 | Success(0) | Data | CRC |
+      ```
+      **Usage Conditions**:
+      - Called when orientation mode includes Flip (Flip, Both)
+      - Can be applied without stream restart if only orientation changes
+    - `setWdrAsync()` - Wide Dynamic Range settings (Legacy)
+      ```
+      Request: | SET(1) | IMAGE(4) | WDR(10) | 1 | 0/1 | CRC |
+      Response: | ACK(3) | IMAGE(4) | WDR(10) | 2 | Success(0) | Data | CRC |
+      ```
+      **Note**: This API is available but WDR/HDR is now controlled via MISC value
+    - `setEisAsync()` - Electronic Image Stabilization (Legacy)
+      ```
+      Request: | SET(1) | IMAGE(4) | EIS(11) | 1 | 0/1 | CRC |
+      Response: | ACK(3) | IMAGE(4) | EIS(11) | 2 | Success(0) | Data | CRC |
+      ```
+      **Note**: This API is available but EIS is now controlled via MISC value
+    - `setDayModeAsync()` - Auto day/night mode control
+      ```
+      Request: | SET(1) | IMAGE(4) | DAYMODE(5) | 1 | 0/1 | CRC |
+      Response: | ACK(3) | IMAGE(4) | DAYMODE(5) | 2 | Success(0) | Data | CRC |
+      ```
+      **Usage Conditions**:
+      - Called when Auto Low Light toggle is changed
+      - Controls automatic day/night switching
   - **Command Protocol**: Uses standard MotocamAPI command structure
   - **HTTP Communication**: HTTP POST to `http://192.168.2.1:80/api/motocam_api`
+  - **Content-Type**: `application/octet-stream`
   - **Configuration Management**:
     - `getConfigAsync("Current")` - Current device configuration
+      ```
+      Request: | GET(2) | CONFIG(3) | CURRENT(12) | 0 | - | CRC |
+      Response: | RESPONSE(4) | CONFIG(3) | CURRENT(12) | 12 | Success(0) | Config Data | CRC |
+      ```
     - `getConfigAsync("Default")` - Default configuration values
+      ```
+      Request: | GET(2) | CONFIG(3) | DEFAULT(8) | 0 | - | CRC |
+      Response: | RESPONSE(4) | CONFIG(3) | DEFAULT(8) | 12 | Success(0) | Config Data | CRC |
+      ```
     - `getConfigAsync("Factory")` - Factory reset values
+      ```
+      Request: | GET(2) | CONFIG(3) | FACTORY(4) | 0 | - | CRC |
+      Response: | RESPONSE(4) | CONFIG(3) | FACTORY(4) | 12 | Success(0) | Config Data | CRC |
+      ```
+  - **Stream Restart Logic**:
+    - Stream restart required when: MISC value changes, DAYMODE changes
+    - Stream restart NOT required when: Only orientation (flip/mirror) changes
+    - Optimization: Detects orientation-only changes to avoid unnecessary stream interruption
 
 #### AI Control Tab (`ControlTab.AI_CONTROL`)
+
+![AI Layout](images/ai-layout.png)
+
 - **Content**: AI processing and system configuration
 - **Component**: `AiLayout(systemStatus, onSystemStatusChange)`
 - **Features**:
@@ -97,16 +204,28 @@ The layout implements a sophisticated tab system for organizing different catego
   - Updates through `onSystemStatusChange` callback
 - **API Used**:
   - **System Status API**: `MotocamAPIAndroidHelper.getHealthStatusAsync()`
+    ```
+    Request: | GET(2) | SYSTEM(6) | HEALTH_CHECK(6) | 0 | - | CRC |
+    Response: | RESPONSE(4) | SYSTEM(6) | HEALTH_CHECK(6) | 1-32 | Success(0) | Health Data | CRC |
+    ```
+  - **Health Monitoring Data Structure**:
+    ```
+    | streamer | rtsps | portablertc | cpu_usage | memory_usage | isp_temp | ir_temp | sensor_temp |
+    | 0/1      | 0/1   | 0/1         | 0-100     | 0-100        | 0-100    | 0-100   | 0-100       |
+    ```
   - **Health Monitoring**:
-    - CPU usage monitoring
-    - Memory usage tracking
-    - Temperature monitoring (ISP, IR, Sensor)
-    - Service status (RTSPS, Streamer, Portable RTC)
+    - CPU usage monitoring (0-100%)
+    - Memory usage tracking (0-100%)
+    - Temperature monitoring (ISP, IR, Sensor) (0-100°C)
+    - Service status (RTSPS, Streamer, Portable RTC) (0=inactive, 1=active)
   - **AI Processing Control**: Device-specific AI pipeline management
   - **Performance Monitoring**: Real-time system performance metrics
   - **Update Frequency**: Configurable polling interval for health status
 
 #### License Control Tab (`ControlTab.LICENSE_CONTROL`)
+
+![License Layout](images/management-layout.png)
+
 - **Content**: Device information and licensing
 - **Component**: `LicenseLayout()`
 - **Features**:
@@ -122,6 +241,22 @@ The layout implements a sophisticated tab system for organizing different catego
   - **Configuration APIs**:
     - `getCurrentConfig()` - Device configuration details
     - System version and build information
+  - **System Information APIs**:
+    - **Camera Name**: 
+      ```
+      Request: | GET(2) | SYSTEM(6) | CAMERA_NAME(1) | 0 | - | CRC |
+      Response: | RESPONSE(4) | SYSTEM(6) | CAMERA_NAME(1) | 1-32 | Success(0) | Name | CRC |
+      ```
+    - **Firmware Version**:
+      ```
+      Request: | GET(2) | SYSTEM(6) | FIRMWARE(2) | 0 | - | CRC |
+      Response: | RESPONSE(4) | SYSTEM(6) | FIRMWARE(2) | 1-32 | Success(0) | Version | CRC |
+      ```
+    - **MAC Address**:
+      ```
+      Request: | GET(2) | SYSTEM(6) | MAC_ADDRESS(3) | 0 | - | CRC |
+      Response: | RESPONSE(4) | SYSTEM(6) | MAC_ADDRESS(3) | 1-32 | Success(0) | MAC | CRC |
+      ```
   - **License Validation**: Device-specific licensing information
   - **Serial Number**: Hardware identification
 
@@ -140,8 +275,12 @@ CustomToggleButton(
 #### Functionality
 - **Purpose**: Binary toggle controls throughout settings
 - **Visual States**:
-  - **Selected**: Blue variant background
-  - **Unselected**: Dark gray background
+  - **Selected**: 
+    - **Dark Theme**: Blue variant background (`AppColors.BlueVariant` - #1A73E8)
+    - **Light Theme**: Blue variant background
+  - **Unselected**: 
+    - **Dark Theme**: Dark gray background (`AppColors.DarkGray` - #515151)
+    - **Light Theme**: Light gray background
 - **Styling**: Rounded corners (8dp), centered text
 - **Typography**: Body medium style with white text
 - **API Integration**: Can trigger camera API calls based on implementation
@@ -160,8 +299,10 @@ CustomSelectableButton(
 #### Functionality
 - **Purpose**: Single-selection from multiple options
 - **Visual States**:
-  - **Selected**: Custom color background (default red)
-  - **Unselected**: Dark gray background
+  - **Selected**: Custom color background (default red `Color.Red`)
+  - **Unselected**: 
+    - **Dark Theme**: Dark gray background (`AppColors.DarkGray` - #515151)
+    - **Light Theme**: Light gray background
 - **Customization**: Configurable selected color
 - **Styling**: Rounded corners (8dp), centered text
 - **API Integration**: Commonly used for camera setting options (resolution, quality, etc.)
@@ -212,13 +353,26 @@ SettingRow(
   - Monitoring: Real-time CPU, memory, temperature tracking
 - **Network Status**: WiFi and connectivity monitoring
   - API: `getWifiStateCmd()`
-  - Returns: Current network configuration and status
+    ```
+    Request: | GET(2) | NETWORK(2) | WIFI_STATE(3) | 0 | - | CRC |
+    Response: | RESPONSE(4) | NETWORK(2) | WIFI_STATE(3) | 2 | Success(0) | 1/2 | CRC |
+    ```
+  - Returns: Current network configuration and status (1=Hotspot, 2=Client)
 
 ### Error Handling and Logging
 - **Exception Management**: Comprehensive try-catch blocks with logging
 - **API Timeout**: Connection timeout handling (10 seconds default)
 - **Retry Logic**: Automatic retry for failed API calls
 - **Error Propagation**: Proper error callback handling to UI layer
+- **Error Codes**:
+  | Error Code | Description |
+  |------------|-------------|
+  | -1 | Error in executing the command |
+  | -2 | Invalid packet header |
+  | -3 | Invalid command |
+  | -4 | Invalid sub-command |
+  | -5 | Invalid Data/Data Length |
+  | -6 | CRC does not match |
 
 ## Device Adaptation
 
@@ -289,7 +443,7 @@ SettingRow(
 ## User Experience Features
 
 ### Visual Consistency
-- **Theme Integration**: Consistent with app's dark theme
+- **Theme Integration**: Consistent with app's adaptive dark/light theme
 - **Color Scheme**: Unified color palette across all tabs
 - **Typography**: Consistent text styling and hierarchy
 - **Button Styling**: Unified button appearance and behavior

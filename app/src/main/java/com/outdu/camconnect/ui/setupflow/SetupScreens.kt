@@ -1,10 +1,12 @@
 package com.outdu.camconnect.ui.setupflow
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +24,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -51,24 +54,22 @@ import kotlin.math.min
 import androidx.core.net.toUri
 import com.outdu.camconnect.ui.components.login.OwnerLoginCard
 import com.outdu.camconnect.ui.components.login.ViewerLoginCard
+import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
+import com.outdu.camconnect.ui.theme.SpyBlue
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 
 @Composable
 fun LandingScreen(
     onGetStarted: () -> Unit
 ) {
+    val deviceType = rememberDeviceType()
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0D0D0D)) // deep background
+            .background(StravionBlue) // deep background
     ) {
         // 2. Blended Boat Image (Bottom Center)
-        Image(
-            painter = painterResource(R.drawable.landing_bg),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-        )
 
         // 3. Foreground Content (Text + CTA)
         Column(
@@ -81,17 +82,11 @@ fun LandingScreen(
             // Logo
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    painter = painterResource(R.drawable.scout_logo), // Replace with your logo
+                    painter = painterResource(R.drawable.stravion_logo), // Replace with your logo
                     contentDescription = "Scout Logo",
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "Scout",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
+                    modifier = Modifier.width(if (deviceType == DeviceType.TABLET) 280.dp else 140.dp)
+                        .height(if(deviceType == DeviceType.TABLET) 60.dp else 30.dp)
                 )
             }
 
@@ -104,74 +99,75 @@ fun LandingScreen(
             {
                 // Title
                 Text(
-                    text = "Long Range",
+                    text = "We’re transforming navigation and situational awareness with trailblazing systems combining AI, radar, IR, and day & night vision",
                     style = TextStyle(
-                        fontSize = 40.sp,
-                        lineHeight = 14.02.sp,
-                        fontFamily = FontFamily(Font(R.font.onest_regular)),
-                        fontWeight = FontWeight(700),
-                        color = Color(0xFFCFCFCF),
-
+                        fontSize = 20.45.sp,
+                        lineHeight = 26.59.sp,
+                        fontFamily = FontFamily(Font(R.font.space_grotesk)),
+                        fontWeight = FontWeight(400),
+                        color = Color(0xFFFFFFFF),
                         )
                 )
 
-                Text(
-                    text = "Night Vision with",
-                    style = TextStyle(
-                        fontSize = 40.sp,
-                        lineHeight = 14.02.sp,
-                        fontFamily = FontFamily(Font(R.font.onest_regular)),
-                        fontWeight = FontWeight(700),
-                        color = Color(0xFFCFCFCF),
+            }
 
-                        )
-                )
-
-                Text(
-                    text = "Scout",
-                    style = TextStyle(
-                        fontSize = 40.sp,
-                        lineHeight = 14.02.sp,
-                        fontFamily = FontFamily(Font(R.font.onest_regular)),
-                        fontWeight = FontWeight(700),
-                        color = Color(0xFFCFCFCF),
-
-                        )
-                )
-
-                // Subtitle
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val iconPainter = rememberVectorPainter(image = aiIcon(true))
-                    Image(
-                        painter = iconPainter,
-                        contentDescription = "Ai Status Icon",
-                        modifier = Modifier.size(24.dp),
-                        contentScale = ContentScale.Fit
+            // CTA Button
+            Box(
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(
+                        width = 1.dp,
+                        color = Color.White,
+                        shape = RoundedCornerShape(20.dp)
                     )
-                    Spacer(Modifier.width(8.dp))
+                    .clickable {
+                        onGetStarted()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+
+                Row(
+                    modifier = Modifier.align(Alignment.Center)
+                        .padding(vertical = 12.dp, horizontal = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                )
+                {
                     Text(
-                        "Powered with AI Vision",
+                        text = "Get started",
                         style = TextStyle(
-                            fontSize = 16.sp,
-                            lineHeight = 14.02.sp,
-                            fontFamily = FontFamily(Font(R.font.onest_regular)),
-                            fontWeight = FontWeight(500),
-                            color = Color(0xFFCFCFCF),
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily(Font(R.font.space_grotesk)),
+                            fontWeight = FontWeight(700),
+                            color = Color(0xFFFFFFFF),
 
                             )
+                    )
+
+                    Icon(
+                        painter = painterResource(R.drawable.key_right),
+                        contentDescription = "Key Right",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
 
-            // CTA Button
-            Button(
-                onClick = onGetStarted,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
-                Text("Get Started", color = Color.Black)
-            }
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+        )
+        {
+            Image(
+                painter = painterResource(R.drawable.stravion_image),
+                contentDescription = "Boat Image",
+                modifier = Modifier.size(if (deviceType == DeviceType.TABLET) 480.dp else 240.dp)
+                    .padding(bottom = if (deviceType == DeviceType.TABLET) 120.dp else 60.dp),
+                alignment = Alignment.BottomEnd
+            )
         }
     }
 }
@@ -183,10 +179,11 @@ fun LoginScreen(
     onUpdateDetails: (String, String, String, String) -> Unit,
     onAuthenticate: (Boolean) -> Unit
 ) {
+    val deviceType = rememberDeviceType()
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0D0D0D))
+            .background(Color.White)
     ) {
         Column(
             modifier = Modifier
@@ -197,23 +194,12 @@ fun LoginScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    painter = painterResource(R.drawable.scout_logo), // Replace with your logo
+                    painter = painterResource(R.drawable.stravion_logo), // Replace with your logo
                     contentDescription = "Scout Logo",
-                    tint = Color.Red,
+                    tint = SpyBlue,
                     modifier = Modifier
-                        .width(25.dp)
-                        .height(18.dp)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = "Scout",
-                    style = TextStyle(
-                        fontSize = 16.sp,
-                        lineHeight = 14.02.sp,
-                        fontFamily = FontFamily(Font(R.font.onest_regular)),
-                        fontWeight = FontWeight(700),
-                        color = Color(0xFFC5C5C5)
-                    )
+                        .width(88.dp)
+                        .height(12.dp)
                 )
             }
 
@@ -225,25 +211,23 @@ fun LoginScreen(
             {
                 // Title
                 Text(
-                    text = "Welcome back,",
+                    text = "Hello",
                     style = TextStyle(
                         fontSize = 32.sp,
-                        lineHeight = 14.02.sp,
-                        fontFamily = FontFamily(Font(R.font.onest_regular)),
-                        fontWeight = FontWeight(700),
-                        color = Color(0xFFCFCFCF),
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
+                        fontWeight = FontWeight(400),
+                        color = Color(0xFF1A1A1C),
 
                         )
                 )
 
                 Text(
-                    text = "Please login to start streaming",
+                    text = "Please select how would you like to get started ?",
                     style = TextStyle(
-                        fontSize = 18.sp,
-                        lineHeight = 14.02.sp,
-                        fontFamily = FontFamily(Font(R.font.onest_regular)),
-                        fontWeight = FontWeight(500),
-                        color = Color(0xFF7D7D7D),
+                        fontSize = 14.sp,
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
+                        fontWeight = FontWeight(400),
+                        color = Color(0xFF9097A0),
 
                         )
                 )
@@ -253,8 +237,12 @@ fun LoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(end = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(if(deviceType == DeviceType.TABLET) 12.dp else  4.dp)
             ) {
+                OwnerLoginCard(
+                    setupState = setupState,
+                    onUpdateDetails = onUpdateDetails
+                )
                 ViewerLoginCard(
                     setupState = setupState,
                     onUpdateDetails = onUpdateDetails,
@@ -352,6 +340,7 @@ fun CameraConnectionScreen(
     }
 }
 
+@SuppressLint("UnrememberedMutableState")
 @Composable
 fun SetupCompleteScreen(
     onStartStreaming: () -> Unit
@@ -498,7 +487,7 @@ fun SupportRow() {
                 lineHeight = 14.02.sp,
                 fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                 fontWeight = FontWeight(500),
-                color = Color.White
+                color = Color(0xFF9097A0)
             )
         )
 
@@ -517,7 +506,7 @@ fun SupportRow() {
                 lineHeight = 14.02.sp,
                 fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                 fontWeight = FontWeight(500),
-                color = Color.White,
+                color = Color(0xFF9097A0),
                 textDecoration = TextDecoration.Underline
             )
         )

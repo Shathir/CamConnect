@@ -2,11 +2,14 @@ package com.outdu.camconnect.ui.components.login
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -47,6 +50,9 @@ import com.outdu.camconnect.R
 import com.outdu.camconnect.auth.InvalidPinException
 import com.outdu.camconnect.auth.MaxAttemptsExceededException
 import com.outdu.camconnect.auth.SessionManager
+import com.outdu.camconnect.ui.theme.AppColors.BorderColor
+import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
+import com.outdu.camconnect.ui.theme.SpyBlue
 import com.outdu.camconnect.viewmodels.SetupState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,7 +68,11 @@ fun OwnerLoginCard(
         modifier = Modifier
             .clip(RoundedCornerShape(24.dp))
             .fillMaxWidth()
-            .background(Color(0xFF222222)),
+            .border(
+                width = 1.dp,
+                color = BorderColor,
+                shape = RoundedCornerShape(24.dp)
+            ),
         contentAlignment = Alignment.Center
     )
     {
@@ -83,7 +93,7 @@ fun OwnerLoginCard(
                 Icon(
                     painter = painterResource(id = R.drawable.user_icon),
                     contentDescription = "User Icon",
-                    tint = Color(0xFFF43823)
+                    tint = StravionBlue
                 )
 
                 Text(
@@ -93,19 +103,19 @@ fun OwnerLoginCard(
                         lineHeight = 14.02.sp,
                         fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                         fontWeight = FontWeight(500),
-                        color = Color.White
+                        color = Color(0xFF1A1A1C)
                     )
                 )
 
                 Text(
-                    text = "For adding, viewing & managing your account",
+                    text = "For viewing & managing your account",
                     style = TextStyle(
                         fontSize = 12.sp,
                         lineHeight = 14.02.sp,
                         fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                         fontWeight = FontWeight(400),
-                        color = Color.White
-                    )
+                        color = Color(0xFF9097A0)
+                        )
                 )
             }
 
@@ -129,7 +139,7 @@ fun OwnerLoginCard(
                             lineHeight = 14.02.sp,
                             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                             fontWeight = FontWeight(500),
-                            color = Color.White
+                            color = Color(0xFF1A1A1C)
                         )
                     )
                     // Email Input
@@ -161,7 +171,7 @@ fun OwnerLoginCard(
                             lineHeight = 14.02.sp,
                             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                             fontWeight = FontWeight(500),
-                            color = Color.White
+                            color = Color(0xFF1A1A1C)
                         )
                     )
                     // Password Input
@@ -189,7 +199,7 @@ fun OwnerLoginCard(
                         fontSize = 9.sp,
                         fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                         fontWeight = FontWeight(500),
-                        color = Color(0xFFFFFFFF),
+                        color = Color(0xFF1A1A1C)
                     ),
                     modifier = Modifier.align(Alignment.End)
                 )
@@ -221,7 +231,11 @@ fun ViewerLoginCard(
         modifier = Modifier
             .clip(RoundedCornerShape(24.dp))
             .fillMaxWidth()
-            .background(Color(0xFF222222)),
+            .border(
+                width = 1.dp,
+                color = BorderColor,
+                shape = RoundedCornerShape(24.dp)
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -236,19 +250,18 @@ fun ViewerLoginCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.users_icon),
+                    painter = painterResource(id = R.drawable.viewer_login_icon),
                     contentDescription = "User Icon",
-                    tint = Color(0xFFF43823)
+                    tint = StravionBlue
                 )
 
                 Text(
-                    text = "Login as Viewer",
+                    text = "Start streaming as viewer",
                     style = TextStyle(
-                        fontSize = 24.sp,
-                        lineHeight = 14.02.sp,
-                        fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                        fontWeight = FontWeight(500),
-                        color = Color.White
+                        fontSize = 20.sp,
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
+                        fontWeight = FontWeight(400),
+                        color = Color(0xFF1A1A1C),
                     )
                 )
 
@@ -256,10 +269,60 @@ fun ViewerLoginCard(
                     text = "For only streaming access across cameras",
                     style = TextStyle(
                         fontSize = 12.sp,
-                        lineHeight = 14.02.sp,
-                        fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
                         fontWeight = FontWeight(400),
-                        color = Color.White
+                        color = Color(0xFF9097A0),
+                    )
+                )
+
+                Box(
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .border(
+                            width = 1.dp,
+                            color = StravionBlue,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .clickable {
+
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+
+                    Row(
+                        modifier = Modifier.align(Alignment.Center)
+                            .padding(vertical = 6.dp, horizontal = 18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    )
+                    {
+                        Text(
+                            text = "Start streaming",
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                fontFamily = FontFamily(Font(R.font.arial_regular)),
+                                fontWeight = FontWeight(400),
+                                color = StravionBlue,
+                            )
+                        )
+
+                        Icon(
+                            painter = painterResource(R.drawable.key_right),
+                            contentDescription = "Key Right",
+                            tint = StravionBlue,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Make sure your camera is nearby & switched ON",
+                    style = TextStyle(
+                        fontSize = 9.sp,
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
+                        fontWeight = FontWeight(400),
+                        color = Color(0xFF221F1F),
                     )
                 )
             }

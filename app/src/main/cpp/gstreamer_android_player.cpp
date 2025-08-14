@@ -314,15 +314,17 @@ static void *app_function (void *userdata) {
         sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! "
                                "amcviddec-%s ! tee name=t ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
+                               "queue leaky=1 max-size-time=100000000 ! "
 //                               "identity single-segment=true sync=true ! "
-                               "glimagesink sync=false async=false t. ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               "glcolorconvert ! gldownload ! "
-                               "video/x-raw,width=1920,height=1080,format=BGR ! "
-                               "videoscale ! "
-                               "video/x-raw,width=960,height=540,format=BGR ! "
-                               "appsink max-buffers=2 drop=true name=rtspappsink",
+                               "appsink max-buffers=2 drop=true name=rtspappsink t. ! "
+                               "queue leaky=1 max-size-time=100000000 ! "
+//                               "glcolorconvert ! "
+//                               "gldownload ! "
+//                               "videoconvert ! "
+//                               "video/x-raw,width=1920,height=1080,format=BGR ! "
+//                               "videoscale ! "
+//                               "video/x-raw,width=960,height=540,format=BGR ! "
+                               "glimagesink",
                 RTSP_URL, data->avc_decoder);
         /*sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
@@ -366,13 +368,13 @@ static void *app_function (void *userdata) {
 
     if(data->od) {
         data->app_sink = gst_bin_get_by_name(GST_BIN(data->pipeline), "rtspappsink");
-        GstCaps *caps = gst_caps_new_simple("video/x-raw",
-                                            "width", G_TYPE_INT, 960,
-                                            "height", G_TYPE_INT, 540,
-                                            "format", G_TYPE_STRING, "BGR", nullptr);
-        gst_app_sink_set_caps(GST_APP_SINK(data->app_sink), caps);
-        g_object_set (data->app_sink, "emit-signals", TRUE, nullptr);
-        g_signal_connect (data->app_sink, "new-sample", G_CALLBACK (new_sample), data);
+//        GstCaps *caps = gst_caps_new_simple("video/x-raw",
+//                                            "width", G_TYPE_INT, 960,
+//                                            "height", G_TYPE_INT, 540,
+//                                            "format", G_TYPE_STRING, "BGR", nullptr);
+//        gst_app_sink_set_caps(GST_APP_SINK(data->app_sink), caps);
+//        g_object_set (data->app_sink, "emit-signals", TRUE, nullptr);
+//        g_signal_connect (data->app_sink, "new-sample", G_CALLBACK (new_sample), data);
     }
 
     /* Set the pipeline to READY, so it can already accept a window handle, if we have one */

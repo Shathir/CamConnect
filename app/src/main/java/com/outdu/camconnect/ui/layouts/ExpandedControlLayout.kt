@@ -71,6 +71,8 @@ import com.outdu.camconnect.ui.models.RecordingState
 import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
 import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 import com.outdu.camconnect.ui.models.VisionMode
+import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
+import com.outdu.camconnect.ui.theme.AppColors.immersiveButtonBorderColor
 
 
 /**
@@ -475,7 +477,7 @@ fun ExpandedControlContent(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isTablet = maxWidth > 600.dp
         val padding = if (deviceType == DeviceType.TABLET) 32.dp else 12.dp
-        val spacing = if (deviceType == DeviceType.TABLET) 22.dp else 14.dp
+        val spacing = if (deviceType == DeviceType.TABLET) 18.dp else 12.dp
         val layoutModifier = Modifier
             .fillMaxSize()
             .padding(horizontal = padding, vertical = spacing)
@@ -495,18 +497,12 @@ fun ExpandedControlContent(
                 // Header
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        painter = painterResource(R.drawable.scout_logo),
+                        painter = painterResource(R.drawable.stravion_logo),
                         contentDescription = "Scout Logo",
-                        tint = if(isDarkTheme) Color.White else Color(0xFFC5C5C5),
-                        modifier = Modifier.size(width = 24.dp, height = 18.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "Scout",
-                        fontSize = if (deviceType == DeviceType.TABLET) 20.sp else 16.sp,
-                        fontFamily = FontFamily(Font(R.font.onest_regular)),
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFC5C5C5)
+                        tint = if(isDarkTheme) Color.White else StravionBlue,
+                        modifier = Modifier.size(
+                            width = if(deviceType == DeviceType.TABLET) 120.dp else 90.dp,
+                            height = if(deviceType == DeviceType.TABLET) 48.dp else 36.dp)
                     )
                 }
 
@@ -515,17 +511,19 @@ fun ExpandedControlContent(
                 if(deviceType == DeviceType.TABLET)
                 {
                     allButtons = listOf(
-                        customButtons.filter { it.id in listOf("Settings") },
-                        customButtons.filter { it.id in listOf("ir", "ir-cut-filter") },
-//                        customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
-                        customButtons.filter { it.id in listOf("collapse-screen") }
+                        customButtons.filter { it.id in listOf( "Settings") },
+                        customButtons.filter { it.id in listOf("ir") },
+//                        customButtons.filter { it.id in listOf("ir", "ir-cut-filter") },
+                        customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
+//                        customButtons.filter { it.id in listOf("collapse-screen") }
                     )
                 }
                 else {
                     allButtons = listOf(
-                        customButtons.filter { it.id in listOf("ir", "ir-cut-filter", "Settings") },
-//                        customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
-                        customButtons.filter { it.id in listOf( "collapse-screen") }
+                        customButtons.filter { it.id in listOf("ir", "Settings") },
+//                        customButtons.filter { it.id in listOf("ir", "ir-cut-filter", "Settings") },
+                        customButtons.filter { it.id in listOf("picture-in-picture", "collapse-screen") }
+//                        customButtons.filter { it.id in listOf( "collapse-screen") }
                     )
                 }
 
@@ -752,24 +750,24 @@ fun ButtonRow(
                 "Settings" -> buttonConfig.copy(
                     onClick = onSettingsClick,
                     backgroundColor = if (isSelected) ButtonSelectedBgColor else ButtonBgColor,
-                    BorderColor = ButtonBorderColor,
+                    BorderColor = immersiveButtonBorderColor,
                     color = if (isSelected) ButtonSelectedIconColor else ButtonIconColor,
                     text = buttonConfig.text
                 )
                 "collapse-screen" -> buttonConfig.copy(
                     onClick = onCollapseClick,
                     backgroundColor = if (isSelected) ButtonSelectedBgColor else ButtonBgColor,
-                    BorderColor = ButtonBorderColor,
+                    BorderColor = immersiveButtonBorderColor,
                     color = if (isSelected) ButtonSelectedIconColor else ButtonIconColor,
                     text = buttonConfig.text
                 )
                 "ir" -> buttonConfig.copy(
                     onClick = { cameraControlViewModel.toggleIR() },
-                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFF272727)
+                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) immersiveButtonBorderColor
                                     else if (isSelected) RecordRed 
                                     else ButtonBgColor,
-                    BorderColor = if (isSelected) RecordRed else ButtonBorderColor,
-                    color = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFF363636)
+                    BorderColor = if (isSelected) RecordRed else immersiveButtonBorderColor,
+                    color = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFFC5CBD4)
                            else if (isSelected) {if(isDarkTheme) ButtonSelectedIconColor else Color.White} 
                            else ButtonIconColor,
                     enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
@@ -784,9 +782,9 @@ fun ButtonRow(
                     text = "IR Intensity"
                 )
                 "picture-in-picture" -> buttonConfig.copy(
-                    backgroundColor = Color(0xFF272727),
-                    BorderColor = ButtonBorderColor,
-                    color = Color(0xFF363636),
+                    backgroundColor = immersiveButtonBorderColor,
+                    BorderColor = immersiveButtonBorderColor,
+                    color = Color(0xFFC5CBD4),
                     enabled = false,
                     onClick = {},
                     text = buttonConfig.text
@@ -804,7 +802,7 @@ fun ButtonRow(
             }
 
             val weight = when (buttonConfig.id) {
-                "Settings" -> 2f
+                "Settings" -> 1f
                 "ir-cut-filter" -> {
                     if (deviceType == DeviceType.TABLET) 1f else 2f
                 }

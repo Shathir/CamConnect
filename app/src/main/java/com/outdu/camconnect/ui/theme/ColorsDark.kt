@@ -7,7 +7,11 @@ import androidx.compose.ui.graphics.Color
  * These colors are optimized for dark mode display
  */
 object DarkColors {
-    
+
+    val StravionBlue = Color(0xFF2061F2)
+    val BorderColor = Color(0xFFD7D7D7)
+    val immersiveButtonBorderColor = Color(0XFFE2E8F0)
+
     // Material Design Theme Colors
     val Purple80 = Color(0xFFD0BCFF)
     val PurpleGrey80 = Color(0xFFCCC2DC)

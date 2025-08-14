@@ -13,7 +13,11 @@ import androidx.compose.ui.graphics.Color
  * This will automatically resolve to the correct color for the current theme
  */
 object AppColors {
-    
+
+    val StravionBlue: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.StravionBlue else LightColors.StravionBlue
+    val BorderColor: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.BorderColor else LightColors.BorderColor
+    val immersiveButtonBorderColor: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.immersiveButtonBorderColor else LightColors.immersiveButtonBorderColor
+
     // Material Design Theme Colors
     val Purple80: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.Purple80 else LightColors.Purple80
     val PurpleGrey80: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) DarkColors.PurpleGrey80 else LightColors.PurpleGrey80

@@ -57,6 +57,8 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
 import com.outdu.camconnect.ui.components.recording.RecordingTimer
 import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
+import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
+import com.outdu.camconnect.ui.theme.AppColors.immersiveButtonBorderColor
 
 
 /**
@@ -153,8 +155,8 @@ fun MinimalControlContent(
                     iconPlaceholder = R.drawable.sliders_horizontal.toString(),
                     color = MediumGray,
                     text = "Settings",
-                    BorderColor = ButtonBorderColor,
-                    backgroundColor = MediumDarkBackground,
+                    BorderColor = immersiveButtonBorderColor,
+                    backgroundColor = Color.White,
                     onClick = onSettingsClick
                 ),
                 isCompact = true,
@@ -167,8 +169,8 @@ fun MinimalControlContent(
                     iconPlaceholder = R.drawable.expand_line.toString(),
                     color = Color.White,
                     text = "Camera",
-                    BorderColor = DefaultColors.DarkGray,
-                    backgroundColor = DefaultColors.DarkGray,
+                    BorderColor = StravionBlue,
+                    backgroundColor = StravionBlue,
                     onClick = onExpandClick
                 ),
                 isCompact = true,
@@ -179,40 +181,44 @@ fun MinimalControlContent(
             CustomizableButton(
                 config = ButtonConfig(
                     id = "screen-record",
-                    iconPlaceholder = if (isRecording) R.drawable.record_circle_line.toString() else R.drawable.record_icon.toString(),
-                    color = if (isRecording) RecordRed else RecordRed,
+                    iconPlaceholder = if (isRecording) R.drawable.record_rectangle.toString() else R.drawable.record_icon.toString(),
+                    color = if (isRecording) Color.White else RecordRed,
                     text = if (isRecording) "Stop Recording" else "Start Recording",
-                    backgroundColor = MediumDarkBackground,
-                    BorderColor = ButtonBorderColor,
+                    backgroundColor = if(isRecording) RecordRed  else Color.White,
+                    BorderColor = if(isRecording) RecordRed else immersiveButtonBorderColor,
                     onClick = { recordingViewModel.toggleRecording(context) }
                 ),
                 isCompact = true,
                 showText = false
             )
 
-//            CustomizableButton(
-//                config = customButtons.first { it.id == "picture-in-picture" }.copy(
-//                    BorderColor = ButtonBorderColor,
-//                    enabled = false,
-//                    color = Color(0xFF363636),
-//                    backgroundColor = Color(0xFF272727)
-//                ),
-//                isCompact = true,
-//                showText = false
-//            )
+            CustomizableButton(
+                config = customButtons.first { it.id == "picture-in-picture" }.copy(
+                    id = "picture-in-picture",
+                    iconPlaceholder = R.drawable.picture_in_picture_line.toString(),
+                    color = Color(0xFFC5CBD4),
+                    text = "Camera",
+                    BorderColor = immersiveButtonBorderColor,
+                    backgroundColor = immersiveButtonBorderColor,
+                    enabled = false,
+                    onClick = onExpandClick,
+                ),
+                isCompact = true,
+                showText = false
+            )
 
             CustomizableButton(
                 config = ButtonConfig(
                     id = "ir",
                     iconPlaceholder = R.drawable.ir_line.toString(),
-                    color = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFF363636) 
+                    color = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFFC5CBD4)
                            else if (cameraControlState.isIrEnabled) {if(isDarkTheme) ButtonSelectedIconColor else Color.White} 
                            else ButtonIconColor,
                     text = "IR",
-                    BorderColor = if (cameraControlState.isIrEnabled) RecordRed else ButtonBorderColor,
-                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFF272727)
+                    BorderColor = if (cameraControlState.isIrEnabled) RecordRed else immersiveButtonBorderColor,
+                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) immersiveButtonBorderColor
                                     else if (cameraControlState.isIrEnabled) RecordRed 
-                                    else ButtonBgColor,
+                                    else Color.White,
                     enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
                     onClick = { cameraControlViewModel.toggleIR() }
                 ),
@@ -220,20 +226,20 @@ fun MinimalControlContent(
                 showText = false
             )
 
-            CustomizableButton(
-                config = ButtonConfig(
-                    id = "ir-cut-filter",
-                    iconPlaceholder = R.drawable.headlights.toString(),
-                    color = if (cameraControlState.isIrEnabled) { if(!cameraControlState.isLowIntensity) ButtonSelectedIconColor else ButtonIconColor} else Color(0xFF363636),
-                    text = "IR Intensity",
-                    BorderColor = ButtonBorderColor,
-                    backgroundColor = if(cameraControlState.isIrEnabled) {if (!cameraControlState.isLowIntensity) ButtonSelectedBgColor else ButtonBgColor} else {Color(0xFF272727)},
-                    enabled = cameraControlState.isIrEnabled,
-                    onClick = { cameraControlViewModel.toggleIrIntensity() }
-                ),
-                isCompact = true,
-                showText = false
-            )
+//            CustomizableButton(
+//                config = ButtonConfig(
+//                    id = "ir-cut-filter",
+//                    iconPlaceholder = R.drawable.headlights.toString(),
+//                    color = if (cameraControlState.isIrEnabled) { if(!cameraControlState.isLowIntensity) ButtonSelectedIconColor else ButtonIconColor} else Color(0xFF363636),
+//                    text = "IR Intensity",
+//                    BorderColor = ButtonBorderColor,
+//                    backgroundColor = if(cameraControlState.isIrEnabled) {if (!cameraControlState.isLowIntensity) ButtonSelectedBgColor else ButtonBgColor} else {Color(0xFF272727)},
+//                    enabled = cameraControlState.isIrEnabled,
+//                    onClick = { cameraControlViewModel.toggleIrIntensity() }
+//                ),
+//                isCompact = true,
+//                showText = false
+//            )
 
             // WiFi indicator
             WifiIndicator(

@@ -8,7 +8,7 @@ The Minimal Control Layout (`MinimalControlLayout.kt`) provides a streamlined, s
 ## Layout Structure
 
 ### Vertical Control Column
-All controls are arranged in a single vertical column with space-around distribution, ensuring optimal use of screen space while maintaining easy access to essential functions.
+All controls are arranged in a single vertical column with `SpaceAround` distribution, ensuring optimal use of screen space while maintaining easy access to essential functions.
 
 ## Control Elements
 
@@ -16,11 +16,17 @@ All controls are arranged in a single vertical column with space-around distribu
 - **ID**: `settings`
 - **Function**: Opens the full settings/configuration panel
 - **Visual Styling**:
-  - Background: Medium dark background
-  - Icon Color: Medium gray
-  - Border: Standard button border color
+  - **Dark Theme**:
+    - Background: White (`Color.White`)
+    - Icon Color: Medium Gray (`AppColors.MediumGray`)
+    - Border: Immersive button border (`AppColors.immersiveButtonBorderColor` - #E2E8F0)
+  - **Light Theme**:
+    - Background: White (`Color.White`) 
+    - Icon Color: Medium Gray (#757575)
+    - Border: Light gray border (#E2E8F0)
 - **Click Action**: Triggers `onSettingsClick()` callback
 - **Compact Mode**: Yes (icon only, no text)
+- **Size**: 48dp (phone) / 76dp (tablet) when compact
 - **Always Enabled**: Yes
 - **API Used**: No direct API - UI navigation only
 
@@ -28,30 +34,55 @@ All controls are arranged in a single vertical column with space-around distribu
 - **ID**: `camera_switch`
 - **Function**: Expands the interface to the full expanded control layout
 - **Visual Styling**:
-  - Background: Dark gray
-  - Icon Color: White
-  - Border: Dark gray
+  - **All Themes**:
+    - Background: Stravion Blue (`AppColors.StravionBlue` - #2061F2)
+    - Icon Color: White (`Color.White`)
+    - Border: Stravion Blue (#2061F2)
 - **Click Action**: Triggers `onExpandClick()` callback
 - **Compact Mode**: Yes (icon only, no text)
+- **Size**: 48dp (phone) / 76dp (tablet) when compact
 - **Always Enabled**: Yes
 - **API Used**: No direct API - UI state management only
+
+### Picture-in-Picture Button
+- **ID**: `picture-in-picture`
+- **Function**: Reserved for picture-in-picture camera view functionality
+- **Current Status**: **Disabled** - Not currently implemented
+- **Visual Styling**:
+  - **All Themes** (Disabled State):
+    - Background: Immersive button border color (`AppColors.immersiveButtonBorderColor` - #E2E8F0)
+    - Icon Color: Light gray (#C5CBD4)
+    - Border: Immersive button border (#E2E8F0)
+    - Enabled: False
+- **Icon**: Picture-in-picture icon (`R.drawable.picture_in_picture_line`)
+- **Click Action**: Currently mapped to `onExpandClick` (placeholder)
+- **Compact Mode**: Yes (icon only, no text)
+- **Size**: 48dp (phone) / 76dp (tablet) when compact
+- **Future Implementation**: 
+  - Intended to provide split-screen or overlay camera view
+  - May enable secondary camera feed or resizable camera window
+  - Could integrate with Android's native Picture-in-Picture mode
+- **API Used**: No current API - reserved for future implementation
 
 ### Screen Recording Button
 - **ID**: `screen-record`
 - **Function**: Starts/stops screen recording functionality
 - **Visual States**:
   - **Not Recording**:
-    - Icon: Record icon
-    - Icon Color: Record red
+    - Icon: Record icon (`R.drawable.record_icon`)
+    - Icon Color: Record red (`AppColors.RecordRed` - #F43823)
+    - Background: White (`Color.White`)
+    - Border: Immersive button border (#E2E8F0)
     - Text: "Start Recording"
   - **Recording**:
-    - Icon: Record circle line
-    - Icon Color: Record red
+    - Icon: Record rectangle (`R.drawable.record_rectangle`)
+    - Icon Color: White (`Color.White`)
+    - Background: Record red (#F43823)
+    - Border: Record red (#F43823)
     - Text: "Stop Recording"
-- **Background**: Medium dark background
-- **Border**: Standard button border color
 - **Click Action**: `recordingViewModel.toggleRecording(context)`
 - **Compact Mode**: Yes (icon only, no text)
+- **Size**: 48dp (phone) / 76dp (tablet) when compact
 - **Permissions Required**:
   - Media Projection permission for screen capture
   - Notification permission (Android 13+)
@@ -77,79 +108,100 @@ All controls are arranged in a single vertical column with space-around distribu
 
 ### IR (Infrared) Button
 - **ID**: `ir`
-- **Function**: Toggles infrared illumination for night vision
-- **Visual States**:
-  - **Disabled State** (Vision Mode active):
-    - Background: Dark gray (#272727)
-    - Icon: Darker gray (#363636)
-    - Border: Standard
-  - **IR Off**:
-    - Background: Standard button background
-    - Icon: Standard icon color
-    - Border: Standard button border color
-  - **IR On**:
-    - Background: Record red
-    - Icon: White (dark theme) or standard selected color
-    - Border: Record red
-- **Click Action**: `cameraControlViewModel.toggleIR()`
+- **Function**: Should cycle through four IR intensity levels for night vision
+- **Current Implementation Issue**: Currently only toggles between off (0) and high (15), but needs to be enhanced
+- **Required Enhancement**: Implement 4-level cycling with the following states:
+
+#### Required Color States and Logic:
+1. **Off** (brightness = 0):
+   - Background: White (`Color.White`)
+   - Icon: Medium gray (`AppColors.ButtonIconColor` - #808080)
+   - Border: Immersive button border (#E2E8F0)
+   
+2. **Low** (brightness = 5):
+   - Background: Light orange (`#FFA07D`)
+   - Icon: White (`Color.White`)
+   - Border: Light orange (`#FFA07D`)
+   
+3. **Medium** (brightness = 10):
+   - Background: Medium orange (`#F87646`)
+   - Icon: White (`Color.White`)
+   - Border: Medium orange (`#F87646`)
+   
+4. **High** (brightness = 15):
+   - Background: Dark orange (`#F55114`)
+   - Icon: White (`Color.White`)
+   - Border: Dark orange (`#F55114`)
+
+#### Required Cycling Logic:
+- **Click Sequence**: Off → Low → Medium → High → Off (repeats)
+- **Current State**: `currentState.irBrightness` determines current level
+- **State Mapping**:
+  - `irBrightness = 0` → Off
+  - `irBrightness = 5` → Low  
+  - `irBrightness = 10` → Medium
+  - `irBrightness = 15` → High
+
+#### Current Implementation (Needs Change):
+- **Current Logic**: Simple toggle between 0 (off) and 15 (on)
+- **Current Colors**: Only uses White (off) and Record Red (on)
+- **Location**: `CameraControlViewModel.toggleIR()` method
+- **Issue**: Does not support the 4-level cycling requirement
+
+#### Disabled State (Vision Mode active):
+- Background: Immersive button border color (#E2E8F0)
+- Icon: Light gray (#C5CBD4)
+- Border: Standard
+- Enabled: False
+
+- **Click Action**: `cameraControlViewModel.toggleIR()` (needs enhancement)
 - **Enabled When**: `currentVisionMode != VisionMode.VISION`
 - **Compact Mode**: Yes (icon only, no text)
+- **Size**: 48dp (phone) / 76dp (tablet) when compact
 - **API Used**:
   - **Primary API**: `MotocamAPIAndroidHelper.setIrBrightnessAsync()`
   - **Underlying Protocol**: `MotocamAPIHelper.setImgIRBrightnessCmd(value)`
   - **Command Structure**:
+    ```
+    Request Packet:
+    | Header | Command | SubCommand | Data Length | Data | CRC |
+    | SET(1) | IMAGE(4) | IRBRIGHTNESS(4) | 1 | 0/5/10/15 | 1 byte |
+    ```
     - Header: `Header.SET` (1)
     - Command: `Commands.IMAGE` (4)
-    - SubCommand: `ImageSubCommands.IRBRIGHTNESS`
-    - Value: 0 (disabled) or 15 (low intensity when enabling)
+    - SubCommand: `ImageSubCommands.IRBRIGHTNESS` (4)
+    - Values: 0 (off), 5 (low), 10 (medium), 15 (high)
+  - **Success Response**:
+    ```
+    Response Packet:
+    | Header | Command | SubCommand | Data Length | Success Flag | Data | CRC |
+    | ACK(3) | IMAGE(4) | IRBRIGHTNESS(4) | 2 | Success(0) | Success(0) | 1 byte |
+    ```
+  - **Error Response**:
+    ```
+    Response Packet:
+    | Header | Command | SubCommand | Data Length | Failed Flag | Error Code | CRC |
+    | ACK(3) | IMAGE(4) | IRBRIGHTNESS(4) | 2 | Failed(1) | -1 to -6 | 1 byte |
+    ```
   - **HTTP Communication**: HTTP POST to `http://192.168.2.1:80/api/motocam_api`
-  - **Brightness Range**: 0-255 (0=off, 15=low intensity, 5=high intensity)
-  - **Default Behavior**: When enabling IR, starts with low intensity (value 15)
-
-### IR Intensity Button
-- **ID**: `ir-cut-filter`
-- **Function**: Toggles between high and low intensity IR illumination
-- **Visual States**:
-  - **Disabled State** (IR not enabled):
-    - Background: Dark gray (#272727)
-    - Icon: Darker gray (#363636)
-    - Enabled: False
-  - **Low Intensity** (when IR enabled):
-    - Background: Standard button background
-    - Icon: Standard icon color
-  - **High Intensity** (when IR enabled):
-    - Background: Selected button background
-    - Icon: Selected icon color
-- **Click Action**: `cameraControlViewModel.toggleIrIntensity()`
-- **Enabled When**: `cameraControlState.isIrEnabled` is true
-- **Compact Mode**: Yes (icon only, no text)
-- **Dependency**: Only functional when IR is enabled
-- **API Used**:
-  - **Primary API**: `MotocamAPIAndroidHelper.setIrBrightnessAsync()`
-  - **Underlying Protocol**: `MotocamAPIHelper.setImgIRBrightnessCmd(value)`
-  - **Command Structure**: Same as IR button
-  - **Value Logic**: 
-    - Low Intensity: 15
-    - High Intensity: 5
-    - Toggle between these two values only
-  - **HTTP Communication**: HTTP POST to `http://192.168.2.1:80/api/motocam_api`
-  - **Prerequisite**: IR must be enabled (brightness > 0) for this function to work
+  - **Content-Type**: `application/octet-stream`
+  - **Brightness Range**: 0-15 (discrete levels: 0, 5, 10, 15)
 
 ## Status Indicators
 
 ### WiFi Indicator
 - **Function**: Shows current WiFi connection status
 - **States**:
-  - Connected: Active WiFi icon with full opacity
-  - Disconnected: Inactive/grayed WiFi icon
+  - **Connected**: Active WiFi icon with full opacity
+  - **Disconnected**: Inactive/grayed WiFi icon
 - **Data Source**: `systemStatus.isWifiConnected`
 - **Position**: Below control buttons in vertical arrangement
 
 ### AI Status Indicator
 - **Function**: Shows AI processing status
 - **States**:
-  - Enabled: Active AI icon
-  - Disabled: Inactive/grayed AI icon
+  - **Enabled**: Active AI icon
+  - **Disabled**: Inactive/grayed AI icon
 - **Data Source**: `systemStatus.isAiEnabled`
 - **Position**: Below WiFi indicator
 
@@ -228,6 +280,16 @@ The layout handles complex permission flows for screen recording:
 - **Error Handling**: CRC checksum validation and exception handling
 - **Timeout**: Connection timeout of 10 seconds for HTTP requests
 
+### Error Codes
+| Error Code | Description |
+|------------|-------------|
+| -1 | Error in executing the command |
+| -2 | Invalid packet header |
+| -3 | Invalid command |
+| -4 | Invalid sub-command |
+| -5 | Invalid Data/Data Length |
+| -6 | CRC does not match |
+
 ### Android System Integration
 - **Media Projection**: System-level screen capture API
 - **MediaRecorder**: Hardware-accelerated video encoding
@@ -247,11 +309,15 @@ The layout handles complex permission flows for screen recording:
 - **Universal Layout**: Same layout for both tablets and phones
 - **Compact Design**: Prioritizes screen real estate for camera feed
 - **Touch-Optimized**: All buttons sized for easy finger access
+- **Button Sizes**:
+  - **Phone**: 48dp (compact) / 56dp (regular)
+  - **Tablet**: 76dp (compact) / 112dp (regular)
 
 ### Visual Styling
 - **Compact Buttons**: All buttons use `isCompact = true`
 - **Icon-Only Display**: `showText = false` for all controls
-- **Consistent Theming**: Follows app's dark theme design
+- **Consistent Theming**: Follows app's adaptive dark/light theme design
+- **Corner Radius**: 14dp (phone) / 20dp (tablet)
 - **Status Integration**: System indicators seamlessly integrated
 
 ## State Management
@@ -315,4 +381,4 @@ The layout handles complex permission flows for screen recording:
 - **System Integration**: Respects system accessibility settings
 
 ---
-*This documentation covers the streamlined Minimal Control Layout optimized for immersive camera operation with essential controls and comprehensive API integration.* 
+*This documentation covers the streamlined Minimal Control Layout optimized for immersive camera operation with essential controls and comprehensive API integration.*
