@@ -60,6 +60,9 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.net.Uri
 import android.provider.Settings
+import com.outdu.camconnect.tflite.MainScreen
+import com.outdu.camconnect.tflite.MainScreenCombined
+import com.outdu.camconnect.tflite.MainScreenZeroDCE
 
 data class OverlayPoints(
     var labels: IntArray,
@@ -277,13 +280,15 @@ class MainActivity : ComponentActivity() {
                         )
                 ) {
                     AdaptiveStreamLayout(
-                        context = LocalContext.current, 
+                        context = LocalContext.current,
                         pointState = odPointsState,
                         onLogout = {
                             // Handle logout - navigate back to SetupActivity
                             handleLogout()
                         }
                     )
+//                    MainScreen()
+//                    MainScreenZeroDCE()
 //                    OnvifScreen()
                 }
             }

@@ -53,6 +53,7 @@ fun OptionButton(
             )
             .background(
                 when {
+                    !enabled -> if(!isDarkTheme) Color(0xFFE2E8F0) else Color(0xFF2C2C2C) // Disabled state background
                     isRed && isSelected -> Color(0xFFF43823)
                     isSelected -> if(!isDarkTheme) Color(0xFFD7D7D7) else Color(0xFF515151)
                     else -> DarkBackground3
@@ -74,7 +75,7 @@ fun OptionButton(
                     tint = if(!enabled) {
                         if(!isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF666666)
                     } else if(isSelected) {
-                        if(!isDarkTheme) Color(0xFF222222) else Color(0xFFFFFFFF)
+                        if(!isDarkTheme) if(isRed) Color.White else Color(0xFF222222) else Color(0xFFFFFFFF)
                     } else {
                         if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)
                     }
@@ -92,7 +93,7 @@ fun OptionButton(
                     color = if(!enabled) {
                         if(!isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF666666)
                     } else if(isSelected) {
-                        if(!isDarkTheme) Color(0xFF222222) else Color(0xFFFFFFFF)
+                        if(!isDarkTheme) if (isRed) Color(0xFFFFFFFF) else Color(0xFF222222) else Color(0xFFFFFFFF)
                     } else {
                         if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)
                     }
@@ -117,7 +118,6 @@ fun CameraLayout(
     val currentCameraMode = viewModel.currentCameraMode.value
     val currentOrientationMode = viewModel.currentOrientationMode.value
     val hasChanges = viewModel.hasUnsavedChanges.value
-    val isLowLightModeActive = viewModel.isLowLightModeActive
 
     Column(
         modifier = modifier
@@ -218,8 +218,15 @@ fun CameraLayout(
                             isSelected = currentVisionMode == VisionMode.BOTH,
                             onClick = { viewModel.setVisionMode(VisionMode.BOTH) },
                             modifier = Modifier.weight(1f),
+                            iconVal = R.drawable.low_light
+                        )
+                        OptionButton(
+                            text = "IR",
+                            isSelected = currentVisionMode == VisionMode.INFRARED,
+                            onClick = { viewModel.setVisionMode(VisionMode.INFRARED) },
+                            modifier = Modifier.weight(1f),
                             isRed = true,
-                            iconVal = R.drawable.router_line
+                            iconVal = R.drawable.night_logo
                         )
                     }
                 }
@@ -249,27 +256,27 @@ fun CameraLayout(
                     ) {
                         OptionButton(
                             text = "EIS",
-                            isSelected = if (isLowLightModeActive) false else (currentCameraMode == CameraMode.EIS || currentCameraMode == CameraMode.BOTH),
+                            isSelected = if (currentVisionMode == VisionMode.BOTH) false else (currentCameraMode == CameraMode.EIS || currentCameraMode == CameraMode.BOTH),
                             onClick = {
-                                if (!isLowLightModeActive) {
+                                if (currentVisionMode != VisionMode.BOTH) {
                                     viewModel.toggleCameraMode(CameraMode.EIS)
                                 }
                             },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.git_commit_line,
-                            enabled = !isLowLightModeActive
+                            enabled = currentVisionMode != VisionMode.BOTH
                         )
                         OptionButton(
                             text = "HDR",
-                            isSelected = if (isLowLightModeActive) true else (currentCameraMode == CameraMode.HDR || currentCameraMode == CameraMode.BOTH),
+                            isSelected = if (currentVisionMode == VisionMode.BOTH) false else (currentCameraMode == CameraMode.HDR || currentCameraMode == CameraMode.BOTH),
                             onClick = {
-                                if (!isLowLightModeActive) {
+                                if (currentVisionMode != VisionMode.BOTH) {
                                     viewModel.toggleCameraMode(CameraMode.HDR)
                                 }
                             },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.hd_settings_line,
-                            enabled = !isLowLightModeActive
+                            enabled = currentVisionMode != VisionMode.BOTH
                         )
                     }
                 }

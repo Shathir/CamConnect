@@ -19,6 +19,9 @@ material3WindowSizeClass = "<version>"
 playServicesLocation = "21.3.0"
 playServicesMaps = "19.2.0"
 appcompatResources = "1.7.0"
+tensorflowLite = "2.16.1"
+tensorflowLiteGpu = "2.16.1"
+tensorflowLiteSupport = "0.4.4"
 window = "1.4.0"
 lifecycleRuntimeComposeAndroid = "2.9.1"
 appcompat = "1.7.1"
@@ -53,6 +56,9 @@ androidx-appcompat-resources = { group = "androidx.appcompat", name = "appcompat
 androidx-window = { group = "androidx.window", name = "window", version.ref = "window" }
 androidx-lifecycle-runtime-compose-android = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose-android", version.ref = "lifecycleRuntimeComposeAndroid" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLite" }
+tensorflow-lite-gpu = { module = "org.tensorflow:tensorflow-lite-gpu", version.ref = "tensorflowLiteGpu" }
+tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupport" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

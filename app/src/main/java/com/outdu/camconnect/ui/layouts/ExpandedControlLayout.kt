@@ -741,7 +741,6 @@ fun ButtonRow(
         buttons.forEach { buttonConfig ->
             val isSelected = when (buttonConfig.id) {
                 "ir" -> cameraControlState.isIrEnabled
-                "ir-cut-filter" -> !cameraControlState.isLowIntensity
                 else -> buttonStates[buttonConfig.id] ?: false
             }
             val isLoading = remember { mutableStateOf(false) }
@@ -761,26 +760,63 @@ fun ButtonRow(
                     color = if (isSelected) ButtonSelectedIconColor else ButtonIconColor,
                     text = buttonConfig.text
                 )
-                "ir" -> buttonConfig.copy(
-                    onClick = { cameraControlViewModel.toggleIR() },
-                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) immersiveButtonBorderColor
-                                    else if (isSelected) RecordRed 
-                                    else ButtonBgColor,
-                    BorderColor = if (isSelected) RecordRed else immersiveButtonBorderColor,
-                    color = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFFC5CBD4)
-                           else if (isSelected) {if(isDarkTheme) ButtonSelectedIconColor else Color.White} 
-                           else ButtonIconColor,
-                    enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
-                    text = buttonConfig.text
-                )
-                "ir-cut-filter" -> buttonConfig.copy(
-                    backgroundColor = if(cameraControlState.isIrEnabled) {if (!cameraControlState.isLowIntensity) ButtonSelectedBgColor else ButtonBgColor} else {Color(0xFF272727)},
-                    BorderColor = ButtonBorderColor,
-                    color = if (cameraControlState.isIrEnabled) { if(!cameraControlState.isLowIntensity) ButtonSelectedIconColor else ButtonIconColor} else Color(0xFF363636),
-                    enabled = cameraControlState.isIrEnabled,
-                    onClick = { cameraControlViewModel.toggleIrIntensity() },
-                    text = "IR Intensity"
-                )
+                "ir" -> {
+                    // Define colors for each IR intensity level
+                    val (backgroundColor, borderColor, iconColor) = when (cameraControlState.irIntensityLevel) {
+                        com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.OFF -> Triple(
+                            Color.White,
+                            immersiveButtonBorderColor,
+                            ButtonIconColor
+                        )
+                        com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.LOW -> Triple(
+                            Color(0xFFFFA07D), // Light orange
+                            Color(0xFFFFA07D),
+                            Color.White
+                        )
+                        com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.MEDIUM -> Triple(
+                            Color(0xFFF87646), // Medium orange
+                            Color(0xFFF87646),
+                            Color.White
+                        )
+                        com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.HIGH -> Triple(
+                            Color(0xFFF55114), // Dark orange
+                            Color(0xFFF55114),
+                            Color.White
+                        )
+                        com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.MAX -> Triple(
+                            Color(0xFFE63900), // Very dark orange/red
+                            Color(0xFFE63900),
+                            Color.White
+                        )
+                        com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.ULTRA -> Triple(
+                            Color(0xFFE63900), // Very dark orange/red
+                            Color(0xFFE63900),
+                            Color.White
+                        )
+                    }
+                    
+                    buttonConfig.copy(
+                        onClick = { cameraControlViewModel.toggleIR() },
+                        backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                            immersiveButtonBorderColor
+                        } else {
+                            backgroundColor
+                        },
+                        BorderColor = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                            immersiveButtonBorderColor
+                        } else {
+                            borderColor
+                        },
+                        color = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                            Color(0xFFC5CBD4)
+                        } else {
+                            iconColor
+                        },
+//                        enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
+                        enabled = false,
+                        text = buttonConfig.text
+                    )
+                }
                 "picture-in-picture" -> buttonConfig.copy(
                     backgroundColor = immersiveButtonBorderColor,
                     BorderColor = immersiveButtonBorderColor,
@@ -803,9 +839,6 @@ fun ButtonRow(
 
             val weight = when (buttonConfig.id) {
                 "Settings" -> 1f
-                "ir-cut-filter" -> {
-                    if (deviceType == DeviceType.TABLET) 1f else 2f
-                }
                 else -> 1f
             }
 

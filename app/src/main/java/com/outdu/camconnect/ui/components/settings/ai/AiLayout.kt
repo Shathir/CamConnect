@@ -125,7 +125,6 @@ fun YesNoButtons(
     }
 }
 
-
 @Composable
 fun AiLayout(
     systemStatus: SystemStatus = SystemStatus(),

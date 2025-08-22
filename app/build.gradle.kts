@@ -106,6 +106,20 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.androidx.appcompat.resources)
 
+    // CameraX
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation( "androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+
+    // TensorFlow Lite (stable version without conflicts)
+    implementation(libs.tensorflow.lite)
+    implementation(libs.tensorflow.lite.support)
+    // GPU delegate for hardware acceleration (matching versions)
+    implementation(libs.tensorflow.lite.gpu)
+
+
+
     // Lottie Animation
     implementation("com.airbnb.android:lottie-compose:6.1.0")
 

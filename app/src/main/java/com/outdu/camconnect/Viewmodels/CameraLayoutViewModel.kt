@@ -309,6 +309,7 @@ class CameraLayoutViewModel : ViewModel() {
 
                 // MISC Task
                 val miscVal = calculateMiscValue()
+                Log.d("Misc Value is : ", miscVal.toString())
                 val miscDeferred = async {
                     val start = System.currentTimeMillis()
                     val success = suspendCancellableCoroutine<Boolean> { cont ->
@@ -478,13 +479,20 @@ class CameraLayoutViewModel : ViewModel() {
     }
 
     fun setVisionMode(mode: VisionMode) {
-        // Handle Low Light mode logic
-        if (mode == VisionMode.BOTH) {
-            // When Low Light is selected, turn off EIS and turn on HDR
-            _currentCameraMode.value = CameraMode.HDR
-        } else if (_currentVisionMode.value == VisionMode.BOTH) {
-            // When switching away from Low Light mode, turn off HDR
-            _currentCameraMode.value = CameraMode.OFF
+        // Handle different vision mode transitions
+        when (mode) {
+            VisionMode.VISION -> {
+                // When switching to Visible mode, turn off both EIS and HDR
+                _currentCameraMode.value = CameraMode.OFF
+            }
+            VisionMode.BOTH -> {
+                // When Low Light is selected, turn off both EIS and HDR
+                _currentCameraMode.value = CameraMode.OFF
+            }
+            VisionMode.INFRARED -> {
+                // When IR mode is selected, turn off both EIS and HDR
+                _currentCameraMode.value = CameraMode.OFF
+            }
         }
         
         _currentVisionMode.value = mode

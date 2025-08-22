@@ -211,15 +211,45 @@ fun MinimalControlContent(
                 config = ButtonConfig(
                     id = "ir",
                     iconPlaceholder = R.drawable.ir_line.toString(),
-                    color = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) Color(0xFFC5CBD4)
-                           else if (cameraControlState.isIrEnabled) {if(isDarkTheme) ButtonSelectedIconColor else Color.White} 
-                           else ButtonIconColor,
+                    color = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                        Color(0xFFC5CBD4)
+                    } else {
+                        when (cameraControlState.irIntensityLevel) {
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.OFF -> ButtonIconColor
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.LOW,
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.MEDIUM,
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.HIGH,
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.MAX,
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.ULTRA -> Color.White
+                        }
+                    },
                     text = "IR",
-                    BorderColor = if (cameraControlState.isIrEnabled) RecordRed else immersiveButtonBorderColor,
-                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) immersiveButtonBorderColor
-                                    else if (cameraControlState.isIrEnabled) RecordRed 
-                                    else Color.White,
-                    enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
+                    BorderColor = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                        immersiveButtonBorderColor
+                    } else {
+                        when (cameraControlState.irIntensityLevel) {
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.OFF -> immersiveButtonBorderColor
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.LOW -> Color(0xFFFFA07D)
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.MEDIUM -> Color(0xFFF87646)
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.HIGH -> Color(0xFFF55114)
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.MAX -> Color(0xFFE63900)
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.ULTRA -> Color(0xFFE63900)
+                        }
+                    },
+                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                        immersiveButtonBorderColor
+                    } else {
+                        when (cameraControlState.irIntensityLevel) {
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.OFF -> Color.White
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.LOW -> Color(0xFFFFA07D)
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.MEDIUM -> Color(0xFFF87646)
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.HIGH -> Color(0xFFF55114)
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.MAX -> Color(0xFFE63900)
+                            com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.ULTRA -> Color(0xFFE63900)
+                        }
+                    },
+//                    enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
+                    enabled = false,
                     onClick = { cameraControlViewModel.toggleIR() }
                 ),
                 isCompact = true,

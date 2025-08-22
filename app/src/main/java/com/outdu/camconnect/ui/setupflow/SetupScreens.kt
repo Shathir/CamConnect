@@ -239,16 +239,18 @@ fun LoginScreen(
                     .padding(end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(if(deviceType == DeviceType.TABLET) 12.dp else  4.dp)
             ) {
-                OwnerLoginCard(
-                    setupState = setupState,
-                    onUpdateDetails = onUpdateDetails
-                )
+//                OwnerLoginCard(
+//                    setupState = setupState,
+//                    onUpdateDetails = onUpdateDetails
+//                )
                 ViewerLoginCard(
                     setupState = setupState,
                     onUpdateDetails = onUpdateDetails,
                     onAuthenticate = onAuthenticate
                 )
             }
+
+            UserCreationRow()
 
             SupportRow()
         }
@@ -511,6 +513,50 @@ fun SupportRow() {
             )
         )
     }
+}
+
+@Composable
+fun UserCreationRow()
+{
+
+    val context = LocalContext.current
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        // Title
+        Text(
+            text = "First time here?",
+            style = TextStyle(
+                fontSize = 14.sp,
+                lineHeight = 14.02.sp,
+                fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                fontWeight = FontWeight(500),
+                color = Color(0xFF221F1F)
+            )
+        )
+
+        // Clickable & underlined mail text
+        Text(
+            text = "Create Account",
+            modifier = Modifier.clickable {
+                val browserIntent = Intent(
+                    Intent.ACTION_VIEW,
+                    "https://frontend.192.168.1.129.nip.io".toUri()
+                )
+                context.startActivity(browserIntent)
+            },
+            style = TextStyle(
+                fontSize = 14.sp,
+                lineHeight = 14.02.sp,
+                fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                fontWeight = FontWeight(700),
+                color = StravionBlue,
+            )
+        )
+    }
+
 }
 
 

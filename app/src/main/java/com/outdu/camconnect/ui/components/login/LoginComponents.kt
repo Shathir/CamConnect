@@ -220,7 +220,7 @@ fun ViewerLoginCard(
 ) {
     var isAuthenticating by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    
+    var onStartStreaming by remember { mutableStateOf(false) }
     LaunchedEffect(isAuthenticating) {
         if (isAuthenticating) {
             errorMessage = null
@@ -285,7 +285,7 @@ fun ViewerLoginCard(
                             shape = RoundedCornerShape(20.dp)
                         )
                         .clickable {
-
+                            onStartStreaming = true
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -327,38 +327,41 @@ fun ViewerLoginCard(
                 )
             }
 
-            Column() {
-                AccessKeyInput(
-                    onPinEntered = { pin ->
-                        // When PIN is exactly 4 digits, attempt authentication
-                        if (pin.length == 4 && !isAuthenticating) {
-                            isAuthenticating = true
-                            // Launch coroutine for authentication
-                            CoroutineScope(Dispatchers.Main).launch {
-                                try {
-                                    val result = SessionManager.authenticateWithPin(pin)
-                                    result.fold(
-                                        onSuccess = { success ->
-                                            onAuthenticate(success)
-                                        },
-                                        onFailure = { error ->
-                                            errorMessage = when (error) {
-                                                is InvalidPinException -> "Invalid PIN"
-                                                is MaxAttemptsExceededException -> error.message
-                                                else -> "Authentication failed"
+            if(onStartStreaming) {
+                Column() {
+                    AccessKeyInput(
+                        onPinEntered = { pin ->
+                            // When PIN is exactly 4 digits, attempt authentication
+                            if (pin.length == 4 && !isAuthenticating) {
+                                isAuthenticating = true
+                                // Launch coroutine for authentication
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    try {
+                                        val result = SessionManager.authenticateWithPin(pin)
+                                        result.fold(
+                                            onSuccess = { success ->
+                                                onStartStreaming = false
+                                                onAuthenticate(success)
+                                            },
+                                            onFailure = { error ->
+                                                errorMessage = when (error) {
+                                                    is InvalidPinException -> "Invalid PIN"
+                                                    is MaxAttemptsExceededException -> error.message
+                                                    else -> "Authentication failed"
+                                                }
+                                                onAuthenticate(false)
                                             }
-                                            onAuthenticate(false)
-                                        }
-                                    )
-                                } finally {
-                                    isAuthenticating = false
+                                        )
+                                    } finally {
+                                        isAuthenticating = false
+                                    }
                                 }
                             }
-                        }
-                    },
-                    isLoading = isAuthenticating,
-                    errorMessage = errorMessage
-                )
+                        },
+                        isLoading = isAuthenticating,
+                        errorMessage = errorMessage
+                    )
+                }
             }
         }
     }

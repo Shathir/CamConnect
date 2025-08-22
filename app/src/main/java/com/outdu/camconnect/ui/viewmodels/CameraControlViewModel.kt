@@ -9,16 +9,34 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class IrIntensityLevel(val brightness: Int, val displayName: String) {
+    OFF(0, "Off"),
+    LOW(2, "Low"),
+    MEDIUM(4, "Medium"),
+    HIGH(6, "High"),
+    MAX(8, "Max"),
+    ULTRA(10, "Ultra");
+
+    companion object {
+        fun fromBrightness(brightness: Int): IrIntensityLevel {
+            val level = values().find { it.brightness == brightness } ?: OFF
+            Log.d("IrIntensityLevel", "fromBrightness($brightness) -> ${level.displayName}")
+            return level
+        }
+    }
+}
+
 data class CameraControlState(
-    val isIrEnabled: Boolean = false,
+    val irIntensityLevel: IrIntensityLevel = IrIntensityLevel.OFF,
     val irBrightness: Int = 0,
-    val isLowIntensity: Boolean = false, // true means high intensity (15), false means low intensity (5)
     val currentZoom: Float = 1.0f,
     val isEisEnabled: Boolean = false,
     val isHdrEnabled: Boolean = false,
     val isZoomEnabled: Boolean = true,
     val isAutoDayNightEnabled: Boolean = false
-)
+) {
+    val isIrEnabled: Boolean get() = irIntensityLevel != IrIntensityLevel.OFF
+}
 
 class CameraControlViewModel : ViewModel() {
     private val _cameraControlState = MutableStateFlow(CameraControlState())
@@ -97,11 +115,23 @@ class CameraControlViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val currentState = _cameraControlState.value
-                val newBrightness = if (currentState.isIrEnabled) 0 else 15 // Default to low intensity when enabling IR
+                Log.d(TAG, "toggleIR called - Current state: ${currentState.irIntensityLevel.displayName} (brightness=${currentState.irBrightness})")
+                
+                // Cycle through the IR intensity levels: Off → Low → Medium → High → Max → Ultra → Off
+                val nextLevel = when (currentState.irIntensityLevel) {
+                    IrIntensityLevel.OFF -> IrIntensityLevel.LOW
+                    IrIntensityLevel.LOW -> IrIntensityLevel.MEDIUM
+                    IrIntensityLevel.MEDIUM -> IrIntensityLevel.HIGH
+                    IrIntensityLevel.HIGH -> IrIntensityLevel.MAX
+                    IrIntensityLevel.MAX -> IrIntensityLevel.ULTRA
+                    IrIntensityLevel.ULTRA -> IrIntensityLevel.OFF
+                }
+                
+                Log.d(TAG, "toggleIR - Next level will be: ${nextLevel.displayName} (brightness=${nextLevel.brightness})")
 
                 MotocamAPIAndroidHelper.setIrBrightnessAsync(
                     scope = viewModelScope,
-                    brightness = newBrightness
+                    brightness = nextLevel.brightness
                 ) { result, error ->
                     if (error != null) {
                         Log.e(TAG, "Error toggling IR: $error")
@@ -110,47 +140,16 @@ class CameraControlViewModel : ViewModel() {
 
                     if (result) {
                         _cameraControlState.value = currentState.copy(
-                            isIrEnabled = !currentState.isIrEnabled,
-                            irBrightness = newBrightness,
-                            isLowIntensity = newBrightness == 15 // Low intensity when 15
+                            irIntensityLevel = nextLevel,
+                            irBrightness = nextLevel.brightness
                         )
-                        Log.d(TAG, "IR toggled: enabled=${!currentState.isIrEnabled}, brightness=$newBrightness")
+                        Log.d(TAG, "IR toggled successfully to: ${nextLevel.displayName} (brightness=${nextLevel.brightness})")
+                    } else {
+                        Log.e(TAG, "API call returned false - IR toggle failed")
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in toggleIR", e)
-            }
-        }
-    }
-
-    fun toggleIrIntensity() {
-        viewModelScope.launch {
-            try {
-                val currentState = _cameraControlState.value
-                if (!currentState.isIrEnabled) return@launch
-
-                // Toggle between 15 (low intensity) and 5 (high intensity)
-                val newBrightness = if (currentState.isLowIntensity) 5 else 15
-
-                MotocamAPIAndroidHelper.setIrBrightnessAsync(
-                    scope = viewModelScope,
-                    brightness = newBrightness
-                ) { result, error ->
-                    if (error != null) {
-                        Log.e(TAG, "Error toggling IR intensity: $error")
-                        return@setIrBrightnessAsync
-                    }
-
-                    if (result) {
-                        _cameraControlState.value = currentState.copy(
-                            irBrightness = newBrightness,
-                            isLowIntensity = newBrightness == 15 // High when 5, Low when 15
-                        )
-                        Log.d(TAG, "IR intensity toggled: high=${newBrightness == 15}, brightness=$newBrightness")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error in toggleIrIntensity", e)
             }
         }
     }
@@ -188,8 +187,7 @@ class CameraControlViewModel : ViewModel() {
                             else -> 1.0f // Default to 1x zoom if unknown value
                         }
                         
-                        val irEnabled = irBrightness > 0
-                        val isLowIntensity = irBrightness == 15
+                        val irIntensityLevel = IrIntensityLevel.fromBrightness(irBrightness)
 
                         // Parse EIS and HDR states from MISC value
                         val misc = conf["MISC"]?.toString()?.toIntOrNull() ?: 1
@@ -201,12 +199,11 @@ class CameraControlViewModel : ViewModel() {
                         val dayMode = conf["DAYMODE"]?.toString()
                         val isAutoDayNightEnabled = dayMode == "ON"
                         
-                        Log.d(TAG, "Parsed values - IR Brightness: $irBrightness, IR Enabled: $irEnabled, Low Intensity: $isLowIntensity, Zoom: ${currentZoom}X, EIS: $eisEnabled, HDR: $hdrEnabled, AutoDayNight: $isAutoDayNightEnabled")
+                        Log.d(TAG, "Parsed values - IR Brightness: $irBrightness, IR Level: ${irIntensityLevel.displayName}, Zoom: ${currentZoom}X, EIS: $eisEnabled, HDR: $hdrEnabled, AutoDayNight: $isAutoDayNightEnabled")
                         
                         _cameraControlState.value = CameraControlState(
-                            isIrEnabled = irEnabled,
+                            irIntensityLevel = irIntensityLevel,
                             irBrightness = irBrightness,
-                            isLowIntensity = isLowIntensity,
                             currentZoom = currentZoom,
                             isEisEnabled = eisEnabled,
                             isHdrEnabled = hdrEnabled,
