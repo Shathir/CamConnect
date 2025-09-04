@@ -250,7 +250,7 @@ fun LoginScreen(
                 )
             }
 
-            UserCreationRow()
+//            UserCreationRow()
 
             SupportRow()
         }

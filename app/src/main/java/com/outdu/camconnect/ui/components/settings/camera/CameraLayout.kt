@@ -255,28 +255,52 @@ fun CameraLayout(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OptionButton(
-                            text = "EIS",
-                            isSelected = if (currentVisionMode == VisionMode.BOTH) false else (currentCameraMode == CameraMode.EIS || currentCameraMode == CameraMode.BOTH),
+                            text = if(currentVisionMode == VisionMode.BOTH) "Color" else "EIS",
+                            isSelected = if (currentVisionMode == VisionMode.BOTH) {
+                                // In Low Light mode, Color button is selected when camera mode is OFF
+                                currentCameraMode == CameraMode.OFF
+                            } else {
+                                // In other modes, EIS button follows normal logic
+                                currentCameraMode == CameraMode.EIS || currentCameraMode == CameraMode.BOTH
+                            },
                             onClick = {
-                                if (currentVisionMode != VisionMode.BOTH) {
+                                if (currentVisionMode == VisionMode.BOTH) {
+                                    // In Low Light mode, Color button sets camera mode to OFF
+                                    viewModel.setCameraMode(CameraMode.OFF)
+                                } else {
+                                    // In other modes, use normal toggle logic
                                     viewModel.toggleCameraMode(CameraMode.EIS)
                                 }
                             },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.git_commit_line,
-                            enabled = currentVisionMode != VisionMode.BOTH
+                            enabled = true
                         )
                         OptionButton(
-                            text = "HDR",
-                            isSelected = if (currentVisionMode == VisionMode.BOTH) false else (currentCameraMode == CameraMode.HDR || currentCameraMode == CameraMode.BOTH),
+                            text = if(currentVisionMode == VisionMode.BOTH) "Mono" else "HDR",
+                            isSelected = if (currentVisionMode == VisionMode.BOTH) {
+                                // In Low Light mode, Mono button is selected when camera mode is BOTH
+                                currentCameraMode == CameraMode.BOTH
+                            } else {
+                                // In other modes, HDR button follows normal logic
+                                currentCameraMode == CameraMode.HDR || currentCameraMode == CameraMode.BOTH
+                            },
                             onClick = {
-                                if (currentVisionMode != VisionMode.BOTH) {
+                                if (currentVisionMode == VisionMode.BOTH) {
+                                    // In Low Light mode, Mono button toggles between BOTH and OFF
+                                    if (currentCameraMode == CameraMode.BOTH) {
+                                        viewModel.setCameraMode(CameraMode.OFF)
+                                    } else {
+                                        viewModel.setCameraMode(CameraMode.BOTH)
+                                    }
+                                } else {
+                                    // In other modes, use normal toggle logic
                                     viewModel.toggleCameraMode(CameraMode.HDR)
                                 }
                             },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.hd_settings_line,
-                            enabled = currentVisionMode != VisionMode.BOTH
+                            enabled = true
                         )
                     }
                 }

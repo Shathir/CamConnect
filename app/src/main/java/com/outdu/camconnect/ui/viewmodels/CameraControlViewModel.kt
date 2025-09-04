@@ -33,6 +33,7 @@ data class CameraControlState(
     val isEisEnabled: Boolean = false,
     val isHdrEnabled: Boolean = false,
     val isZoomEnabled: Boolean = true,
+    var isIrChanged: Boolean = false,
     val isAutoDayNightEnabled: Boolean = false
 ) {
     val isIrEnabled: Boolean get() = irIntensityLevel != IrIntensityLevel.OFF
@@ -141,7 +142,8 @@ class CameraControlViewModel : ViewModel() {
                     if (result) {
                         _cameraControlState.value = currentState.copy(
                             irIntensityLevel = nextLevel,
-                            irBrightness = nextLevel.brightness
+                            irBrightness = nextLevel.brightness,
+                            isIrChanged = true
                         )
                         Log.d(TAG, "IR toggled successfully to: ${nextLevel.displayName} (brightness=${nextLevel.brightness})")
                     } else {
@@ -152,6 +154,11 @@ class CameraControlViewModel : ViewModel() {
                 Log.e(TAG, "Error in toggleIR", e)
             }
         }
+    }
+
+    fun clearIrNotification() {
+        val currentState = _cameraControlState.value
+        _cameraControlState.value = currentState.copy(isIrChanged = false)
     }
 
     private fun fetchInitialState() {

@@ -73,6 +73,8 @@ import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 import com.outdu.camconnect.ui.models.VisionMode
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import com.outdu.camconnect.ui.theme.AppColors.immersiveButtonBorderColor
+import com.outdu.camconnect.ui.components.dialogs.FilenamePromptDialog
+import com.outdu.camconnect.ui.viewmodels.IrIntensityLevel
 
 
 /**
@@ -547,6 +549,7 @@ fun ExpandedControlContent(
                             when (recordingState) {
                                 is RecordingState.Recording -> RecordRed
                                 is RecordingState.StoppingRecording -> RecordRed.copy(alpha = 0.7f)
+                                is RecordingState.PromptingForFilename -> RecordRed
                                 is RecordingState.SavedToGallery -> Color(0xFF4CAF50) // Green color for success
                                 RecordingState.NotRecording -> MediumDarkBackground
                             }
@@ -586,6 +589,7 @@ fun ExpandedControlContent(
                                     when (recordingState) {
                                         is RecordingState.Recording -> White
                                         is RecordingState.StoppingRecording -> White.copy(alpha = 0.7f)
+                                        is RecordingState.PromptingForFilename -> White
                                         is RecordingState.SavedToGallery -> Color(0xFF4CAF50)
                                         RecordingState.NotRecording -> RedVariant
                                     }
@@ -604,6 +608,7 @@ fun ExpandedControlContent(
                                 text = when (state) {
                                     is RecordingState.Recording -> "RECORDING ${state.duration}"
                                     is RecordingState.StoppingRecording -> "STOPPING RECORDING..."
+                                    is RecordingState.PromptingForFilename -> "ENTER FILENAME..."
                                     is RecordingState.SavedToGallery -> "SAVED TO GALLERY"
                                     RecordingState.NotRecording -> "RECORD"
                                 },
@@ -715,6 +720,18 @@ fun ExpandedControlContent(
             }
         }
     }
+    
+    // Show filename prompt dialog when recording is being stopped
+    if (recordingState is RecordingState.PromptingForFilename) {
+        FilenamePromptDialog(
+            onConfirm = { filename ->
+                recordingViewModel.stopRecordingWithFilename(context, filename)
+            },
+            onCancel = {
+                recordingViewModel.cancelFilenamePrompt()
+            }
+        )
+    }
 }
 
 
@@ -797,24 +814,32 @@ fun ButtonRow(
                     
                     buttonConfig.copy(
                         onClick = { cameraControlViewModel.toggleIR() },
-                        backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                        backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) {
                             immersiveButtonBorderColor
                         } else {
                             backgroundColor
                         },
-                        BorderColor = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                        BorderColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) {
                             immersiveButtonBorderColor
                         } else {
                             borderColor
                         },
-                        color = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                        color = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) {
                             Color(0xFFC5CBD4)
                         } else {
                             iconColor
                         },
-//                        enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
-                        enabled = false,
-                        text = buttonConfig.text
+                        enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
+//                        enabled = false,
+//                        text = buttonConfig.text
+                        text = when (cameraControlState.irIntensityLevel) {
+                            IrIntensityLevel.OFF -> "OFF"
+                            IrIntensityLevel.LOW -> "LOW"
+                            IrIntensityLevel.MEDIUM -> "MEDIUM"
+                            IrIntensityLevel.HIGH -> "HIGH"
+                            IrIntensityLevel.MAX ->"MAX"
+                            IrIntensityLevel.ULTRA -> "ULTRA"
+                        }
                     )
                 }
                 "picture-in-picture" -> buttonConfig.copy(

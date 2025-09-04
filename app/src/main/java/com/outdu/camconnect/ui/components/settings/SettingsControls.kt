@@ -397,6 +397,7 @@ fun ControlTabSwitcher(
                                 ControlTab.CAMERA_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.camera_line)
                                 ControlTab.AI_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.ai_line)
                                 ControlTab.LICENSE_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
+                                ControlTab.DEV_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                             },
                             contentDescription = tab.displayName,
                             tint = if (selectedTab == tab) if(isDarkTheme) Color.White else Color.Black
@@ -447,6 +448,7 @@ fun ControlTabSwitcher(
                                 ControlTab.CAMERA_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.camera_line)
                                 ControlTab.AI_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.ai_line)
                                 ControlTab.LICENSE_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
+                                ControlTab.DEV_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                             },
                             contentDescription = tab.displayName,
                             tint = if (tab == ControlTab.LICENSE_CONTROL) {
@@ -555,4 +557,5 @@ enum class ControlTab(val displayName: String) {
     CAMERA_CONTROL("Camera"),
     AI_CONTROL("AI Vision"),
     LICENSE_CONTROL("Manage"),
+    DEV_LAYOUT("Dev Mode")
 } 

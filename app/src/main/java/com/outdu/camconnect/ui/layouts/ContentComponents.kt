@@ -229,6 +229,10 @@ fun FullControlContent(
             ControlTab.LICENSE_CONTROL -> {
 
             }
+
+            ControlTab.DEV_LAYOUT -> {
+
+            }
         }
     }
 }

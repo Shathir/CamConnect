@@ -47,7 +47,7 @@ object CameraCommandProtocol {
     }
 
     enum class SystemSubCommands(val value: Int) {
-        SHUTDOWN(1);
+        SHUTDOWN(1), LOGIN_PIN(4);
         
         fun getVal(): Int = value
     }

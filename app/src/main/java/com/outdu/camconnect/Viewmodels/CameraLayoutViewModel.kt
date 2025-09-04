@@ -130,9 +130,9 @@ class CameraLayoutViewModel : ViewModel() {
     }
 
     private fun calculateMiscValue(): Int {
-        // Extract HDR and EIS from camera mode - ensure they're mutually exclusive
-        val hdr = _currentCameraMode.value == CameraMode.HDR
-        val eis = _currentCameraMode.value == CameraMode.EIS
+        // Extract HDR and EIS from camera mode
+        val hdr = _currentCameraMode.value == CameraMode.HDR || _currentCameraMode.value == CameraMode.BOTH
+        val eis = _currentCameraMode.value == CameraMode.EIS || _currentCameraMode.value == CameraMode.BOTH
 
         // Extract visible and infrared from vision mode
         val visible = _currentVisionMode.value == VisionMode.VISION || _currentVisionMode.value == VisionMode.BOTH
@@ -140,17 +140,18 @@ class CameraLayoutViewModel : ViewModel() {
 
         // Calculate WDR/EIS base value
         val wdreisval = when {
-            !hdr && !eis -> 1    // No HDR, No EIS
-            !hdr && eis -> 2     // No HDR, Yes EIS
-            hdr && !eis -> 3     // Yes HDR, No EIS
-            else -> 1            // Default to OFF if somehow both are set
+            !hdr && !eis -> 1    // No HDR, No EIS (OFF mode) - misc % 4 = 1
+            !hdr && eis -> 2     // No HDR, Yes EIS (EIS mode) - misc % 4 = 2
+            hdr && !eis -> 3     // Yes HDR, No EIS (HDR mode) - misc % 4 = 3
+            hdr && eis -> 4      // Both HDR and EIS (BOTH mode) - misc % 4 = 0
+            else -> 1            // Default fallback
         }
 
         // Calculate final MISC value
         return when {
-            visible && !infrared -> wdreisval           // Only visible
-            visible && infrared -> 4 + wdreisval        // Both visible and infrared
-            !visible && infrared -> 8 + wdreisval       // Only infrared
+            visible && !infrared -> wdreisval           // Only visible (1-4)
+            visible && infrared -> 4 + wdreisval        // Both visible and infrared (5-8)
+            !visible && infrared -> 8 + wdreisval       // Only infrared (9-12)
             else -> 1                                   // Default to visible mode
         }
     }
@@ -486,7 +487,7 @@ class CameraLayoutViewModel : ViewModel() {
                 _currentCameraMode.value = CameraMode.OFF
             }
             VisionMode.BOTH -> {
-                // When Low Light is selected, turn off both EIS and HDR
+                // When Low Light is selected, set to OFF so Color button appears selected by default
                 _currentCameraMode.value = CameraMode.OFF
             }
             VisionMode.INFRARED -> {

@@ -257,6 +257,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                     midas_ret=g_midas->invokeProcessAsync(bgr);
                 }
                 std::vector<Object> objects;
+                auto start_time = std::chrono::system_clock::now();
                 g_yolo->detect(bgr, objects);//yolo od threshold 0.6
                 std::vector<cv::Point2f> points2F;
                 points2F.reserve(objects.size());
@@ -274,7 +275,9 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                         g_midas->postProcess(bgr.cols, bgr.rows, dep_thres);
                     }
                 }
-
+                auto end_time = std::chrono::system_clock::now();
+                std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+                GST_DEBUG("YOLO time: %f", elapsed_seconds.count());
                 od_callback(objects, dep_thres, data);
             }
         }

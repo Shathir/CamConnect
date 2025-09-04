@@ -59,6 +59,8 @@ import com.outdu.camconnect.ui.components.recording.RecordingTimer
 import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import com.outdu.camconnect.ui.theme.AppColors.immersiveButtonBorderColor
+import com.outdu.camconnect.ui.components.dialogs.FilenamePromptDialog
+import com.outdu.camconnect.ui.models.RecordingState
 
 
 /**
@@ -81,6 +83,7 @@ fun MinimalControlContent(
     val cameraLayoutViewModel: CameraLayoutViewModel = viewModel()
     
     val isRecording by recordingViewModel.isRecording.collectAsStateWithLifecycle()
+    val recordingState by recordingViewModel.recordingState.collectAsStateWithLifecycle()
     val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
     val isDarkTheme = isSystemInDarkTheme()
 
@@ -211,7 +214,7 @@ fun MinimalControlContent(
                 config = ButtonConfig(
                     id = "ir",
                     iconPlaceholder = R.drawable.ir_line.toString(),
-                    color = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                    color = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) {
                         Color(0xFFC5CBD4)
                     } else {
                         when (cameraControlState.irIntensityLevel) {
@@ -224,7 +227,7 @@ fun MinimalControlContent(
                         }
                     },
                     text = "IR",
-                    BorderColor = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                    BorderColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) {
                         immersiveButtonBorderColor
                     } else {
                         when (cameraControlState.irIntensityLevel) {
@@ -236,7 +239,7 @@ fun MinimalControlContent(
                             com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.ULTRA -> Color(0xFFE63900)
                         }
                     },
-                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value != VisionMode.INFRARED) {
+                    backgroundColor = if (cameraLayoutViewModel.currentVisionMode.value == VisionMode.VISION) {
                         immersiveButtonBorderColor
                     } else {
                         when (cameraControlState.irIntensityLevel) {
@@ -248,8 +251,8 @@ fun MinimalControlContent(
                             com.outdu.camconnect.ui.viewmodels.IrIntensityLevel.ULTRA -> Color(0xFFE63900)
                         }
                     },
-//                    enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
-                    enabled = false,
+                    enabled = cameraLayoutViewModel.currentVisionMode.value != VisionMode.VISION,
+//                    enabled = false,
                     onClick = { cameraControlViewModel.toggleIR() }
                 ),
                 isCompact = true,
@@ -285,5 +288,17 @@ fun MinimalControlContent(
             BatteryIndicator(
                 batteryLevel = systemStatus.batteryLevel
             )
+    }
+    
+    // Show filename prompt dialog when recording is being stopped
+    if (recordingState is RecordingState.PromptingForFilename) {
+        FilenamePromptDialog(
+            onConfirm = { filename ->
+                recordingViewModel.stopRecordingWithFilename(context, filename)
+            },
+            onCancel = {
+                recordingViewModel.cancelFilenamePrompt()
+            }
+        )
     }
 }

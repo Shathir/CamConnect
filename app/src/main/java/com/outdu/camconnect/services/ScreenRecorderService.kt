@@ -30,7 +30,8 @@ import java.io.FileInputStream
 @Parcelize
 data class RecordConfig(
     val resultCode: Int,
-    val data: Intent
+    val data: Intent,
+    val customFilename: String? = null
 ): Parcelable
 
 class ScreenRecorderService : Service() {
@@ -44,6 +45,7 @@ class ScreenRecorderService : Service() {
         }
     }
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var currentRecordConfig: RecordConfig? = null
 
     private val outputFile by lazy {
         File(cacheDir, "tmp.mp4").also {
@@ -76,8 +78,11 @@ class ScreenRecorderService : Service() {
     private fun saveToGallery() {
         serviceScope.launch {
             try {
+                val filename = currentRecordConfig?.customFilename?.let { "$it.mp4" } 
+                    ?: "video_${System.currentTimeMillis()}.mp4"
+                
                 val contentValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, "video_${System.currentTimeMillis()}.mp4")
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
                     put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
                     put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/nveyetech")
                 }
@@ -125,6 +130,13 @@ class ScreenRecorderService : Service() {
             ACTION_STOP -> {
                 stopRecording()
             }
+            ACTION_UPDATE_FILENAME -> {
+                val customFilename = intent?.getStringExtra(CUSTOM_FILENAME)
+                if (customFilename != null && currentRecordConfig != null) {
+                    currentRecordConfig = currentRecordConfig!!.copy(customFilename = customFilename)
+                    Log.d(TAG, "Updated filename to: $customFilename")
+                }
+            }
         }
         return START_NOT_STICKY
     }
@@ -145,6 +157,8 @@ class ScreenRecorderService : Service() {
                 stopSelf()
                 return
             }
+            
+            currentRecordConfig = config
 
             mediaProjection = mediaProjectionManager.getMediaProjection(
                 config.resultCode,
@@ -279,6 +293,8 @@ class ScreenRecorderService : Service() {
 
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
+        const val ACTION_UPDATE_FILENAME = "ACTION_UPDATE_FILENAME"
         const val RECORD_CONFIG = "RECORD_CONFIG"
+        const val CUSTOM_FILENAME = "CUSTOM_FILENAME"
     }
 }

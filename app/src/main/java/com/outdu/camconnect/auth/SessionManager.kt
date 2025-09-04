@@ -14,6 +14,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.atomic.AtomicInteger
+import com.outdu.camconnect.communication.CameraCommandProtocol
 
 /**
  * Singleton class for managing user authentication and session tokens
@@ -60,6 +61,12 @@ object SessionManager {
     @Serializable
     private data class LoginRequest(val pin: String)
     
+    @Serializable
+    private data class LoginResponse(
+        val message: String? = null,
+        val error: String? = null
+    )
+    
     /**
      * Initialize SessionManager with application context
      * Must be called before using any other methods
@@ -103,7 +110,7 @@ object SessionManager {
             
             Log.d(TAG, "Attempting authentication with PIN (attempt ${pinAttempts.get()})")
             
-            // Make login API call
+            // Make login API call using binary protocol
             val result = performLogin(pin)
             
             if (result.isSuccess) {
@@ -125,11 +132,13 @@ object SessionManager {
             Result.failure(AuthenticationNetworkException("Unexpected authentication error", e))
         }
     }
+
     
+
     /**
      * Perform the actual login API call
      */
-    private suspend fun performLogin(pin: String): Result<Boolean> {
+    private suspend fun performLogin1(pin: String): Result<Boolean> {
         val httpClient = HttpClient(CIO) {
             engine {
                 requestTimeout = LOGIN_TIMEOUT_MS
@@ -171,6 +180,130 @@ object SessionManager {
             Result.failure(AuthenticationNetworkException("Network error during login", e))
         } finally {
             httpClient.close()
+        }
+    }
+    
+    /**
+     * Perform the actual login using binary protocol
+     */
+    private suspend fun performLogin(pin: String): Result<Boolean> {
+        return try {
+            
+            // Construct binary command according to specification:
+            // Header=2 (GET), Command=6 (System), Sub-command=4 (login_pin), Data Length, PIN data, CRC
+            val pinBytes = pin.toByteArray(Charsets.UTF_8)
+            val dataLength = pinBytes.size
+            
+            if (dataLength > 32) {
+                return Result.failure(InvalidPinException("PIN data too long (max 32 bytes)"))
+            }
+            
+            // Build command array: Header + Command + Sub-command + Data Length + PIN bytes + CRC placeholder
+            val commandSize = 4 + dataLength + 1 // 4 fixed bytes + PIN data + CRC
+            val command = IntArray(commandSize)
+            
+            command[0] = CameraCommandProtocol.Header.GET.getVal()  // Header = 2 (GET)
+            command[1] = CameraCommandProtocol.Commands.SYSTEM.getVal()  // Command = 6
+            command[2] = 4  // Sub-command = 4 (based on Postman log)
+            command[3] = dataLength  // Data Length
+            
+            // Copy PIN bytes into command
+            for (i in pinBytes.indices) {
+                command[4 + i] = pinBytes[i].toInt() and 0xFF
+            }
+            
+            command[commandSize - 1] = 0  // CRC placeholder (will be calculated by MotocamSocketClient)
+            
+            Log.d(TAG, "Sending login command with PIN length: $dataLength")
+            
+            // Send to login endpoint instead of motocam_api endpoint
+            // Note: We need to send directly to /api/login endpoint, not through motocamClient.sendCmd
+            // which goes to /api/motocam_api. We'll use HTTP client for the login endpoint.
+            
+            val httpClient = HttpClient(CIO) {
+                engine {
+                    requestTimeout = LOGIN_TIMEOUT_MS
+                    endpoint {
+                        connectTimeout = LOGIN_TIMEOUT_MS
+                        connectAttempts = 1
+                        keepAliveTime = 0 // Disable keep-alive
+                        pipelining = false
+                    }
+                }
+                expectSuccess = false // Don't throw on HTTP error status codes
+            }
+            
+            try {
+                // Convert command to bytes for HTTP request
+                val requestBytes = ByteArray(commandSize) { i -> command[i].toByte() }
+                // Calculate and set CRC
+                val sum = requestBytes.dropLast(1).sumOf { it.toInt() and 0xFF }
+                requestBytes[requestBytes.size - 1] = ((sum xor 0xFF) + 1).toByte()
+
+                // Format as hex string for HTTP request
+                val hexString = requestBytes.joinToString(" ") { byte ->
+                    "0x" + (byte.toInt() and 0xFF).toString(16).padStart(2, '0').uppercase()
+                }
+
+                Log.d(TAG, "Sending login request to /api/login: $hexString")
+                Log.d(TAG, "Request bytes: ${requestBytes.contentToString()}")
+
+                val response = httpClient.post("http://192.168.2.1:80/api/login") {
+                    contentType(ContentType.Application.OctetStream)
+                    setBody(hexString)
+                }
+                Log.d(TAG, "Login response status: ${response.status}")
+
+                val responseText = response.body<String>().trim()
+                Log.d(TAG, "Login response: $responseText")
+
+                if (responseText.isEmpty()) {
+                    return Result.failure(AuthenticationServerException("No response received"))
+                }
+
+                // Parse JSON response
+                val loginResponse = try {
+                    Json.decodeFromString<LoginResponse>(responseText)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse login response as JSON", e)
+                    return Result.failure(AuthenticationServerException("Invalid response format"))
+                }
+
+                // Check if login was successful or failed
+                when {
+                    loginResponse.message != null -> {
+                        // Success case - response has "message" field
+                        if (loginResponse.message == "Login successful") {
+                            // Extract session token from Set-Cookie header
+                            val sessionToken = extractSessionToken(response.headers)
+                            if (sessionToken != null) {
+                                storeSession(sessionToken)
+                                Result.success(true)
+                            } else {
+                                Result.failure(AuthenticationServerException("No session token in response"))
+                            }
+                        } else {
+                            // Unexpected message content
+                            Result.failure(InvalidPinException(loginResponse.message))
+                        }
+                    }
+                    loginResponse.error != null -> {
+                        // Error case - response has "error" field
+                        Result.failure(InvalidPinException(loginResponse.error))
+                    }
+                    else -> {
+                        // Neither message nor error field present
+                        Result.failure(AuthenticationServerException("Invalid response format - missing message or error field"))
+                    }
+                }
+
+            } finally {
+                httpClient.close()
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Binary protocol login error", e)
+            Result.failure(AuthenticationNetworkException("Binary protocol login error", e))
         }
     }
     

@@ -36,10 +36,19 @@ class RecordingViewModel : ViewModel() {
             ScreenRecorderService.isServiceRunning.collectLatest { isRunning ->
                 _isRecording.value = isRunning
                 if (isRunning) {
-                    _recordingState.value = RecordingState.Recording("00:00")
+                    // Only set to Recording state if we're not prompting for filename
+                    if (_recordingState.value !is RecordingState.PromptingForFilename) {
+                        _recordingState.value = RecordingState.Recording("00:00")
+                    }
                     startDurationUpdates()
                 } else {
                     durationUpdateJob?.cancel()
+                    // Only reset to NotRecording if we're not in a transitional state
+                    if (_recordingState.value !is RecordingState.PromptingForFilename && 
+                        _recordingState.value !is RecordingState.StoppingRecording &&
+                        _recordingState.value !is RecordingState.SavedToGallery) {
+                        _recordingState.value = RecordingState.NotRecording
+                    }
                 }
             }
         }
@@ -77,6 +86,49 @@ class RecordingViewModel : ViewModel() {
             }
         } else {
             startRecording(context)
+        }
+    }
+    
+    fun stopRecordingWithFilename(context: Context, filename: String) {
+        _recordingState.value = RecordingState.StoppingRecording
+        
+        // Update the filename in the service
+        viewModelScope.launch {
+            try {
+                val updateFilenameIntent = Intent(context, ScreenRecorderService::class.java).apply {
+                    action = ScreenRecorderService.ACTION_UPDATE_FILENAME
+                    putExtra(ScreenRecorderService.CUSTOM_FILENAME, filename)
+                }
+                ContextCompat.startForegroundService(context, updateFilenameIntent)
+                
+                // Small delay to ensure filename is updated before stopping
+                delay(100)
+                
+                stopRecording(context)
+                
+                // Show "Saved to Gallery" message briefly
+                delay(1000) // Wait for the recording to stop
+                _recordingState.value = RecordingState.SavedToGallery
+                delay(2000) // Show "Saved" message for 2 seconds
+                _recordingState.value = RecordingState.NotRecording
+            } catch (e: Exception) {
+                Log.e("RecordingViewModel", "Error updating filename", e)
+                // Fallback to stopping without custom filename
+                stopRecording(context)
+                delay(1000)
+                _recordingState.value = RecordingState.SavedToGallery
+                delay(2000)
+                _recordingState.value = RecordingState.NotRecording
+            }
+        }
+    }
+    
+    fun cancelFilenamePrompt() {
+        // Return to recording state
+        if (_isRecording.value) {
+            _recordingState.value = RecordingState.Recording(formatDuration(System.currentTimeMillis() - recordingStartTime))
+        } else {
+            _recordingState.value = RecordingState.NotRecording
         }
     }
 

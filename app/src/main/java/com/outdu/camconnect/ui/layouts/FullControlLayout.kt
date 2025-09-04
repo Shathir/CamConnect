@@ -46,6 +46,7 @@ import android.util.Log
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.ui.components.recording.RecordingTimer
+import com.outdu.camconnect.ui.components.settings.devmode.DevLayout
 import com.outdu.camconnect.ui.components.settings.logout.LogoutLayout
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import com.outdu.camconnect.utils.DeviceType
@@ -171,6 +172,10 @@ fun SettingsControlLayout(
 
                         ControlTab.LICENSE_CONTROL -> {
                             LicenseLayout()
+                        }
+
+                        ControlTab.DEV_LAYOUT -> {
+                            DevLayout()
                         }
                     }
                 }

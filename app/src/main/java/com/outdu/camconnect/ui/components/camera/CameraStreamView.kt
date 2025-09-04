@@ -54,6 +54,8 @@ import androidx.compose.runtime.LaunchedEffect
 import com.airbnb.lottie.compose.*
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.scale
+import com.outdu.camconnect.ui.components.notifications.NotificationCard
+import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
 
 
 /**
@@ -66,6 +68,7 @@ fun CameraStreamView(
     cameraName: String = "Camera 1",
     context: Context,
     showTimer: Boolean = true,
+    showNotifications: Boolean = true,
     onSpeedUpdate: (Float) -> Unit = {}
 ) {
     // Use a single ViewModel instance scoped to this composable
@@ -74,7 +77,7 @@ fun CameraStreamView(
     val recordingState by recordingViewModel.recordingState.collectAsStateWithLifecycle()
     val cameraLayoutViewModel: CameraLayoutViewModel = viewModel()
     val isStreamReloading by cameraLayoutViewModel.isStreamReloading.collectAsStateWithLifecycle()
-
+    val cameraControlViewModel: CameraControlViewModel = viewModel()
     // Lottie animation setup
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.scout_intro)
@@ -91,7 +94,7 @@ fun CameraStreamView(
             )
         }
     }
-    
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -122,14 +125,25 @@ fun CameraStreamView(
         }
 
         // Recording timer overlay in top-right corner
-        if (showTimer) {
-            RecordingTimer(
-                recordingState = recordingState,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-            )
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        )
+        {
+            if (showTimer) {
+                RecordingTimer(
+                    recordingState = recordingState
+                )
+            }
+
+            if (showNotifications) {
+                NotificationCard(
+                    cameraControlViewModel = cameraControlViewModel
+                )
+            }
         }
+
 
         // Loading overlay with Lottie animation
         AnimatedVisibility(
@@ -177,7 +191,7 @@ fun RoundedCornerMaskOverlay(
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val radius = cornerRadius.toPx()
-        
+
         // First create a path for the rounded rectangle
         val roundedRectPath = Path().apply {
             addRoundRect(
@@ -213,7 +227,6 @@ fun RoundedCornerMaskOverlay(
         )
     }
 }
-
 
 
 /**
@@ -451,7 +464,7 @@ fun CameraInfoOverlay(
                 .width((cameraName.length * 8).dp)
                 .background(Color.White.copy(alpha = 0.8f))
         )
-        
+
         if (isRecording) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

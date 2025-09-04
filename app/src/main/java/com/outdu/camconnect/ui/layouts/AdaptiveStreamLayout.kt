@@ -324,6 +324,7 @@ fun AdaptiveStreamLayout(
                     cameraName = "Camera ${cameraState.currentCamera + 1}",
                     context = context,
                     showTimer = layoutMode != LayoutMode.EXPANDED_CONTROL, // Only show timer in minimal and full layouts
+                    showNotifications = layoutMode != LayoutMode.FULL_CONTROL,
                     onSpeedUpdate = { speed -> currentSpeed = speed }
                 )
 
