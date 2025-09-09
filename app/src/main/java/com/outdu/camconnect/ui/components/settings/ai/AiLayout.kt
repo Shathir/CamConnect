@@ -248,22 +248,22 @@ fun AiLayout(
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    if(uiState.od) {
-                        Text(
-                            text = "Detect Far Away Objects",
-                            style = TextStyle(
-                                fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
-                                lineHeight = 14.02.sp,
-                                fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                                fontWeight = FontWeight(500),
-                                color = if (isDarkTheme) Color.White else Color.Black
-                            )
-                        )
-                        YesNoButtons(
-                            isEnabled = uiState.far,
-                            onValueChange = { aiConfigViewModel.updateFAR(it) }
-                        )
-                    }
+//                    if(uiState.od) {
+//                        Text(
+//                            text = "Detect Far Away Objects",
+//                            style = TextStyle(
+//                                fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+//                                lineHeight = 14.02.sp,
+//                                fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+//                                fontWeight = FontWeight(500),
+//                                color = if (isDarkTheme) Color.White else Color.Black
+//                            )
+//                        )
+//                        YesNoButtons(
+//                            isEnabled = uiState.far,
+//                            onValueChange = { aiConfigViewModel.updateFAR(it) }
+//                        )
+//                    }
                 }
 
                 if(deviceType == DeviceType.TABLET) {

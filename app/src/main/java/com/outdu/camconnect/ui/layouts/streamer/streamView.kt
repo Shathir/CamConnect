@@ -473,6 +473,7 @@ fun ZoomableVideoTextureView(
                                 MainActivitySingleton.nativeSurfaceInit(s)
                                 // Load configuration synchronously for immediate use
                                 CameraConfigurationManager.loadConfiguration(currentContext)
+                                Log.d("CameraConfigurationManager", "${CameraConfigurationManager.isFarDetectionEnabled()}")
                                 MainActivitySingleton.nativePlay(
                                     width, 
                                     height, 
@@ -701,6 +702,7 @@ fun drawOverlay(
 
             // Draw the label just above the top-left corner of the box
             canvas.drawText(label, left + 8f, top - 12f, textPaint)
+            Log.d("CameraConfigurationManager", "Overlay text is : ${label}")
         }
 
     } catch (e: Exception) {

@@ -117,7 +117,7 @@ class MainActivity : ComponentActivity() {
     }
 
     fun loadODModel(modelId: Int) {
-        val retInit = nativeLoadOdModel(assets, 1,1, CameraConfigurationManager.isDepthSensingEnabled(), 1)
+        val retInit = nativeLoadOdModel(assets, 0,1, CameraConfigurationManager.isDepthSensingEnabled(), 1)
         if (!retInit) {
             Log.e("MainActivity", "yolov8ncnn loadModel failed")
             runOnUiThread {
