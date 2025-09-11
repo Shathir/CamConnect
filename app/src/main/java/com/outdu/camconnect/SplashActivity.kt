@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
+import com.outdu.camconnect.services.discoverOnvifDevices
 import com.outdu.camconnect.ui.theme.*
 import kotlinx.coroutines.delay
 
@@ -76,7 +77,7 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         // Show content with fade in
         showContent = true
-
+        discoverOnvifDevices()
         // Wait for the splash duration
         delay(SplashActivity.SPLASH_DURATION)
 

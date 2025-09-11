@@ -128,6 +128,7 @@ dependencies {
     implementation(libs.androidx.window)
     implementation(libs.androidx.lifecycle.runtime.compose.android)
     implementation(libs.androidx.appcompat)
+    implementation(libs.play.services.mlkit.barcode.scanning)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

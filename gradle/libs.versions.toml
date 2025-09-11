@@ -25,6 +25,7 @@ tensorflowLiteSupport = "0.4.4"
 window = "1.4.0"
 lifecycleRuntimeComposeAndroid = "2.9.1"
 appcompat = "1.7.1"
+playServicesMlkitBarcodeScanning = "18.3.1"
 
 [libraries]
 android-sdk = { module = "org.maplibre.gl:android-sdk", version.ref = "androidSdk" }
@@ -59,6 +60,7 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLite" }
 tensorflow-lite-gpu = { module = "org.tensorflow:tensorflow-lite-gpu", version.ref = "tensorflowLiteGpu" }
 tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupport" }
+play-services-mlkit-barcode-scanning = { group = "com.google.android.gms", name = "play-services-mlkit-barcode-scanning", version.ref = "playServicesMlkitBarcodeScanning" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
