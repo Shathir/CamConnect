@@ -233,6 +233,10 @@ fun FullControlContent(
             ControlTab.DEV_LAYOUT -> {
 
             }
+
+            ControlTab.OTA_LAYOUT -> {
+
+            }
         }
     }
 }

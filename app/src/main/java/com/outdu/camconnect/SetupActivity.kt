@@ -15,6 +15,8 @@ import com.outdu.camconnect.viewmodels.SetupViewModel
 import com.outdu.camconnect.viewmodels.SetupState
 import com.outdu.camconnect.ui.setupflow.*
 import com.outdu.camconnect.auth.SessionManager
+import com.outdu.camconnect.auth.UserStateManager
+import com.outdu.camconnect.auth.SetupFlowDetector
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -27,9 +29,21 @@ import java.lang.Thread.sleep
 
 class SetupActivity : ComponentActivity() {
     private val viewModel: SetupViewModel by viewModels()
+    private lateinit var setupFlowDetector: SetupFlowDetector
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize setup flow detection
+        setupFlowDetector = SetupFlowDetector(this)
+        
+        // Check if user should skip setup entirely
+        if (setupFlowDetector.shouldSkipSetup()) {
+            Log.i("SetupActivity", "Skipping setup - user already configured and authenticated")
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             // Enable immersive mode to hide the navigation bar
             val decorView = window.decorView
@@ -50,37 +64,13 @@ class SetupActivity : ComponentActivity() {
                 Surface(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    val setupState by viewModel.setupState.collectAsState()
-                    SetupFlow(
-                        setupState = setupState,
-                        onGetStarted = {
-                            // Skip registration and go directly to login
-                            viewModel.updateNetworkConfig(true)
-                        },
-                        onUpdateRegistrationDetails = viewModel::updateRegistrationDetails,
-                        onUpdateVerificationCode = viewModel::updateVerificationCode,
-                        onVerifyEmail = viewModel::verifyEmail,
-                        onConnectCamera = {
-                            viewModel.updateCameraConfig(true)
-                        },
-                        onAuthenticate = { isAuthenticated ->
-                            if (isAuthenticated) {
-                                // Navigate to MainActivity with authentication successful
-                                startActivity(Intent(this@SetupActivity, MainActivity::class.java))
-                                Toast.makeText(this@SetupActivity, "Authentication successful", Toast.LENGTH_SHORT).show()
-                                finish()
-                            } else {
-                                Toast.makeText(this@SetupActivity, "Invalid PIN", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        onStartStreaming = {
-                            if (SessionManager.isAuthenticated()) {
-                                startActivity(Intent(this@SetupActivity, MainActivity::class.java))
-                                Toast.makeText(this@SetupActivity, "Authentication successful", Toast.LENGTH_SHORT).show()
-                                finish()
-                            } else {
-                                Log.w("SetupActivity", "Attempted to start streaming without authentication")
-                            }
+                    // Use the new Navigation-based setup flow
+                    NavigationSetupFlow(
+                        onNavigateToMain = {
+                            // Navigate to MainActivity when setup is complete
+                            startActivity(Intent(this@SetupActivity, MainActivity::class.java))
+                            Toast.makeText(this@SetupActivity, "Setup completed successfully", Toast.LENGTH_SHORT).show()
+                            finish()
                         }
                     )
                 }
@@ -91,57 +81,11 @@ class SetupActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Log current session status for debugging
-//        if (::SessionManager.isInitialized) {
-//            Log.d("SetupActivity", "Session status on resume: ${SessionManager.getSessionStatus()}")
-//        }
+        Log.d("SetupActivity", "Session status on resume: ${SessionManager.getSessionStatus()}")
     }
     
     override fun onDestroy() {
         super.onDestroy()
         Log.d("SetupActivity", "SetupActivity destroyed")
-    }
-}
-
-@Composable
-fun SetupFlow(
-    setupState: SetupState,
-    onGetStarted: () -> Unit,
-    onUpdateRegistrationDetails: (String, String, String, String) -> Unit,
-    onUpdateVerificationCode: (String) -> Unit,
-    onVerifyEmail: () -> Unit,
-    onConnectCamera: () -> Unit,
-    onAuthenticate: (Boolean) -> Unit,
-    onStartStreaming: () -> Unit
-) {
-    when {
-        // Show landing screen if no registration started
-        !setupState.isNetworkConfigured -> {
-            Box(modifier = Modifier.fillMaxSize()) {
-                LandingScreen(
-                    onGetStarted = onGetStarted
-                )
-            }
-        }
-        // Show login screen after landing
-        !setupState.isEmailVerified -> {
-            LoginScreen(
-                setupState = setupState,
-                onNext = { /* Move to verification screen */ },
-                onUpdateDetails = onUpdateRegistrationDetails,
-                onAuthenticate = onAuthenticate
-            )
-        }
-        // Show camera connection screen after successful login
-        !setupState.isCameraConfigured -> {
-            CameraConnectionScreen(
-                onConnectCamera = onConnectCamera
-            )
-        }
-        // Show setup complete screen
-        else -> {
-            SetupCompleteScreen(
-                onStartStreaming = onStartStreaming
-            )
-        }
     }
 } 

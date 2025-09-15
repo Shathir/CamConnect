@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.communication.HealthStatus
 import com.outdu.camconnect.communication.MotocamAPIAndroidHelper
 import com.outdu.camconnect.ui.theme.AppColors
+import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -327,7 +328,7 @@ private fun DevStatusRow(
             text = value,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = if (isGood) Color.Green else Color.Red
+            color = if (isGood) StravionBlue else Color.Red
         )
     }
 }
@@ -355,7 +356,7 @@ private fun DevMetricRow(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = when {
-                    percentage < 60 -> Color.Green
+                    percentage < 60 -> StravionBlue
                     else -> Color.Red
                 }
             )
@@ -369,7 +370,7 @@ private fun DevMetricRow(
                 .fillMaxWidth()
                 .height(6.dp),
             color = when {
-                percentage < 60 -> Color.Green
+                percentage < 60 -> StravionBlue
                 else -> Color.Red
             },
             trackColor = AppColors.BorderColor
@@ -399,7 +400,7 @@ private fun DevTemperatureRow(
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = when {
-                temperature < 60 -> Color.Green
+                temperature < 60 -> StravionBlue
                 else -> Color.Red
             }
         )

@@ -177,7 +177,8 @@ fun LoginScreen(
     setupState: SetupState,
     onNext: () -> Unit,
     onUpdateDetails: (String, String, String, String) -> Unit,
-    onAuthenticate: (Boolean) -> Unit
+    onAuthenticate: (Boolean) -> Unit,
+    onOwnerLogin: () -> Unit = {}
 ) {
     val deviceType = rememberDeviceType()
     Box(
@@ -239,10 +240,11 @@ fun LoginScreen(
                     .padding(end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(if(deviceType == DeviceType.TABLET) 12.dp else  4.dp)
             ) {
-//                OwnerLoginCard(
-//                    setupState = setupState,
-//                    onUpdateDetails = onUpdateDetails
-//                )
+                OwnerLoginCard(
+                    setupState = setupState,
+                    onUpdateDetails = onUpdateDetails,
+                    onOwnerLogin = onOwnerLogin
+                )
                 ViewerLoginCard(
                     setupState = setupState,
                     onUpdateDetails = onUpdateDetails,

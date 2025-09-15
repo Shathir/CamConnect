@@ -77,7 +77,7 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         // Show content with fade in
         showContent = true
-        discoverOnvifDevices()
+//        discoverOnvifDevices()
         // Wait for the splash duration
         delay(SplashActivity.SPLASH_DURATION)
 

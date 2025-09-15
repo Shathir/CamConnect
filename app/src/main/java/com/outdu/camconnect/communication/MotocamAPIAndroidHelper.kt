@@ -6,7 +6,6 @@ import kotlinx.coroutines.launch
 import java.net.InetAddress
 
 
-
 data class HealthStatus(
     val streamer: Boolean,
     val rtsps: Boolean,
@@ -27,8 +26,6 @@ data class HealthStatus(
 //    val irTemperature: Int,
 //    val sensorTemperature: Int = -1 // fallback for unavailable
 //)
-
-
 
 
 object MotocamAPIAndroidHelper {
@@ -362,7 +359,13 @@ object MotocamAPIAndroidHelper {
     ) {
         scope.launch {
             try {
-                val result = MotocamAPIHelperWrapper.setWifiHotspot(ssid, encryptionType, encryptionKey, ipAddress, subnetMask)
+                val result = MotocamAPIHelperWrapper.setWifiHotspot(
+                    ssid,
+                    encryptionType,
+                    encryptionKey,
+                    ipAddress,
+                    subnetMask
+                )
                 callback(result, null)
             } catch (e: Exception) {
                 Log.e(TAG, "setWifiHotspotAsync failed", e)
@@ -382,7 +385,13 @@ object MotocamAPIAndroidHelper {
     ) {
         scope.launch {
             try {
-                val result = MotocamAPIHelperWrapper.setWifiClient(ssid, encryptionType, encryptionKey, ipAddress, subnetMask)
+                val result = MotocamAPIHelperWrapper.setWifiClient(
+                    ssid,
+                    encryptionType,
+                    encryptionKey,
+                    ipAddress,
+                    subnetMask
+                )
                 callback(result, null)
             } catch (e: Exception) {
                 Log.e(TAG, "setWifiClientAsync failed", e)
@@ -483,6 +492,39 @@ object MotocamAPIAndroidHelper {
         }
     }
 
+
+    fun getFirmwareVersionAsync(
+        scope: CoroutineScope,
+        callback: (String?, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val status = MotocamAPIHelperWrapper.getFirmwareVersion()
+                callback(status, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "getFirmwareVersionAsync failed", e)
+                callback(null, e.message)
+            }
+        }
+    }
+
+    fun setOtaUpdateAsync(
+        scope: CoroutineScope,
+        callback: (Boolean?, String?) -> Unit
+    ){
+        scope.launch {
+            try {
+//                val status = MotocamAPIHelperWrapper.setOtaUpdate()
+                val status = true
+                callback(status, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "setOtaUpdateAsync failed", e)
+                callback(null, e.message)
+            }
+
+        }
+
+    }
 
 
 }

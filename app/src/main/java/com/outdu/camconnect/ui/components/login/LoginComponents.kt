@@ -61,7 +61,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun OwnerLoginCard(
     setupState: SetupState,
-    onUpdateDetails: (String, String, String, String) -> Unit
+    onUpdateDetails: (String, String, String, String) -> Unit,
+    onOwnerLogin: () -> Unit = {}
 )
 {
     Box(
@@ -205,7 +206,28 @@ fun OwnerLoginCard(
                 )
             }
 
-
+            // Login button for owner
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(StravionBlue)
+                    .clickable {
+                        onOwnerLogin()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Login as Owner",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontFamily = FontFamily(Font(R.font.space_grotesk)),
+                        fontWeight = FontWeight(700),
+                        color = Color.White
+                    ),
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            }
         }
     }
 }

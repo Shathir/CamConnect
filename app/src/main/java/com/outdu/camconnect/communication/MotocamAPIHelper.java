@@ -1,5 +1,7 @@
 package com.outdu.camconnect.communication;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -1611,5 +1613,44 @@ public class MotocamAPIHelper {
                 response[11],
                 response[12]
         );
+    }
+
+    public static int[] getFirmwareCmd() {
+        int[] cmd = new int[5];
+        cmd[0] = Header.GET.getVal();                  // 0x02
+        cmd[1] = Commands.SYSTEM.getVal();             // 0x06
+        cmd[2] = SystemSubCommands.FIRMWARE.getVal(); // 0x02
+        cmd[3] = 0; // Data length = 0
+//        cmd[4] = 0; // CRC will be computed before send
+        return cmd;
+    }
+
+    public static String parseFirmwareResponse(int[] response, int length) throws Exception {
+        if(length < 7)
+            throw new Exception("Invalid response length");
+
+        if (response[0] != Header.RESPONSE.getVal())
+            throw new Exception("Invalid header: " + response[0]);
+
+        if (response[1] != Commands.SYSTEM.getVal() || response[2] != SystemSubCommands.FIRMWARE.getVal())
+            throw new Exception("Command mismatch");
+
+        // Check success flag
+        if (response[4] != 0)
+            throw new Exception("Health check failed");
+
+        int end = 5 + response[3] - 1;
+        int[] sliced = Arrays.copyOfRange(response, 5, end);
+
+        byte[] byteArr = new byte[sliced.length];
+        for (int i = 0; i < sliced.length; i++) {
+            byteArr[i] = (byte) sliced[i];
+        }
+
+        // Decode ASCII/UTF-8
+        String firmwareVersion = new String(byteArr, StandardCharsets.US_ASCII);
+
+        // Remove trailing newline if present
+        return firmwareVersion.trim();
     }
 }

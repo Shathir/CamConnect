@@ -245,4 +245,9 @@ object MotocamAPIHelperWrapper {
         MotocamAPIHelper::parseHealthCheckResponse
     )
 
+    suspend fun getFirmwareVersion(): String = sendCommand(
+        MotocamAPIHelper.getFirmwareCmd(),
+        MotocamAPIHelper::parseFirmwareResponse
+    )
+
 }

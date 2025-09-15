@@ -368,7 +368,8 @@ fun CameraAddScreen(
                     .fillMaxWidth(0.5f)
                     .clip(RoundedCornerShape(25.dp))
                     .background(StravionBlue)
-                    .clickable { onAddCamera() },
+                    .clickable { onAddCamera() }
+                    .align(Alignment.CenterHorizontally),
                 contentAlignment = Alignment.Center
             ) {
                 Row(

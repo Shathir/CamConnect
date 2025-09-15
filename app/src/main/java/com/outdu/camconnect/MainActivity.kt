@@ -20,7 +20,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
-
 import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.util.Log
@@ -36,33 +35,19 @@ import org.freedesktop.gstreamer.GStreamer
 import java.util.Locale
 import com.outdu.camconnect.ui.theme.*
 import android.content.res.Configuration
-import android.media.projection.MediaProjectionManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.core.content.getSystemService
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.outdu.camconnect.services.RecordConfig
-import com.outdu.camconnect.services.ScreenRecorderService
-import com.outdu.camconnect.services.ScreenRecorderService.Companion.ACTION_START
-import com.outdu.camconnect.services.ScreenRecorderService.Companion.RECORD_CONFIG
-import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import android.app.Activity
 import android.media.MediaCodecInfo
 import androidx.annotation.RequiresApi
-import com.outdu.camconnect.communication.Data
 import com.outdu.camconnect.communication.CameraConfigurationManager
 import com.outdu.camconnect.utils.ConfigurationMigrationHelper
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.net.Uri
 import android.provider.Settings
-import com.outdu.camconnect.tflite.MainScreen
-import com.outdu.camconnect.tflite.MainScreenCombined
-import com.outdu.camconnect.tflite.MainScreenZeroDCE
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 
 data class OverlayPoints(
     var labels: IntArray,
@@ -234,7 +219,7 @@ class MainActivity : ComponentActivity() {
                     View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_IMMERSIVE
         }
 
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         val mediaCodecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
         val codecInfos: Array<MediaCodecInfo> = mediaCodecList.codecInfos
@@ -248,7 +233,7 @@ class MainActivity : ComponentActivity() {
                 1080
             )
         )
-        Log.i("CODECLISTS", "codecName is : " + codecName)
+        Log.i("CODECLISTS", "codecName is : $codecName")
         actualCodecName = codecName.replace(".", "").lowercase(Locale.getDefault())
 
         super.onCreate(savedInstanceState)
@@ -363,6 +348,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @Deprecated("This method has been deprecated in favor of using the Activity Result API\n      which brings increased type safety via an {@link ActivityResultContract} and the prebuilt\n      contracts for common intents available in\n      {@link androidx.activity.result.contract.ActivityResultContracts}, provides hooks for\n      testing, and allow receiving results in separate, testable classes independent from your\n      activity. Use\n      {@link #registerForActivityResult(ActivityResultContract, ActivityResultCallback)}\n      with the appropriate {@link ActivityResultContract} and handling the result in the\n      {@link ActivityResultCallback#onActivityResult(Object) callback}.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
@@ -417,21 +403,19 @@ class MainActivity : ComponentActivity() {
 
     private fun checkAndRequestPermissions() {
         // Check if we need to request permissions (only for Android 6.0+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val permissionsToRequest = mutableListOf<String>()
+        val permissionsToRequest = mutableListOf<String>()
 
-            // Check each permission
-            for (permission in REQUIRED_PERMISSIONS) {
-                if (ContextCompat.checkSelfPermission(this, permission)
-                    != PackageManager.PERMISSION_GRANTED) {
-                    permissionsToRequest.add(permission)
-                }
+        // Check each permission
+        for (permission in REQUIRED_PERMISSIONS) {
+            if (ContextCompat.checkSelfPermission(this, permission)
+                != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(permission)
             }
+        }
 
-            // Request permissions if needed
-            if (permissionsToRequest.isNotEmpty()) {
-                requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
-            }
+        // Request permissions if needed
+        if (permissionsToRequest.isNotEmpty()) {
+            requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
         }
     }
 }
