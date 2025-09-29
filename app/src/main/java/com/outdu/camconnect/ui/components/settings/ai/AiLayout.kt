@@ -243,11 +243,11 @@ fun AiLayout(
                 }
 
                 // Far Detection
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+//                Column(
+//                    modifier = Modifier.weight(1f),
+//                    horizontalAlignment = Alignment.Start,
+//                    verticalArrangement = Arrangement.spacedBy(16.dp)
+//                ) {
 //                    if(uiState.od) {
 //                        Text(
 //                            text = "Detect Far Away Objects",
@@ -264,7 +264,7 @@ fun AiLayout(
 //                            onValueChange = { aiConfigViewModel.updateFAR(it) }
 //                        )
 //                    }
-                }
+//                }
 
                 if(deviceType == DeviceType.TABLET) {
                     Column(modifier = Modifier.weight(1f)){}

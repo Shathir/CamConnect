@@ -21,9 +21,11 @@ class MotocamSocketClient {
         private const val TAG = "MotocamSocketClient"
         private const val TIMEOUT_MS = 10_000
         private const val DEFAULT_SESSION = "E5F102590722B5788B9CE04885ED845A3CA815E93753B2D7885C86DC5BB4647A"
+        private const val DEFAULT_CAMERA_IP = "192.168.2.1"
     }
 
     private var httpClient: HttpClient? = null
+    private var cameraIp: String = DEFAULT_CAMERA_IP
 
     suspend fun checkDevice(ipAddress: String): Boolean = withContext(Dispatchers.IO) {
         return@withContext try {
@@ -38,7 +40,16 @@ class MotocamSocketClient {
         }
     }
 
-    fun init() {
+    fun init(cameraIp: String? = null) {
+        // Set camera IP if provided, otherwise use default
+        if (cameraIp != null) {
+            this.cameraIp = cameraIp
+            Log.i(TAG, "Camera IP set to: $cameraIp")
+        } else {
+            this.cameraIp = DEFAULT_CAMERA_IP
+            Log.i(TAG, "Using default camera IP: $DEFAULT_CAMERA_IP")
+        }
+        
         httpClient = HttpClient(CIO) {
             install(ContentNegotiation) {
                 json()
@@ -51,8 +62,21 @@ class MotocamSocketClient {
                 }
             }
         }
-        Log.i(TAG, "HTTP client initialized")
+        Log.i(TAG, "HTTP client initialized for camera: ${this.cameraIp}")
     }
+    
+    /**
+     * Set camera IP address for API calls
+     */
+    fun setCameraIp(ipAddress: String) {
+        this.cameraIp = ipAddress
+        Log.i(TAG, "Camera IP updated to: $ipAddress")
+    }
+    
+    /**
+     * Get current camera IP address
+     */
+    fun getCameraIp(): String = cameraIp
 
     private fun convert(intArray: IntArray): ByteArray {
         return ByteArray(intArray.size) { i -> intArray[i].toByte() }
@@ -116,7 +140,7 @@ class MotocamSocketClient {
         Log.i("MotocamSocketClient", "reqBytes: ${reqBytes.contentToString()}")
         val hexString = formatToHexString(reqBytes)
         Log.i("MotocamSocketClient", "input command: $hexString")
-        val url = "http://192.168.2.1:80/api/motocam_api"
+        val url = "http://$cameraIp:80/api/motocam_api"
 
         try {
             val responseText: String = client.post(url) {
@@ -153,7 +177,7 @@ class MotocamSocketClient {
     suspend fun testLoginApiConnectivity(): Boolean = withContext(Dispatchers.IO) {
         return@withContext try {
             val client = httpClient ?: throw IllegalStateException("HTTP client not initialized")
-            val url = "http://192.168.2.1:80/api/login"
+            val url = "http://$cameraIp:80/api/login"
             
             // Make a simple HEAD request to check if login endpoint is available
             val response = client.request(url) {

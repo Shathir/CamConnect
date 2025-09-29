@@ -17,6 +17,8 @@ import com.outdu.camconnect.ui.setupflow.*
 import com.outdu.camconnect.auth.SessionManager
 import com.outdu.camconnect.auth.UserStateManager
 import com.outdu.camconnect.auth.SetupFlowDetector
+import com.outdu.camconnect.security.MandatoryPermissionManager
+import com.outdu.camconnect.security.MandatoryPermissionScreen
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -30,12 +32,20 @@ import java.lang.Thread.sleep
 class SetupActivity : ComponentActivity() {
     private val viewModel: SetupViewModel by viewModels()
     private lateinit var setupFlowDetector: SetupFlowDetector
+    private val permissionManager = MandatoryPermissionManager.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         // Initialize setup flow detection
         setupFlowDetector = SetupFlowDetector(this)
+        
+        // Check mandatory permissions first
+        if (!permissionManager.hasAllMandatoryPermissions(this)) {
+            Log.i("SetupActivity", "Mandatory permissions not granted - showing permission screen")
+            showPermissionScreen()
+            return
+        }
         
         // Check if user should skip setup entirely
         if (setupFlowDetector.shouldSkipSetup()) {
@@ -71,6 +81,25 @@ class SetupActivity : ComponentActivity() {
                             startActivity(Intent(this@SetupActivity, MainActivity::class.java))
                             Toast.makeText(this@SetupActivity, "Setup completed successfully", Toast.LENGTH_SHORT).show()
                             finish()
+                        }
+                    )
+                }
+            }
+        }
+    }
+    
+    private fun showPermissionScreen() {
+        enableEdgeToEdge()
+        setContent {
+            CamConnectTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    MandatoryPermissionScreen(
+                        onPermissionsGranted = {
+                            // Permissions granted, restart the activity to continue with setup
+                            Log.i("SetupActivity", "Mandatory permissions granted - restarting activity")
+                            recreate()
                         }
                     )
                 }

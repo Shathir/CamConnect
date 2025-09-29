@@ -1,6 +1,7 @@
 package com.outdu.camconnect.ui.setupflow
 
 import android.Manifest
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -45,6 +46,7 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.outdu.camconnect.R
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
+import com.outdu.camconnect.security.MandatoryPermissionManager
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -55,10 +57,19 @@ fun QRScannerScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val permissionManager = remember { MandatoryPermissionManager.getInstance() }
     var flashEnabled by remember { mutableStateOf(false) }
-
+    var cameraPermissionGranted by remember { mutableStateOf(false) }
 
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    
+    // Check camera permission
+    LaunchedEffect(Unit) {
+        cameraPermissionGranted = permissionManager.hasCameraPermission(context)
+        if (!cameraPermissionGranted) {
+            Log.w("QRScannerScreen", "Camera permission not granted")
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -71,8 +82,9 @@ fun QRScannerScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Camera Preview
-        AndroidView(
+        if (cameraPermissionGranted) {
+            // Camera Preview
+            AndroidView(
             factory = { context ->
                 val previewView = PreviewView(context)
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -126,6 +138,62 @@ fun QRScannerScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             drawScanningOverlay()
+        }
+        } else {
+            // Permission denied screen
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.camera_line),
+                    contentDescription = "Camera Permission Required",
+                    tint = Color.White,
+                    modifier = Modifier.size(64.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Camera Permission Required",
+                    style = TextStyle(
+                        fontSize = 24.sp,
+                        fontFamily = FontFamily(Font(R.font.space_grotesk)),
+                        fontWeight = FontWeight(700),
+                        color = Color.White
+                    ),
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Camera access is required to scan QR codes. Please grant camera permission in app settings.",
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
+                        fontWeight = FontWeight(400),
+                        color = Color.White.copy(alpha = 0.8f)
+                    ),
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = {
+                        permissionManager.openAppSettings(context)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = StravionBlue
+                    )
+                ) {
+                    Text("Open Settings")
+                }
+            }
         }
 
         // Top controls

@@ -17,12 +17,14 @@ data class LayoutState(
     val leftPaneWeight: Float = when (mode) {
         LayoutMode.MINIMAL_CONTROL -> 0.9f
         LayoutMode.EXPANDED_CONTROL -> 0.6f
-        LayoutMode.FULL_CONTROL -> 0.45f
+//        LayoutMode.FULL_CONTROL -> 0.45f
+        LayoutMode.FULL_CONTROL -> 0.6f
     },
     val rightPaneWeight: Float = when (mode) {
         LayoutMode.MINIMAL_CONTROL -> 0.1f
         LayoutMode.EXPANDED_CONTROL -> 0.4f
-        LayoutMode.FULL_CONTROL -> 0.55f
+//        LayoutMode.FULL_CONTROL -> 0.55f
+        LayoutMode.FULL_CONTROL -> 0.4f
     }
 ) {
     companion object {

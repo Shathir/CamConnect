@@ -171,7 +171,8 @@ fun AdaptiveStreamLayout(
         targetValue = when (layoutMode) {
             LayoutMode.MINIMAL_CONTROL -> 0.9f
             LayoutMode.EXPANDED_CONTROL -> 0.6f
-            LayoutMode.FULL_CONTROL -> 0.3f
+//            LayoutMode.FULL_CONTROL -> 0.3f
+            LayoutMode.FULL_CONTROL -> 0.6f
         },
         animationSpec = tween(durationMillis = 300),
         label = "left_pane_weight"
@@ -181,7 +182,8 @@ fun AdaptiveStreamLayout(
         targetValue = when (layoutMode) {
             LayoutMode.MINIMAL_CONTROL -> 0.1f
             LayoutMode.EXPANDED_CONTROL -> 0.4f
-            LayoutMode.FULL_CONTROL -> 0.7f
+            LayoutMode.FULL_CONTROL -> 0.4f
+//            LayoutMode.FULL_CONTROL -> 0.7f
         },
         animationSpec = tween(durationMillis = 300),
         label = "right_pane_weight"

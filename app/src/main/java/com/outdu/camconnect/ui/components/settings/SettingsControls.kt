@@ -9,8 +9,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -315,7 +317,8 @@ fun ControlTabSwitcher(
             .fillMaxWidth()
             .height( if(deviceType == DeviceType.TABLET) 76.dp else 48.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(DarkBackground2),
+            .background(DarkBackground2)
+            .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         ControlTab.entries.forEach { tab ->
@@ -374,7 +377,7 @@ fun ControlTabSwitcher(
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .weight(1f)
+                        .width(112.dp)
                         .gradientBorder(
                             cornerRadius = if (isDarkTheme) 21.dp else 22.dp,
                             borderWidth = if (isDarkTheme) 1.dp else 2.dp,
@@ -416,13 +419,12 @@ fun ControlTabSwitcher(
                         )
                     }
                 }
-
             }
             else {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .weight(1f)
+                        .width(112.dp)
                         .clip(RoundedCornerShape(20.dp))
                         .border(
                             width = if (isDarkTheme) 0.dp else 2.dp, // No border in dark theme

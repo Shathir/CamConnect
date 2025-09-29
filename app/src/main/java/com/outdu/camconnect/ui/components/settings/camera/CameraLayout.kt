@@ -305,6 +305,13 @@ fun CameraLayout(
                     }
                 }
 
+
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ){
                 // Orientation section
                 Column(
                     modifier = Modifier.weight(1f),

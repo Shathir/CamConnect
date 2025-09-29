@@ -48,6 +48,7 @@ import android.net.Uri
 import android.provider.Settings
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import com.outdu.camconnect.security.MandatoryPermissionManager
 
 data class OverlayPoints(
     var labels: IntArray,
@@ -60,9 +61,7 @@ data class OverlayPoints(
 )
 
 class MainActivity : ComponentActivity() {
-
-
-
+    private val permissionManager = MandatoryPermissionManager.getInstance()
 
     var nativeCustomData: Long = 0 // Native code will use this to keep private data
     external fun nativePlay(
@@ -75,6 +74,7 @@ class MainActivity : ComponentActivity() {
     external fun nativeInit(avcDecoder: String) // Initialize native code, build pipeline, etc.
     external fun nativePause() // Set pipeline to PAUSED
     external fun nativeFinalize()
+    external fun nativeSetRtspUrl(rtspUrl: String) // Set RTSP URL for streaming
     external fun nativeSurfaceInit(surface: Any) // A new surface is available
     external fun nativeSurfaceFinalize() // Surface about to be destroyed
     external fun nativeLoadOdModel(
@@ -239,6 +239,20 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Handle viewer flow parameters
+        handleViewerFlowParameters()
+
+        // Check mandatory permissions first
+        if (!permissionManager.hasAllMandatoryPermissions(this)) {
+            Log.w("MainActivity", "Mandatory permissions not granted - redirecting to SetupActivity")
+            val intent = Intent(this, SetupActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
+            finish()
+            return
+        }
+
         try {
             GStreamer.init(this)
         } catch (e: Exception) {
@@ -247,8 +261,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-
-        // Check permissions
+        // Check additional permissions (location for WiFi signal strength)
         checkAndRequestPermissions()
 
         setContent {
@@ -303,6 +316,45 @@ class MainActivity : ComponentActivity() {
         }
         
         MainActivitySingleton.setMainActivity(this)
+    }
+
+    /**
+     * Handle viewer flow parameters passed from ViewerFlowActivity
+     */
+    private fun handleViewerFlowParameters() {
+        val cameraIp = intent.getStringExtra("CAMERA_IP")
+        val cameraEndpoints = intent.getStringArrayExtra("CAMERA_ENDPOINTS")
+        val cameraType = intent.getStringExtra("CAMERA_TYPE")
+        val cameraRtspUrl = intent.getStringExtra("CAMERA_RTSP_URL")
+        val userType = intent.getStringExtra("USER_TYPE")
+        
+        if (cameraIp != null && userType == "VIEWER") {
+            Log.i("MainActivity", "Viewer flow detected - Camera IP: $cameraIp")
+            Log.i("MainActivity", "Camera endpoints: ${cameraEndpoints?.joinToString(", ")}")
+            Log.i("MainActivity", "Camera type: $cameraType")
+            
+            // Configure communication layer for the specific camera
+            try {
+                com.outdu.camconnect.communication.MotocamAPIHelperWrapper.setDeviceIpAddress(cameraIp)
+                Log.i("MainActivity", "Communication layer configured for camera: $cameraIp")
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error configuring communication layer", e)
+            }
+            
+            // Set RTSP URL for GStreamer pipeline
+            try {
+                val rtspUrl = cameraRtspUrl ?: "rtsp://onvif:test@$cameraIp/live1.sdp"
+                nativeSetRtspUrl(rtspUrl)
+                Log.i("MainActivity", "RTSP URL set to: $rtspUrl")
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error setting RTSP URL", e)
+            }
+            
+            // Show a toast to indicate viewer mode
+            runOnUiThread {
+                Toast.makeText(this, "Connected to camera: $cameraIp", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     /**

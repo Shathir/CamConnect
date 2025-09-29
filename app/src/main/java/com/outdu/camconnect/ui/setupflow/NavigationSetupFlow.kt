@@ -10,6 +10,7 @@ import com.outdu.camconnect.auth.SetupFlowDetector
 import com.outdu.camconnect.auth.UserStateManager
 import com.outdu.camconnect.viewmodels.SetupState
 import com.outdu.camconnect.auth.SessionManager
+import com.outdu.camconnect.security.MandatoryPermissionScreen
 
 /**
  * Navigation-based setup flow that determines the starting point
@@ -105,7 +106,7 @@ fun NavigationSetupFlow(
         
         // Permission screen - for first-time setup
         composable("permissions") {
-            PermissionScreen(
+            MandatoryPermissionScreen(
                 onPermissionsGranted = {
                     navController.navigate("camera_add")
                 }

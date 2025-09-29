@@ -46,7 +46,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
 import com.outdu.camconnect.R
+import com.outdu.camconnect.ViewerFlowActivity
 import com.outdu.camconnect.auth.InvalidPinException
 import com.outdu.camconnect.auth.MaxAttemptsExceededException
 import com.outdu.camconnect.auth.SessionManager
@@ -243,6 +246,7 @@ fun ViewerLoginCard(
     var isAuthenticating by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var onStartStreaming by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     LaunchedEffect(isAuthenticating) {
         if (isAuthenticating) {
             errorMessage = null
@@ -307,7 +311,9 @@ fun ViewerLoginCard(
                             shape = RoundedCornerShape(20.dp)
                         )
                         .clickable {
-                            onStartStreaming = true
+                            // Navigate to ViewerFlowActivity instead of setting onStartStreaming
+                            val intent = Intent(context, ViewerFlowActivity::class.java)
+                            context.startActivity(intent)
                         },
                     contentAlignment = Alignment.Center
                 ) {

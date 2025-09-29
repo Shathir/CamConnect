@@ -13,7 +13,8 @@
 #include "yolo.h"
 #include "midas.h"
 
-#define RTSP_URL "rtsp://onvif:test@192.168.2.1/live1.sdp"
+// Dynamic RTSP URL - will be set from Java side
+static char g_rtsp_url[512] = "rtsp://onvif:test@192.168.2.1/live1.sdp"; // Default fallback
 
 GST_DEBUG_CATEGORY_STATIC (debug_category);
 #define GST_CAT_DEFAULT debug_category
@@ -326,7 +327,7 @@ static void *app_function (void *userdata) {
                                "videoscale ! "
                                "video/x-raw,width=960,height=540,format=BGR ! "
                                "appsink max-buffers=2 drop=true name=rtspappsink",
-                RTSP_URL, data->avc_decoder);
+                g_rtsp_url, data->avc_decoder);
         /*sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
                                "queue leaky=2 max-size-buffers=2 ! "
@@ -352,7 +353,7 @@ static void *app_function (void *userdata) {
     } else {
         sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! amcviddec-%s  ! glimagesink",
-                RTSP_URL, data->avc_decoder);
+                g_rtsp_url, data->avc_decoder);
     }
     data->pipeline = gst_parse_launch(rtsp_pipeline, &error);
     if (error) {
@@ -494,6 +495,24 @@ static void gst_native_pause (JNIEnv* env, jobject thiz) {
     pthread_join (gst_app_thread, nullptr);
 }
 
+/* Set RTSP URL for streaming */
+static void gst_native_set_rtsp_url (JNIEnv* env, jobject thiz, jstring rtsp_url) {
+    if (rtsp_url == nullptr) {
+        GST_WARNING ("RTSP URL is null, using default");
+        return;
+    }
+    
+    const char* url_chars = env->GetStringUTFChars(rtsp_url, nullptr);
+    if (url_chars != nullptr) {
+        strncpy(g_rtsp_url, url_chars, sizeof(g_rtsp_url) - 1);
+        g_rtsp_url[sizeof(g_rtsp_url) - 1] = '\0'; // Ensure null termination
+        GST_DEBUG ("RTSP URL set to: %s", g_rtsp_url);
+        env->ReleaseStringUTFChars(rtsp_url, url_chars);
+    } else {
+        GST_ERROR ("Failed to get RTSP URL string");
+    }
+}
+
 /* Static class initializer: retrieve method and field IDs */
 static jboolean gst_native_class_init (JNIEnv* env, jclass klass, jlong currentTimeMillis) {
     if(currentTimeMillis>1704047400000) JNI_FALSE;
@@ -632,6 +651,7 @@ static JNINativeMethod native_methods[] = {
         { "nativeFinalize", "()V", (void *) gst_native_finalize},
         { "nativePlay", "(IIZZZ)V", (void *) gst_native_play},
         { "nativePause", "()V", (void *) gst_native_pause},
+        { "nativeSetRtspUrl", "(Ljava/lang/String;)V", (void *) gst_native_set_rtsp_url},
         { "nativeSurfaceInit", "(Ljava/lang/Object;)V", (void *) gst_native_surface_init},
         { "nativeSurfaceFinalize", "()V", (void *) gst_native_surface_finalize},
         { "nativeClassInit", "(J)Z", (void *) gst_native_class_init},

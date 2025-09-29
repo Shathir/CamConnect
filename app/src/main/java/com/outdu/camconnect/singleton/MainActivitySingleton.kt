@@ -36,6 +36,10 @@ object MainActivitySingleton {
         mainActivity?.nativePause()
     }
 
+    fun nativeSetRtspUrl(rtspUrl: String) {
+        mainActivity?.nativeSetRtspUrl(rtspUrl)
+    }
+
     fun nativeSurfaceInit(surface: Any) {
         mainActivity?.nativeSurfaceInit(surface)
     }

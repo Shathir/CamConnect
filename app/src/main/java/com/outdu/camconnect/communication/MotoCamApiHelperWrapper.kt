@@ -63,10 +63,11 @@ object MotocamAPIHelperWrapper {
         else -> null
     }
 
-    private suspend fun <T> withSocketClient(block: suspend (MotocamSocketClient) -> T): T {
+    private suspend fun <T> withSocketClient(cameraIp: String? = null, block: suspend (MotocamSocketClient) -> T): T {
         val client = MotocamSocketClient()
         return try {
-            client.init()
+            val targetIp = cameraIp ?: deviceIpAddress
+            client.init(targetIp)
             block(client)
         } finally {
             client.destroy()
@@ -75,8 +76,9 @@ object MotocamAPIHelperWrapper {
 
     private suspend fun <T> sendCommand(
         reqCmd: IntArray,
-        parse: (IntArray, Int) -> T
-    ): T = withSocketClient { client ->
+        parse: (IntArray, Int) -> T,
+        cameraIp: String? = null
+    ): T = withSocketClient(cameraIp) { client ->
         val res = IntArray(MAX_BYTES)
         val len = client.sendCmd(reqCmd, res)
         parse(res, len)
@@ -249,5 +251,47 @@ object MotocamAPIHelperWrapper {
         MotocamAPIHelper.getFirmwareCmd(),
         MotocamAPIHelper::parseFirmwareResponse
     )
+
+    // Viewer Flow specific functions with camera IP parameter
+    
+    /**
+     * Start stream on specific camera (for viewer flow)
+     */
+    suspend fun startStream(cameraIp: String) = sendCommand(
+        MotocamAPIHelper.startStreamCmd(),
+        MotocamAPIHelper::startStreamCmdResponseParse,
+        cameraIp
+    )
+    
+    /**
+     * Stop stream on specific camera (for viewer flow)
+     */
+    suspend fun stopStream(cameraIp: String) = sendCommand(
+        MotocamAPIHelper.stopStreamCmd(),
+        MotocamAPIHelper::stopStreamCmdResponseParse,
+        cameraIp
+    )
+    
+    /**
+     * Get current config from specific camera (for viewer flow)
+     */
+    suspend fun getCurrentConfig(cameraIp: String) = sendCommand(
+        MotocamAPIHelper.getCurrentConfigCmd(),
+        MotocamAPIHelper::getCurrentConfigCmdResponseParse,
+        cameraIp
+    )
+    
+    /**
+     * Set device IP address for API calls
+     */
+    fun setDeviceIpAddress(ipAddress: String) {
+        deviceIpAddress = ipAddress
+        Log.i(TAG, "Device IP address set to: $ipAddress")
+    }
+    
+    /**
+     * Get current device IP address
+     */
+    fun getDeviceIpAddress(): String = deviceIpAddress
 
 }

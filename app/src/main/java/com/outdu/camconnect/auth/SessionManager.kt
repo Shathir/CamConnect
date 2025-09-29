@@ -85,9 +85,10 @@ object SessionManager {
     /**
      * Authenticate user with 4-digit PIN
      * @param pin The 4-digit PIN to authenticate with
+     * @param cameraIp Optional camera IP address. If null, uses default endpoint
      * @return Result<Boolean> indicating success or failure with error details
      */
-    suspend fun authenticateWithPin(pin: String): Result<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun authenticateWithPin(pin: String, cameraIp: String? = null): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             // Validate PIN format
             if (!isValidPin(pin)) {
@@ -111,7 +112,7 @@ object SessionManager {
             Log.d(TAG, "Attempting authentication with PIN (attempt ${pinAttempts.get()})")
             
             // Make login API call using binary protocol
-            val result = performLogin(pin)
+            val result = performLogin(pin, cameraIp)
             
             if (result.isSuccess) {
                 // Reset all attempt counters and lockout state on success
@@ -185,8 +186,10 @@ object SessionManager {
     
     /**
      * Perform the actual login using binary protocol
+     * @param pin The 4-digit PIN to authenticate with
+     * @param cameraIp Optional camera IP address. If null, uses default endpoint
      */
-    private suspend fun performLogin(pin: String): Result<Boolean> {
+    private suspend fun performLogin(pin: String, cameraIp: String? = null): Result<Boolean> {
         return try {
             
             // Construct binary command according to specification:
@@ -245,10 +248,17 @@ object SessionManager {
                     "0x" + (byte.toInt() and 0xFF).toString(16).padStart(2, '0').uppercase()
                 }
 
-                Log.d(TAG, "Sending login request to /api/login: $hexString")
+                // Determine the login endpoint URL
+                val loginEndpoint = if (cameraIp != null) {
+                    "http://$cameraIp:80/api/login"
+                } else {
+                    LOGIN_ENDPOINT
+                }
+                
+                Log.d(TAG, "Sending login request to $loginEndpoint: $hexString")
                 Log.d(TAG, "Request bytes: ${requestBytes.contentToString()}")
 
-                val response = httpClient.post("http://192.168.2.1:80/api/login") {
+                val response = httpClient.post(loginEndpoint) {
                     contentType(ContentType.Application.OctetStream)
                     setBody(hexString)
                 }

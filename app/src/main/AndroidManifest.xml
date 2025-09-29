@@ -71,6 +71,12 @@
             android:exported="false"
             android:screenOrientation="landscape"
             android:theme="@style/Theme.CamConnect" />
+
+        <activity
+            android:name=".ViewerFlowActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.CamConnect" />
     </application>
 
 </manifest>
