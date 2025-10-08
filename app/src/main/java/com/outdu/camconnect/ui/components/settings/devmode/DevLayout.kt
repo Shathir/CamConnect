@@ -15,8 +15,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.communication.HealthStatus
 import com.outdu.camconnect.communication.MotocamAPIAndroidHelper
+import com.outdu.camconnect.communication.StreamConfiguration
 import com.outdu.camconnect.ui.theme.AppColors
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -24,6 +26,7 @@ import kotlinx.coroutines.launch
 fun DevLayout() {
     val scope = rememberCoroutineScope()
     var healthStatus by remember { mutableStateOf<HealthStatus?>(null) }
+    var streamConfiguration by remember { mutableStateOf<StreamConfiguration?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var autoRefresh by remember { mutableStateOf(false) }
@@ -56,6 +59,18 @@ fun DevLayout() {
             onLoading = { isLoading = it },
             onSuccess = { 
                 healthStatus = it
+                errorMessage = null
+                lastUpdateTime = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+                    .format(java.util.Date())
+            },
+            onError = { errorMessage = it }
+        )
+
+        loadStreamConfigurations(
+            scope = scope,
+            onLoading = { isLoading = it },
+            onSuccess = {
+                streamConfiguration = it
                 errorMessage = null
                 lastUpdateTime = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
                     .format(java.util.Date())
@@ -108,11 +123,146 @@ fun DevLayout() {
         healthStatus?.let { status ->
             DevHealthStatusCard(status = status)
         }
-        
+
+        // Stream Configuration Display
+        streamConfiguration?.let { config ->
+            DevStreamConfigurationCard(config = config)
+        }
+
+
         // System Information
         DevSystemInfoCard()
     }
 }
+
+
+@Composable
+private fun DevStreamConfigurationCard(config: StreamConfiguration) {
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Text(
+            text = "System Stream Configurations",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black
+        )
+
+        streamresolutionRow(
+            label = "Stream 1 Resolution",
+            value = config.stream1Resolution,
+            fps = config.stream1Fps,
+            bitrate = config.stream1Bitrate,
+            encoder = config.stream1Encoder
+        )
+//        streamresolutionRow(
+//            label = "Stream 2 Resolution",
+//            value = config.stream2Resolution,
+//            fps = config.stream2Fps,
+//            bitrate = config.stream2Bitrate,
+//            encoder = config.stream2Encoder
+//        )
+    }
+
+
+}
+
+@Composable
+private fun streamresolutionRow(
+    label: String,
+    value: String,
+    fps: Int,
+    bitrate: Int,
+    encoder: String
+)
+{
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = Color.Black
+        )
+
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = StravionBlue
+        )
+    }
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "FPS",
+            fontSize = 14.sp,
+            color = Color.Black
+        )
+
+        Text(
+            text = fps.toString() + "fps",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = StravionBlue
+        )
+    }
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Bitrate",
+            fontSize = 14.sp,
+            color = Color.Black
+        )
+
+        Text(
+            text = bitrate.toString() + "Mb/s",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = StravionBlue
+        )
+    }
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Encoder",
+            fontSize = 14.sp,
+            color = Color.Black
+        )
+
+        Text(
+            text = encoder,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = StravionBlue
+        )
+    }
+
+}
+
 
 @Composable
 private fun DevSectionHeader(
@@ -480,6 +630,29 @@ private fun loadHealthStatus(
                     "portablertc=${it.portableRtc}, " +
                     "irTemp=${it.irTemp}, " +
                     "sensorTemp=${it.sensorTemp}")
+            onSuccess(it)
+        } ?: onError("No health status received")
+    }
+}
+
+private fun loadStreamConfigurations(
+    scope: kotlinx.coroutines.CoroutineScope,
+    onLoading: (Boolean) -> Unit,
+    onSuccess: (StreamConfiguration) -> Unit,
+    onError: (String) -> Unit
+)
+{
+    onLoading(true)
+    MotocamAPIAndroidHelper.getStreamConfigurationAsync(scope) { status, error ->
+        onLoading(false)
+
+        if (error != null) {
+            Log.e("DevLayout", "Health check failed: $error")
+            onError(error)
+            return@getStreamConfigurationAsync
+        }
+
+        status?.let {
             onSuccess(it)
         } ?: onError("No health status received")
     }

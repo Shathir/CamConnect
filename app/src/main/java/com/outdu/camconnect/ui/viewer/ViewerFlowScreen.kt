@@ -2,6 +2,7 @@ package com.outdu.camconnect.ui.viewer
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +14,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -25,11 +29,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import com.outdu.camconnect.R
 import com.outdu.camconnect.services.OnvifDevice
 import com.outdu.camconnect.viewmodels.ViewerFlowViewModel
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 
 /**
  * Main screen for the Viewer Flow
@@ -104,9 +114,9 @@ fun ViewerFlowScreen(
         }
     }
     
-    // PIN authentication dialog
+    // PIN authentication bottom modal
     if (uiState.showPinDialog && selectedCamera != null) {
-        ViewerPinAuthDialog(
+        PinAuthBottomModal(
             camera = selectedCamera!!,
             isAuthenticating = uiState.isAuthenticating,
             authError = uiState.authError,
@@ -155,8 +165,13 @@ private fun StartStreamingSection(
     errorMessage: String?,
     onClearError: () -> Unit
 ) {
+
+    val deviceType = rememberDeviceType()
+
     Column(
-        modifier = Modifier.fillMaxWidth(0.5f),
+        modifier = Modifier
+//            .fillMaxWidth(if(deviceType == DeviceType.TABLET) 0.5f else 0.7f),
+            .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
@@ -182,14 +197,15 @@ private fun StartStreamingSection(
                 Icon(
                     imageVector = Icons.Default.Videocam,
                     contentDescription = "Camera",
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(if(deviceType == DeviceType.TABLET)48.dp else 36.dp),
                     tint = StravionBlue
                 )
                 
                 Text(
                     text = "Welcome Viewer,",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold,
+                    style = TextStyle(
+                        fontSize = if(deviceType == DeviceType.TABLET) 24.sp else 18.sp,
+                        fontWeight = FontWeight(700),
                         color = Color(0xFF1A1A1C)
                     ),
                     textAlign = TextAlign.Center
@@ -204,8 +220,9 @@ private fun StartStreamingSection(
 //                )
                 
                 Text(
-                    text = "Click 'Start Streaming' to discover available cameras on your network. You'll be able to connect and view streams from cameras that you have access to.",
-                    style = MaterialTheme.typography.bodyLarge.copy(
+                    text = "Click 'Start Streaming' to discover available cameras on your network.",
+                    style = TextStyle(
+                        fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
                         color = Color(0xFF9097A0)
                     ),
                     textAlign = TextAlign.Center
@@ -225,7 +242,7 @@ private fun StartStreamingSection(
 //            )
 //        )
         Box(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(if(deviceType == DeviceType.TABLET) 0.5f else 0.6f)
                 .height(56.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(StravionBlue)
@@ -357,6 +374,9 @@ private fun CameraListSection(
     onCameraSelected: (OnvifDevice) -> Unit,
     onRetryDiscovery: () -> Unit
 ) {
+
+    val deviceType = rememberDeviceType()
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -370,15 +390,18 @@ private fun CameraListSection(
             Column {
                 Text(
                     text = "Available Cameras",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = White
+                    style = TextStyle(
+                        fontSize = if(deviceType == DeviceType.TABLET) 24.sp else 18.sp,
+                        fontWeight = FontWeight(700),
+                        color = Color(0xFF1A1A1C)
                     )
                 )
                 Text(
                     text = "${cameras.size} camera${if (cameras.size != 1) "s" else ""} found",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MediumLightGray
+                    style = TextStyle(
+                        fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                        fontWeight =FontWeight(500),
+                        color = Color(0xFF9097A0)
                     )
                 )
             }
@@ -423,12 +446,14 @@ private fun NoCamerasFoundScreen(
     onGoToWifiSettings: () -> Unit,
     onRetry: () -> Unit
 ) {
+
+    val deviceType = rememberDeviceType()
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(32.dp)
+        verticalArrangement = Arrangement.spacedBy(if(deviceType == DeviceType.TABLET) 32.dp else 16.dp)
     ) {
         // Welcome message
         Column(
@@ -457,8 +482,8 @@ private fun NoCamerasFoundScreen(
         Image(
             painter = painterResource(id = R.drawable.wifiscreen),
             contentDescription = "WiFi Connection Screen",
-            modifier = Modifier,
-            contentScale = ContentScale.FillBounds
+            modifier = Modifier.size(300.dp),
+            contentScale = ContentScale.Fit
         )
         
         // Instructions
@@ -497,7 +522,7 @@ private fun NoCamerasFoundScreen(
         Box(
 
             modifier = Modifier
-                .wrapContentWidth()
+                .fillMaxWidth(if(deviceType == DeviceType.TABLET) 0.5f else 1f)
                 .padding(16.dp)
                 .height(56.dp)
                 .clip(RoundedCornerShape(12.dp))
@@ -529,31 +554,351 @@ private fun NoCamerasFoundScreen(
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
-            Text("Retry")
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Warning message
+             Text("Retry")
+         }
+         
+         Spacer(modifier = Modifier.height(32.dp))
+         
+         // Warning message
+         Column(
+             horizontalAlignment = Alignment.CenterHorizontally,
+             verticalArrangement = Arrangement.spacedBy(4.dp)
+         ) {
+             Text(
+                 text = "To avoid errors,",
+                 style = MaterialTheme.typography.bodySmall.copy(
+                     color = MediumGray
+                 ),
+                 textAlign = TextAlign.Center
+             )
+             Text(
+                 text = "DO not switch on multiple cameras at once",
+                 style = MaterialTheme.typography.bodySmall.copy(
+                     color = MediumGray,
+                     fontWeight = FontWeight.Bold
+                 ),
+                 textAlign = TextAlign.Center
+             )
+         }
+     }
+ }
+
+@Composable
+private fun PinAuthBottomModal(
+    camera: OnvifDevice,
+    isAuthenticating: Boolean,
+    authError: String?,
+    onPinEntered: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onClearAuthError: () -> Unit
+) {
+    var pin by remember { mutableStateOf("") }
+    
+    // Background overlay with fade
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable { onDismiss() }
+    ) {
+        // Bottom modal content
         Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(Color.White)
+                .clickable { } // Prevent clicks from passing through
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // Drag handle
+            Box(
+                modifier = Modifier
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(
+                        Color(0xFFE0E0E0),
+                        RoundedCornerShape(2.dp)
+                    )
+            )
+            
+            // Camera info section
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Camera icon
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            Color(0xFFF0F0F0),
+                            RoundedCornerShape(24.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Videocam,
+                        contentDescription = "Camera",
+                        modifier = Modifier.size(24.dp),
+                        tint = Color(0xFF666666)
+                    )
+                }
+                
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = extractCameraName(camera),
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1A1A1C)
+                        )
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+//                        Text(
+//                            text = "MAC:",
+//                            style = TextStyle(
+//                                fontSize = 12.sp,
+//                                color = Color(0xFF666666)
+//                            )
+//                        )
+//                        Text(
+//                            text = camera.ipAddress ?: "Unknown",
+//                            style = TextStyle(
+//                                fontSize = 12.sp,
+//                                color = Color(0xFF666666)
+//                            )
+//                        )
+                        Text(
+                            text = "IP:",
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                color = Color(0xFF666666)
+                            )
+                        )
+                        Text(
+                            text = camera.ipAddress,
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                color = Color(0xFF666666)
+                            )
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                // Online status
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                StravionBlue,
+                                RoundedCornerShape(4.dp)
+                            )
+                    )
+                    Text(
+                        text = "Online",
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = StravionBlue
+                        )
+                    )
+                }
+            }
+            
+            // PIN entry title
             Text(
-                text = "To avoid errors,",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = MediumGray
+                text = "Enter PIN to Connect",
+                style = TextStyle(
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A1A1C)
                 ),
                 textAlign = TextAlign.Center
             )
-            Text(
-                text = "DO not switch on multiple cameras at once",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = MediumGray,
-                    fontWeight = FontWeight.Bold
-                ),
-                textAlign = TextAlign.Center
-            )
+            
+            // PIN input section with clickable overlay
+            val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+            
+            Box(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // PIN input boxes
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { focusRequester.requestFocus() },
+                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+                ) {
+                    repeat(4) { index ->
+                        PinInputBox(
+                            digit = pin.getOrNull(index)?.toString() ?: "",
+                            isFocused = pin.length == index,
+                            modifier = Modifier.size(64.dp)
+                        )
+                    }
+                }
+                
+                // Invisible text field for input
+                androidx.compose.foundation.text.BasicTextField(
+                    value = pin,
+                    onValueChange = { newPin ->
+                        if (newPin.length <= 4 && newPin.all { it.isDigit() }) {
+                            pin = newPin
+                            if (authError != null) {
+                                onClearAuthError()
+                            }
+                        }
+
+                        if(newPin.length == 4 && newPin.all { it.isDigit() } && !isAuthenticating) {
+                            onPinEntered(pin)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .focusRequester(focusRequester)
+                        .alpha(0f), // Make it invisible
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.NumberPassword,
+                        imeAction = ImeAction.Done
+                    ),
+                    singleLine = true
+                )
+            }
+            
+            // Auto-focus when modal appears
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+            }
+            
+            // Error message
+            if (authError != null) {
+                Text(
+                    text = authError,
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        color = Color(0xFFFF3B30)
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
+            
+            // Connect button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        if (pin.length == 4 && !isAuthenticating) StravionBlue 
+                        else Color(0xFFE0E0E0)
+                    )
+                    .clickable(enabled = pin.length == 4 && !isAuthenticating) {
+                        onPinEntered(pin)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (isAuthenticating) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Connecting...",
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White
+                            )
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "Connect",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (pin.length == 4) Color.White else Color(0xFF999999)
+                        )
+                    )
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun PinInputBox(
+    digit: String,
+    isFocused: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .background(
+                Color(0xFFF8F8F8),
+                RoundedCornerShape(12.dp)
+            )
+            .border(
+                width = 2.dp,
+                color = if (isFocused) StravionBlue else Color(0xFFE0E0E0),
+                shape = RoundedCornerShape(12.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = digit,
+            style = TextStyle(
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1A1A1C)
+            )
+        )
+    }
+}
+
+/**
+ * Extract camera name from ONVIF device scopes or generate a default name
+ */
+private fun extractCameraName(camera: OnvifDevice): String {
+    // Try to extract name from scopes
+    camera.scopes.forEach { scope ->
+        when {
+            scope.contains("name/", ignoreCase = true) -> {
+                val name = scope.substringAfterLast("/")
+                if (name.isNotBlank()) return name
+            }
+            scope.contains("device_name/", ignoreCase = true) -> {
+                val name = scope.substringAfterLast("/")
+                if (name.isNotBlank()) return name
+            }
+            scope.contains("model/", ignoreCase = true) -> {
+                val model = scope.substringAfterLast("/")
+                if (model.isNotBlank()) return model
+            }
+        }
+    }
+    
+    // Generate default name based on IP or use "NVeyetech_cam" as shown in image
+    return "NVeyetech_cam"
 }

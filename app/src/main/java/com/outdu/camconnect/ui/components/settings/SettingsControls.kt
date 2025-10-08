@@ -424,7 +424,7 @@ fun ControlTabSwitcher(
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(112.dp)
+                        .width(if(deviceType == DeviceType.TABLET) 136.dp else 112.dp)
                         .clip(RoundedCornerShape(20.dp))
                         .border(
                             width = if (isDarkTheme) 0.dp else 2.dp, // No border in dark theme
@@ -436,7 +436,7 @@ fun ControlTabSwitcher(
                             else if (isDarkTheme) Color(0xFF333333) else Color(0xFFFFFFFF )
                         )
                         .clickable(
-                            enabled = tab != ControlTab.LICENSE_CONTROL,
+                            enabled = tab != ControlTab.LICENSE_CONTROL && tab !=  ControlTab.OTA_LAYOUT,
                             onClick = { onTabSelected(tab) }
                         ),
                     contentAlignment = Alignment.Center
@@ -456,7 +456,7 @@ fun ControlTabSwitcher(
 
                             },
                             contentDescription = tab.displayName,
-                            tint = if (tab == ControlTab.LICENSE_CONTROL) {
+                            tint = if (tab == ControlTab.LICENSE_CONTROL || tab == ControlTab.OTA_LAYOUT) {
                                 if (isDarkTheme) Color(0xFF4A4A4A) else Color(0xFFB0B0B0)
                             } else if (selectedTab == tab) {
                                 if(isDarkTheme) Color.White else Color.Black
@@ -468,7 +468,7 @@ fun ControlTabSwitcher(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = tab.displayName,
-                            color = if (tab == ControlTab.LICENSE_CONTROL) {
+                            color = if (tab == ControlTab.LICENSE_CONTROL || tab == ControlTab.OTA_LAYOUT) {
                                 if (isDarkTheme) Color(0xFF4A4A4A) else Color(0xFFB0B0B0)
                             } else if (selectedTab == tab) {
                                 if(isDarkTheme) Color.White else Color.Black

@@ -247,6 +247,11 @@ object MotocamAPIHelperWrapper {
         MotocamAPIHelper::parseHealthCheckResponse
     )
 
+    suspend fun getStreamConfiguration(): StreamConfiguration = sendCommand(
+        MotocamAPIHelper.getStreamConfigurationCmd(),
+        MotocamAPIHelper::parseStreamConfigurationResponse
+    )
+
     suspend fun getFirmwareVersion(): String = sendCommand(
         MotocamAPIHelper.getFirmwareCmd(),
         MotocamAPIHelper::parseFirmwareResponse

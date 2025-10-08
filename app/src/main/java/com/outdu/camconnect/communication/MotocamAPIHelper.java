@@ -1615,10 +1615,76 @@ public class MotocamAPIHelper {
         );
     }
 
+    public static int[] getStreamConfigurationCmd() {
+        int[] cmd = new int[5];
+        cmd[0] = Header.GET.getVal();                  // 0x02
+        cmd[1] = Commands.CONFIG.getVal();             // 0x06
+        cmd[2] = ConfigGetSubCommands.StreamingConfig.getVal(); //0x0A
+        cmd[3] = 0; // Data length = 0
+//        cmd[4] = 0; // CRC will be computed before send
+        return cmd;
+    }
+
+    public static StreamConfiguration parseStreamConfigurationResponse(int[] response, int length) throws Exception {
+        // Validate packet length
+        if (length < 14)
+            throw new Exception("Incomplete health check response. Expected 13, got " + length);
+
+        // Validate header
+        if (response[0] != Header.RESPONSE.getVal())
+            throw new Exception("Invalid header: " + response[0]);
+
+        // Validate command & sub-command
+        if (response[1] != Commands.CONFIG.getVal() || response[2] != ConfigGetSubCommands.StreamingConfig.getVal())
+            throw new Exception("Command mismatch");
+
+        // Check success flag
+        if (response[4] != 0)
+            throw new Exception("Health check failed");
+
+        String resolution = "";
+        if(response[5] == 1)
+            resolution = "960X540";
+        else
+            resolution = "1920X1080";
+
+        String resolution2 = "";
+        if(response[9] == 1)
+            resolution2 = "960X540";
+        else
+            resolution2 = "190X1080";
+
+
+
+        String encoding = "";
+        if(response[8] == 0)
+            encoding = "H264";
+        else
+            encoding = "H265";
+
+        String encoding2 = "";
+        if(response[12] == 0)
+            encoding2 = "H264";
+        else
+            encoding2 = "H265";
+
+        // Parse data
+        return new StreamConfiguration(
+                resolution,    // rtsps
+                response[6],    // fps
+                response[7],         // Bitrate
+                encoding,         // Memory %
+                resolution2,         // ISP Temp
+                response[10],        // IR Temp
+                response[11],
+                encoding2
+        );
+    }
+
     public static int[] getFirmwareCmd() {
         int[] cmd = new int[5];
         cmd[0] = Header.GET.getVal();                  // 0x02
-        cmd[1] = Commands.SYSTEM.getVal();             // 0x06
+        cmd[1] = Commands.CONFIG.getVal();             // 0x06
         cmd[2] = SystemSubCommands.FIRMWARE.getVal(); // 0x02
         cmd[3] = 0; // Data length = 0
 //        cmd[4] = 0; // CRC will be computed before send

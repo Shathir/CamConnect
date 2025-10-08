@@ -17,6 +17,17 @@ data class HealthStatus(
     val sensorTemp: Int = -1
 )
 
+data class StreamConfiguration(
+    val stream1Resolution: String,
+    val stream1Fps: Int,
+    val stream1Bitrate: Int,
+    val stream1Encoder: String,
+    val stream2Resolution: String,
+    val stream2Fps: Int,
+    val stream2Bitrate: Int,
+    val stream2Encoder: String
+)
+
 //data class HealthStatus(
 //    val rtsps: Boolean,
 //    val portableRtc: Boolean,
@@ -487,6 +498,21 @@ object MotocamAPIAndroidHelper {
                 callback(status, null)
             } catch (e: Exception) {
                 Log.e(TAG, "getHealthStatusAsync failed", e)
+                callback(null, e.message)
+            }
+        }
+    }
+
+    fun getStreamConfigurationAsync(
+        scope: CoroutineScope,
+        callback: (StreamConfiguration?, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val status = MotocamAPIHelperWrapper.getStreamConfiguration()
+                callback(status, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "getStreamConfigurationsAsync failed", e)
                 callback(null, e.message)
             }
         }

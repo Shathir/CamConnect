@@ -13,12 +13,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.services.OnvifDevice
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 import java.net.URI
 
 /**
@@ -34,6 +38,7 @@ fun CameraCard(
     // Extract camera name from scopes or use default
     val cameraName = extractCameraName(camera)
     val macAddress = extractMacAddress(camera)
+    val deviceType = rememberDeviceType()
     
 //    Card(
 //        modifier = modifier
@@ -102,9 +107,10 @@ fun CameraCard(
                     {
                         Text(
                             text = cameraName,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = White
+                            style = TextStyle(
+                                fontSize = if(deviceType == DeviceType.TABLET) 24.sp else 16.sp,
+                                fontWeight = FontWeight(700),
+                                color = Color(0xFF1A1A1C)
                             ),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -176,7 +182,7 @@ fun CameraCard(
 //                shape = RoundedCornerShape(12.dp)
 //            )
             Box(
-                modifier = Modifier.fillMaxWidth(0.5f)
+                modifier = Modifier.fillMaxWidth(if(deviceType == DeviceType.TABLET)0.5f else 0.7f)
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(StravionBlue)
@@ -196,14 +202,15 @@ fun CameraCard(
                     Icon(
                         imageVector = Icons.Default.Login,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(if(deviceType == DeviceType.TABLET) 24.dp else 18.dp),
                         tint = Color.White
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Connect and Stream",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
+                        style = TextStyle(
+                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                            fontWeight = FontWeight(700),
                             color = Color.White
                         )
                     )

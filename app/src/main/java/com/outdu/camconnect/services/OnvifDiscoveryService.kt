@@ -42,7 +42,7 @@ fun discoverOnvifDevices(callback: ((List<OnvifDevice>) -> Unit)? = null) {
         
         try {
             DatagramSocket().use { socket ->
-                socket.soTimeout = 10000 // Increased timeout to 10 seconds
+                socket.soTimeout = 3000 // Increased timeout to 10 seconds
                 socket.reuseAddress = true
                 
                 // Get local network info for debugging
