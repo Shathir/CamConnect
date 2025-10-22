@@ -257,6 +257,22 @@ object MotocamAPIHelperWrapper {
         MotocamAPIHelper::parseFirmwareResponse
     )
 
+    suspend fun setOtaUpdate(): Boolean = sendCommand(
+        MotocamAPIHelper.setOtaUpdateCmd(),
+        MotocamAPIHelper::parseOtaUpdateResponse
+    )
+
+    suspend fun getOtaUpdate(): String = sendCommand(
+        MotocamAPIHelper.getOtaUpdateCmd(),
+        MotocamAPIHelper::parseGetOtaUpdateResponse
+    )
+
+    suspend fun getDeviceMode(): String = sendCommand(
+        MotocamAPIHelper.getDeviceModeCmd(),
+        MotocamAPIHelper::parseDeviceModeResponse
+    )
+
+
     // Viewer Flow specific functions with camera IP parameter
     
     /**

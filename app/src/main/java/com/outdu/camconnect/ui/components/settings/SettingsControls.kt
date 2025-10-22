@@ -402,6 +402,7 @@ fun ControlTabSwitcher(
                                 ControlTab.LICENSE_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                                 ControlTab.DEV_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                                 ControlTab.OTA_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
+                                ControlTab.NETWORK_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                             },
                             contentDescription = tab.displayName,
                             tint = if (selectedTab == tab) if(isDarkTheme) Color.White else Color.Black
@@ -436,7 +437,7 @@ fun ControlTabSwitcher(
                             else if (isDarkTheme) Color(0xFF333333) else Color(0xFFFFFFFF )
                         )
                         .clickable(
-                            enabled = tab != ControlTab.LICENSE_CONTROL && tab !=  ControlTab.OTA_LAYOUT,
+                            enabled = tab != ControlTab.LICENSE_CONTROL,
                             onClick = { onTabSelected(tab) }
                         ),
                     contentAlignment = Alignment.Center
@@ -453,10 +454,10 @@ fun ControlTabSwitcher(
                                 ControlTab.LICENSE_CONTROL -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                                 ControlTab.DEV_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                                 ControlTab.OTA_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
-
+                                ControlTab.NETWORK_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                             },
                             contentDescription = tab.displayName,
-                            tint = if (tab == ControlTab.LICENSE_CONTROL || tab == ControlTab.OTA_LAYOUT) {
+                            tint = if (tab == ControlTab.LICENSE_CONTROL) {
                                 if (isDarkTheme) Color(0xFF4A4A4A) else Color(0xFFB0B0B0)
                             } else if (selectedTab == tab) {
                                 if(isDarkTheme) Color.White else Color.Black
@@ -468,7 +469,7 @@ fun ControlTabSwitcher(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = tab.displayName,
-                            color = if (tab == ControlTab.LICENSE_CONTROL || tab == ControlTab.OTA_LAYOUT) {
+                            color = if (tab == ControlTab.LICENSE_CONTROL) {
                                 if (isDarkTheme) Color(0xFF4A4A4A) else Color(0xFFB0B0B0)
                             } else if (selectedTab == tab) {
                                 if(isDarkTheme) Color.White else Color.Black
@@ -563,5 +564,6 @@ enum class ControlTab(val displayName: String) {
     AI_CONTROL("AI Vision"),
     LICENSE_CONTROL("Manage"),
     DEV_LAYOUT("Dev Mode"),
-    OTA_LAYOUT("OTA")
-} 
+    OTA_LAYOUT("OTA"),
+    NETWORK_LAYOUT("Network")
+}

@@ -38,6 +38,7 @@ import android.content.res.Configuration
 import androidx.compose.runtime.mutableStateOf
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import android.app.Activity
+import android.content.Context
 import android.media.MediaCodecInfo
 import androidx.annotation.RequiresApi
 import com.outdu.camconnect.communication.CameraConfigurationManager
@@ -45,6 +46,8 @@ import com.outdu.camconnect.utils.ConfigurationMigrationHelper
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.Settings
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -200,6 +203,20 @@ class MainActivity : ComponentActivity() {
         checkAndRequestPermissions()
     }
 
+    fun listDownloadsLegacy() {
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+
+        if (downloadsDir.exists() && downloadsDir.isDirectory) {
+            val files = downloadsDir.listFiles()
+            files?.forEach { file ->
+                Log.i("Downloads", "File: ${file.name} | Path: ${file.absolutePath}")
+            }
+        } else {
+            Log.w("Downloads", "Downloads directory does not exist.")
+        }
+    }
+
+
     var actualCodecName: String = ""
     private val viewModel: RecorderViewModel by viewModels()
     private val recordingViewModel: RecordingViewModel by viewModels()
@@ -238,6 +255,9 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        listDownloadsLegacy()
+
 
         // Handle viewer flow parameters
         handleViewerFlowParameters()

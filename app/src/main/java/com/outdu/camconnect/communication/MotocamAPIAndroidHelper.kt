@@ -540,8 +540,8 @@ object MotocamAPIAndroidHelper {
     ){
         scope.launch {
             try {
-//                val status = MotocamAPIHelperWrapper.setOtaUpdate()
-                val status = true
+                val status = MotocamAPIHelperWrapper.setOtaUpdate()
+//                val status = true
                 callback(status, null)
             } catch (e: Exception) {
                 Log.e(TAG, "setOtaUpdateAsync failed", e)
@@ -552,5 +552,35 @@ object MotocamAPIAndroidHelper {
 
     }
 
+    fun getOtaUpdateAsync(
+        scope: CoroutineScope,
+        callback: (String?, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val status = MotocamAPIHelperWrapper.getOtaUpdate()
+//                val status = true
+                callback(status, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "getOtaUpdateAsync failed", e)
+                callback(null, e.message)
+            }
+        }
+    }
+
+    fun getDeviceModeAsync(
+        scope: CoroutineScope,
+        callback: (String?, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val status = MotocamAPIHelperWrapper.getDeviceMode()
+                callback(status, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "getDeviceModeAsync failed", e)
+                callback(null, e.message)
+            }
+        }
+    }
 
 }

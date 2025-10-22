@@ -595,8 +595,8 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
 
     const int target_sizes[] =
             {
-                    320,
-                    320,
+                    640,
+                    640,
             };
 
     const float mean_vals[][3] =

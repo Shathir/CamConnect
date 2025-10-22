@@ -8,12 +8,15 @@ import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.utils.io.core.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Base64
 import com.outdu.camconnect.auth.SessionManager
+import java.security.MessageDigest
 
 class MotocamSocketClient {
 
@@ -167,6 +170,80 @@ class MotocamSocketClient {
             return@withContext responseBytes.size
         } catch (e: Exception) {
             Log.e(TAG, "sendCmd failed", e)
+            throw e
+        }
+    }
+
+    /**
+     * Upload a file using multipart/form-data to /api/upload
+     * @param fileName name reported to the server (Content-Disposition filename)
+     * @param fileBytes content of the file to upload
+     * @param port target HTTP port (default 80). Example external UI may use 8082
+     * @param fieldName multipart field name expected by server (default "file")
+     * @param contentType MIME type of the file content
+     * @return true if HTTP 200-299, false otherwise
+     */
+    suspend fun uploadFile(
+        fileName: String,
+        fileBytes: ByteArray,
+        port: Int = 80,
+        fieldName: String = "file",
+        contentType: ContentType = ContentType.Application.OctetStream
+    ): Boolean = withContext(Dispatchers.IO) {
+
+        Log.d("MotocamSocketClient", "uploadFile called with fileName: $fileName, port: $port, fieldName: $fieldName, contentType: $contentType")
+        val client = httpClient ?: throw IllegalStateException("HTTP client not initialized")
+
+        Log.d(TAG,"cameraIp : ${cameraIp}")
+        val url = "http://192.168.1.165:$port/api/upload"
+        Log.d(TAG, "upload url: $url")
+
+        // Log payload characteristics (size, short hex preview, SHA-256 hash)
+        val totalBytes = fileBytes.size
+        val previewCount = kotlin.math.min(32, totalBytes)
+        val previewHex = fileBytes.take(previewCount).joinToString(" ") { b ->
+            (b.toInt() and 0xFF).toString(16).padStart(2, '0').uppercase()
+        }
+        val sha256 = MessageDigest.getInstance("SHA-256").digest(fileBytes)
+            .joinToString("") { (it.toInt() and 0xFF).toString(16).padStart(2, '0') }
+        Log.d(TAG, "payload sizeBytes=$totalBytes sha256=$sha256 previewHex[${previewCount}B]=$previewHex")
+        try {
+            val response = client.submitFormWithBinaryData(
+                url = url,
+                formData = formData {
+                    append(
+                        key = fieldName,
+                        value = fileBytes,
+                        headers = Headers.build {
+                            append(HttpHeaders.ContentDisposition, "form-data; name=\"$fieldName\"; filename=\"$fileName\"")
+                        }
+                    )
+                }
+            ) {
+                headers {
+                    append(HttpHeaders.Cookie, getSessionCookie())
+                    append(HttpHeaders.UserAgent, "CamConnect-Android")
+                    append(HttpHeaders.Accept, "*/*")
+                }
+            }
+
+            val ok = response.status.isSuccess()
+            Log.d(TAG, "upload response status=${response.status}")
+            
+            // Log response body for debugging
+            try {
+                val responseBody = response.body<String>()
+                Log.d(TAG, "upload response body: $responseBody")
+            } catch (e: Exception) {
+                Log.d(TAG, "Could not read response body: ${e.message}")
+            }
+            
+            if (!ok) {
+                Log.w(TAG, "uploadFile failed: status=${response.status}")
+            }
+            return@withContext ok
+        } catch (e: Exception) {
+            Log.e(TAG, "uploadFile exception", e)
             throw e
         }
     }

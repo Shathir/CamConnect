@@ -34,14 +34,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.R
 import com.outdu.camconnect.communication.MotocamAPIAndroidHelper
+import com.outdu.camconnect.communication.MotocamSocketClient
+import com.outdu.camconnect.communication.CameraApiManager
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
+import io.ktor.http.ContentType
+import java.io.InputStream
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
+import android.provider.OpenableColumns
 
 @Composable
 fun OtaLayout() {
 
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var firmwareVersion by remember { mutableStateOf("") }
     var selectedFile by remember { mutableStateOf<Uri?>(null) }
+    var isUploading by remember { mutableStateOf(false) }
+    var uploadStatus by remember { mutableStateOf("") }
+    var uploadComplete by remember { mutableStateOf(false) }
+    var showOtaDialog by remember { mutableStateOf(false) }
+    var countdown by remember { mutableStateOf(120) }
+    var otaStatus by remember { mutableStateOf<String?>(null) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -118,24 +133,35 @@ fun OtaLayout() {
                             .fillMaxWidth(0.5f)
                             .height(48.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(StravionBlue)
-                            .clickable {
-                                updateFirmware(
-                                    scope,
+                            .background(if (isUploading) Color.Gray else StravionBlue)
+                            .clickable(enabled = !isUploading) {
+                                uploadFirmwareFile(
+                                    context = context,
+                                    scope = scope,
                                     onSuccess = {
-                                        Log.d("OTALayout", "Firmware update success: $it")
-                                        selectedFile = null
+                                        Log.d("OTALayout", "Firmware upload success: $it")
+                                        uploadStatus = "✅ Upload complete: ${selectedFile?.lastPathSegment}"
+                                        uploadComplete = true
                                     },
                                     onError = {
-                                        Log.e("OTALayout", "Firmware update failed: $it")
+                                        Log.e("OTALayout", "Firmware upload failed: $it")
+                                        uploadStatus = "❌ Upload failed: $it"
+                                        uploadComplete = false
                                     },
-                                    selectedFile
+                                    selectedFile = selectedFile,
+                                    onUploadStart = {
+                                        isUploading = true
+                                        uploadStatus = "Preparing upload..."
+                                    },
+                                    onUploadComplete = {
+                                        isUploading = false
+                                    }
                                 )
                             },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Update Firmware",
+                            text = if (isUploading) "Uploading..." else "Upload Firmware",
                             style = TextStyle(
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight(500),
@@ -144,8 +170,106 @@ fun OtaLayout() {
                             )
                         )
                     }
+                    
+                    // Show upload status
+                    if (uploadStatus.isNotEmpty()) {
+                        Text(
+                            text = uploadStatus,
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight(400),
+                                color = if (uploadStatus.contains("✅", ignoreCase = true)) Color.Green else Color.Red,
+                                fontFamily = FontFamily(Font(R.font.onest_regular))
+                            )
+                        )
+                    }
+                    
+                    // Show "Update Firmware" button after successful upload
+                    if (uploadComplete) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.5f)
+                                .height(48.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(StravionBlue)
+                                .clickable {
+                                    handleFirmwareUpdate(
+                                        scope = scope,
+                                        onSuccess = {
+                                            Log.d("OTALayout", "OTA update success: $it")
+                                            otaStatus = "✅ Firmware update successful. Please reboot the camera manually."
+                                        },
+                                        onError = {
+                                            Log.e("OTALayout", "OTA update failed: $it")
+                                            otaStatus = "❌ Firmware update failed."
+                                        },
+                                        onStart = {
+                                            showOtaDialog = true
+                                            countdown = 120
+                                            otaStatus = null
+                                        }
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Update Firmware",
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight(500),
+                                    color = Color.White,
+                                    fontFamily = FontFamily(Font(R.font.onest_regular))
+                                )
+                            )
+                        }
+                    }
                 }
             }
+        }
+        
+        // OTA Update Dialog
+        if (showOtaDialog) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showOtaDialog = false },
+                title = {
+                    Text(
+                        text = if (otaStatus == null) "Flashing firmware..." else "Firmware Update Result",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight(600),
+                            fontFamily = FontFamily(Font(R.font.onest_regular))
+                        )
+                    )
+                },
+                text = {
+                    if (otaStatus == null) {
+                        Text(
+                            text = "Checking update status in $countdown second${if (countdown != 1) "s" else ""}...",
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                fontFamily = FontFamily(Font(R.font.onest_regular))
+                            )
+                        )
+                    } else {
+                        Text(
+                            text = otaStatus!!,
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                fontFamily = FontFamily(Font(R.font.onest_regular))
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    if (otaStatus != null) {
+                        androidx.compose.material3.TextButton(
+                            onClick = { showOtaDialog = false }
+                        ) {
+                            Text("Close")
+                        }
+                    }
+                }
+            )
         }
     }
 }
@@ -185,25 +309,155 @@ private fun fetchFirmwareVersion(
     }
 }
 
-private fun updateFirmware(
+private fun uploadFirmwareFile(
+    context: Context,
     scope: kotlinx.coroutines.CoroutineScope,
     onSuccess: (String) -> Unit,
     onError: (String) -> Unit,
-    selectedFile: Uri?
-)
-{
-    MotocamAPIAndroidHelper.setOtaUpdateAsync(scope) {
-            status, error ->
+    selectedFile: Uri?,
+    onUploadStart: () -> Unit,
+    onUploadComplete: () -> Unit
+) {
+    if (selectedFile == null) {
+        onError("No file selected")
+        return
+    }
 
-        if (error != null) {
-            Log.e("OTALayout", "Firmware update failed: $error")
-            onError(error)
-            return@setOtaUpdateAsync
+    scope.launch {
+        try {
+            onUploadStart()
+            
+            // Read file content from URI
+            val inputStream: InputStream? = context.contentResolver.openInputStream(selectedFile)
+            if (inputStream == null) {
+                onError("Could not read selected file")
+                return@launch
+            }
+            
+            val fileBytes = inputStream.readBytes()
+            inputStream.close()
+            
+            // Resolve filename from URI using ContentResolver (falls back to lastPathSegment)
+            val displayName = getDisplayName(context, selectedFile)
+            val originalFileName = selectedFile.lastPathSegment ?: "firmware.bin"
+            val fileName = displayName ?: originalFileName
+            Log.d("OTALayout", "Original filename: $originalFileName, Resolved displayName: $displayName, Using: $fileName")
+            Log.d("OTALayout", "FileName is : ${selectedFile}")
+            
+            // Get current camera IP from CameraApiManager
+            val cameraApiManager = CameraApiManager.getInstance()
+            val currentCameraIp = cameraApiManager.getCurrentDeviceIP()
+            Log.d("OTALayout", "Using camera IP: $currentCameraIp")
+            
+            // Initialize MotocamSocketClient with current camera IP
+            val client = MotocamSocketClient()
+            client.init("192.168.1.165")// Use the current camera IP
+            
+            // Upload the firmware file to the web UI server (like the web interface does)
+            val uploadSuccess = client.uploadFile(
+                fileName = fileName,
+                fileBytes = fileBytes,
+                port = 80, // Use web UI server port (matching web interface)
+                fieldName = "file",
+                contentType = ContentType.Application.OctetStream
+            )
+            
+            if (uploadSuccess) {
+                Log.d("OTALayout", "Firmware file uploaded successfully")
+                onSuccess("Firmware uploaded successfully")
+            } else {
+                onError("Upload failed - server returned error")
+            }
+            
+        } catch (e: Exception) {
+            Log.e("OTALayout", "Firmware upload exception", e)
+            onError("Upload failed: ${e.message}")
+        } finally {
+            onUploadComplete()
         }
+    }
+}
 
-        status?.let {
-            Log.d("OTALayout", " Firmware update is  $it .")
-            onSuccess(it.toString())
+private fun handleFirmwareUpdate(
+    scope: kotlinx.coroutines.CoroutineScope,
+    onSuccess: (String) -> Unit,
+    onError: (String) -> Unit,
+    onStart: () -> Unit
+) {
+    onStart()
+    
+    scope.launch {
+        try {
+            // Start countdown timer (120 seconds = 2 minutes)
+            val timer = scope.launch {
+                repeat(10) { i ->
+                    kotlinx.coroutines.delay(1000)
+                    // Countdown is handled in UI state
+                }
+                // After countdown, check OTA status
+                checkOTAStatus(scope, onSuccess, onError)
+            }
+            
+            // Trigger OTA update in the background
+            MotocamAPIAndroidHelper.setOtaUpdateAsync(scope) { status, error ->
+                if (error != null) {
+                    Log.e("OTALayout", "OTA update failed: $error")
+                    onError("OTA update failed: $error")
+                } else {
+                    status?.let {
+                        Log.d("OTALayout", "OTA update status: $it")
+                        // Status will be checked after countdown
+                    }
+                }
+            }
+            
+        } catch (e: Exception) {
+            Log.e("OTALayout", "OTA update exception", e)
+            onError("OTA update failed: ${e.message}")
         }
+    }
+}
+
+private fun checkOTAStatus(
+    scope: kotlinx.coroutines.CoroutineScope,
+    onSuccess: (String) -> Unit,
+    onError: (String) -> Unit
+) {
+    scope.launch {
+        try {
+            // Call the existing getOtaUpdateAsync function
+            MotocamAPIAndroidHelper.getOtaUpdateAsync(scope) { status, error ->
+                if (error != null) {
+                    Log.e("OTALayout", "OTA status check failed: $error")
+                    onError("Failed to check OTA status: $error")
+                } else {
+                    status?.let {
+                        Log.d("OTALayout", "OTA status response: $it")
+                        // Parse the response and show appropriate message
+                        when {
+                            it.toString().contains("success", ignoreCase = true) -> {
+                                onSuccess("✅ Firmware update successful. Please reboot the camera manually.")
+                            }
+                            it.toString().contains("fail", ignoreCase = true) -> {
+                                onError("❌ Firmware update failed.")
+                            }
+                            else -> {
+                                onError("⚠️ Unable to read update status.")
+                            }
+                        }
+                    } ?: onError("⚠️ No OTA status received.")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OTALayout", "OTA status check exception", e)
+            onError("Failed to check OTA status: ${e.message}")
+        }
+    }
+}
+
+private fun getDisplayName(context: Context, uri: Uri): String? {
+    return context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (nameIndex != -1 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
     }
 }

@@ -48,6 +48,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.ui.components.recording.RecordingTimer
 import com.outdu.camconnect.ui.components.settings.devmode.DevLayout
 import com.outdu.camconnect.ui.components.settings.logout.LogoutLayout
+import com.outdu.camconnect.ui.components.settings.network.NetworkLayout
 import com.outdu.camconnect.ui.components.settings.ota.OtaLayout
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import com.outdu.camconnect.utils.DeviceType
@@ -181,6 +182,10 @@ fun SettingsControlLayout(
 
                         ControlTab.OTA_LAYOUT -> {
                             OtaLayout()
+                        }
+
+                        ControlTab.NETWORK_LAYOUT -> {
+                            NetworkLayout()
                         }
                     }
                 }
