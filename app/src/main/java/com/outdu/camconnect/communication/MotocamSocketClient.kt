@@ -22,7 +22,7 @@ class MotocamSocketClient {
 
     companion object {
         private const val TAG = "MotocamSocketClient"
-        private const val TIMEOUT_MS = 10_000
+        private const val TIMEOUT_MS = 30_000
         private const val DEFAULT_SESSION = "E5F102590722B5788B9CE04885ED845A3CA815E93753B2D7885C86DC5BB4647A"
         private const val DEFAULT_CAMERA_IP = "192.168.2.1"
     }

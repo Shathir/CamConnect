@@ -37,7 +37,7 @@ public:
     Yolo(const cv::Rect &roi);
     int model_type = 0;
     int load(AAssetManager* mgr, const char* modeltype, const char* modelName, int target_size, const float* mean_vals, const float* norm_vals, bool use_gpu = false);
-    int detect(const cv::Mat &rgb, std::vector<Object>& objects, float prob_threshold = 0.25f, float nms_threshold = 0.5f);
+    int detect(const cv::Mat &rgb, std::vector<Object>& objects, float prob_threshold = 0.4f, float nms_threshold = 0.5f);
     int useFarROI(bool far_roi);
 
 private:

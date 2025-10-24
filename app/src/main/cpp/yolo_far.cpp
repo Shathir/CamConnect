@@ -311,11 +311,13 @@ int Yolo::detectPart(const cv::Mat &rgb, const cv::Rect &roi, std::vector<Object
     const char* output_name = "output";
 
     if(model_type==0) {
+        // Generic 80 class Model
         input_name = "images";
         output_name = "output";
     }
     else
     {
+        // Marine 5 class model
         input_name = "images";
         output_name = "output0";
     }
@@ -370,11 +372,13 @@ int Yolo::detect(const cv::Mat& rgb, std::vector<Object>& objects, float prob_th
     const char* output_name = "output";
 
     if(model_type==0) {
+        // Generic 80 class model
         input_name = "images";
         output_name = "output";
     }
     else
     {
+        // Marine 5 class model
         input_name = "images";
         output_name = "output0";
     }
@@ -386,7 +390,7 @@ int Yolo::detect(const cv::Mat& rgb, std::vector<Object>& objects, float prob_th
     int width = rgb.cols;
     int height = rgb.rows;
 
-    // pad to multiple of 32
+    // scale to 640x384
     int w = width;
     int h = height;
     float scale = 1.f;
@@ -406,8 +410,8 @@ int Yolo::detect(const cv::Mat& rgb, std::vector<Object>& objects, float prob_th
     ncnn::Mat in = ncnn::Mat::from_pixels_resize(rgb.data, ncnn::Mat::PIXEL_BGR, width, height, w, h);
 
     // pad to target_size rectangle
-    int wpad = (w + 31) / 32 * 32 - w;
-    int hpad = (h + 31) / 32 * 32 - h;
+    int wpad = (target_size + 31) / 32 * 32 - w;
+    int hpad = (target_size + 31) / 32 * 32 - h;
     ncnn::Mat in_pad;
     ncnn::copy_make_border(in, in_pad, hpad / 2, hpad - hpad / 2, wpad / 2, wpad - wpad / 2, ncnn::BORDER_CONSTANT, 0.f);
 

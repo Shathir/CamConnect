@@ -65,6 +65,7 @@ static jfieldID custom_data_field_id;
 static jmethodID set_message_method_id;
 static jmethodID od_callback_id;
 static jmethodID on_gstreamer_initialized_method_id;
+static jmethodID on_stream_error_id;
 
 /* Register this thread with the VM */
 static JNIEnv *attach_current_thread (void) {
@@ -244,6 +245,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
         }
         cv::Mat bgr(sample_height, sample_width, CV_8UC3);
         memcpy(bgr.data, gstBufferMap.data, gstBufferMap.size);
+        GST_DEBUG("Frame size is : %d %d", bgr.cols, bgr.rows);
         gst_buffer_unmap(buffer, &gstBufferMap);
         gst_sample_unref(sample);
         // nanodet
@@ -259,7 +261,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                 }
                 std::vector<Object> objects;
                 auto start_time = std::chrono::system_clock::now();
-                g_yolo->detect(bgr, objects);//yolo od threshold 0.6
+                g_yolo->detect(bgr, objects);//yolo od threshold 0.4
                 std::vector<cv::Point2f> points2F;
                 points2F.reserve(objects.size());
                 for(Object &obj:objects) {
@@ -315,12 +317,11 @@ static void *app_function (void *userdata) {
                                "video/x-raw,width=960,height=540,format=BGR ! "
                                "appsink max-buffers=2 drop=true name=rtspappsink",
                 RTSP_URL, data->avc_decoder);*/
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=1100 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! "
                                "amcviddec-%s ! tee name=t ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               //                               "identity single-segment=true sync=true ! "
-                               "glimagesink sync=false async=false t. ! "
+                               "queue ! "
+                               "glimagesink t. ! "
                                "queue leaky=2 max-size-buffers=2 ! "
                                "glcolorconvert ! gldownload ! "
                                "video/x-raw,width=1920,height=1080,format=BGR ! "
@@ -351,7 +352,7 @@ static void *app_function (void *userdata) {
 //                               "appsink max-buffers=2 drop=true name=rtspappsink",
 //                RTSP_URL, data->avc_decoder);
     } else {
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=1100 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! amcviddec-%s  ! glimagesink",
                 g_rtsp_url, data->avc_decoder);
     }
@@ -374,6 +375,11 @@ static void *app_function (void *userdata) {
                                             "width", G_TYPE_INT, 960,
                                             "height", G_TYPE_INT, 540,
                                             "format", G_TYPE_STRING, "BGR", nullptr);
+
+//        GstCaps *caps = gst_caps_new_simple("video/x-raw",
+//                                            "width", G_TYPE_INT, 1920,
+//                                            "height", G_TYPE_INT, 1080,
+//                                            "format", G_TYPE_STRING, "BGR", nullptr);
         gst_app_sink_set_caps(GST_APP_SINK(data->app_sink), caps);
         g_object_set (data->app_sink, "emit-signals", TRUE, nullptr);
         g_signal_connect (data->app_sink, "new-sample", G_CALLBACK (new_sample), data);
@@ -481,7 +487,6 @@ static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height,
     if (!data) return;
     GST_DEBUG ("Setting state to PLAYING");
     pthread_create (&gst_app_thread, nullptr, &app_function, data);
-//    gst_element_set_state (data->pipeline, GST_STATE_PLAYING);
 }
 
 /* Set pipeline to PAUSED state */
@@ -515,13 +520,12 @@ static void gst_native_set_rtsp_url (JNIEnv* env, jobject thiz, jstring rtsp_url
 
 /* Static class initializer: retrieve method and field IDs */
 static jboolean gst_native_class_init (JNIEnv* env, jclass klass, jlong currentTimeMillis) {
-    if(currentTimeMillis>1704047400000) JNI_FALSE;
     custom_data_field_id = env->GetFieldID (klass, "nativeCustomData", "J");
     set_message_method_id = env->GetMethodID (klass, "setMessage", "(Ljava/lang/String;)V");
     od_callback_id = env->GetMethodID (klass, "odCallback", "([I[F[I[I[I[I[F)V");
     on_gstreamer_initialized_method_id = env->GetMethodID (klass, "onGStreamerInitialized", "()V");
-
-    if (!custom_data_field_id || !set_message_method_id || !on_gstreamer_initialized_method_id || !od_callback_id) {
+    on_stream_error_id = env->GetMethodID(klass, "onStreamError", "(I)V");
+    if (!custom_data_field_id || !set_message_method_id || !on_gstreamer_initialized_method_id || !od_callback_id || !on_stream_error_id) {
         /* We emit this message through the Android log instead of the GStreamer log because the later
          * has not been initialized yet.
          */

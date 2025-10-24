@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun loadODModel(modelId: Int) {
+    private fun loadODModel(modelId: Int) {
         val retInit = nativeLoadOdModel(assets, 0,1, CameraConfigurationManager.isDepthSensingEnabled(), 1)
         if (!retInit) {
             Log.e("MainActivity", "yolov8ncnn loadModel failed")
@@ -120,7 +120,7 @@ class MainActivity : ComponentActivity() {
     fun onGStreamerInitialized() {
     }
 
-    var odPointsState = mutableStateOf(
+    private var odPointsState = mutableStateOf(
         OverlayPoints(
             labels = intArrayOf(),
             probs = floatArrayOf(),
@@ -156,9 +156,14 @@ class MainActivity : ComponentActivity() {
 
     }
 
+    fun onStreamError(status: Int){
+        Log.i("onStreamError","onStreamError is called with $status value")
+    }
+
     fun setMessage(message: String) {
         runOnUiThread {
             // Update UI with the message
+            Log.i("setMessage", "Message received: $message")
         }
     }
 
@@ -217,7 +222,7 @@ class MainActivity : ComponentActivity() {
     }
 
 
-    var actualCodecName: String = ""
+    private var actualCodecName: String = ""
     private val viewModel: RecorderViewModel by viewModels()
     private val recordingViewModel: RecordingViewModel by viewModels()
 

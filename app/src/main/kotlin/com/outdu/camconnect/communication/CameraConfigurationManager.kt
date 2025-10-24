@@ -260,6 +260,7 @@ object CameraConfigurationManager {
     
     private fun getConfigFile(context: Context): File {
         val configDir = context.getExternalFilesDir(null) ?: context.filesDir
+        Log.i("FileName", "filename is : ${configDir.absolutePath}")
         return File(configDir, CONFIG_FILE_NAME)
     }
     

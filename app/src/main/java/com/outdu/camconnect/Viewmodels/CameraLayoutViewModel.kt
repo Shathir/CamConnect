@@ -329,7 +329,7 @@ class CameraLayoutViewModel : ViewModel() {
                     success
                 }
                 apiCalls.add(miscDeferred)
-
+                delay(100)
                 // DAYMODE Task
                 val dayModeDeferred = async {
                     val start = System.currentTimeMillis()
@@ -348,6 +348,7 @@ class CameraLayoutViewModel : ViewModel() {
                     Log.d(TAG, "API TIME - DAYMODE: ${end - start} ms")
                     success
                 }
+                delay(100)
                 apiCalls.add(dayModeDeferred)
 
                 // Orientation (FLIP + MIRROR)
@@ -369,6 +370,8 @@ class CameraLayoutViewModel : ViewModel() {
                             }
                         }
                     }
+
+                    delay(100)
 
                     val mirrorDeferred = async {
                         suspendCancellableCoroutine<Boolean> { cont ->
@@ -396,6 +399,7 @@ class CameraLayoutViewModel : ViewModel() {
                 }
                 apiCalls.add(orientationDeferred)
 
+                delay(100)
                 val results = apiCalls.awaitAll()
                 val allSuccessful = results.all { it }
 
