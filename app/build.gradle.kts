@@ -47,6 +47,7 @@ android {
     buildTypes {
         debug {
             isDebuggable = true
+            isProfileable = true
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }

@@ -324,7 +324,7 @@ fun HotspotLayout(
         {
 
             Text(
-                text = "Submit",
+                text = "Start Hosting",
                 style = TextStyle(
                     fontSize = 24.sp,
                     fontWeight = FontWeight(400),
@@ -469,7 +469,7 @@ fun DeviceLayout(
         {
 
             Text(
-                text = "Submit",
+                text = "Connect to Network",
                 style = TextStyle(
                     fontSize = 24.sp,
                     fontWeight = FontWeight(400),

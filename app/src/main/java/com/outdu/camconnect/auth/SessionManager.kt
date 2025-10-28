@@ -29,12 +29,13 @@ object SessionManager {
     private const val PIN_ATTEMPTS_KEY = "pin_attempts"
     private const val LOCKOUT_START_TIME_KEY = "lockout_start_time"
     private const val LOCKOUT_SEQUENCE_COUNT_KEY = "lockout_sequence_count"
-    
+    private var CAMERA_IP = "192.168.2.1"
     // Configuration constants
     private const val MAX_PIN_ATTEMPTS = 3
     private const val SESSION_TIMEOUT_HOURS = 24
     private const val LOGIN_TIMEOUT_MS = 10_000L
-    private const val LOGIN_ENDPOINT = "http://192.168.2.1:80/api/login"
+    private val LOGIN_ENDPOINT : String
+        get() = "http://$CAMERA_IP:80/api/login"
     
     // Exponential backoff lockout durations in milliseconds
     private val LOCKOUT_DURATIONS = longArrayOf(
@@ -90,6 +91,10 @@ object SessionManager {
      */
     suspend fun authenticateWithPin(pin: String, cameraIp: String? = null): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
+
+            if (cameraIp != null) {
+                CAMERA_IP = cameraIp
+            }
             // Validate PIN format
             if (!isValidPin(pin)) {
                 return@withContext Result.failure(
@@ -626,6 +631,7 @@ object SessionManager {
         
         try {
             val logoutEndpoint = LOGIN_ENDPOINT.replace("/login", "/logout")
+            Log.i(TAG, "Performing server logout to $logoutEndpoint")
             val response = httpClient.post(logoutEndpoint) {
                 contentType(ContentType.Application.Json)
                 header("Cookie", "session=$sessionToken")
