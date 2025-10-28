@@ -47,7 +47,7 @@ android {
     buildTypes {
         debug {
             isDebuggable = true
-            isProfileable = true
+//            isProfileable = true
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
@@ -94,7 +94,7 @@ android {
         }
     }
 
-    ndkVersion = "21.0.6113669"
+    ndkVersion = "28.2.13676358"
 }
 
 dependencies {

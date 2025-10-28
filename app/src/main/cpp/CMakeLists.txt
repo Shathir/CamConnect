@@ -302,7 +302,7 @@ link_directories(
 
 set(OpenCV_DIR ${CMAKE_SOURCE_DIR}/opencv-mobile-4.6.0-android/sdk/native/jni)
 find_package(OpenCV REQUIRED core imgproc highgui)
-set(ncnn_DIR ${CMAKE_SOURCE_DIR}/ncnn-20230517-android-vulkan/${ANDROID_ABI}/lib/cmake/ncnn)
+set(ncnn_DIR ${CMAKE_SOURCE_DIR}/ncnn-20250916-android-vulkan/${ANDROID_ABI}/lib/cmake/ncnn)
 find_package(ncnn REQUIRED)
 
 add_library(tflite SHARED IMPORTED)
@@ -313,7 +313,13 @@ add_library(tflitegpu SHARED IMPORTED)
 set_target_properties(tflitegpu PROPERTIES IMPORTED_LOCATION
         ${CMAKE_CURRENT_LIST_DIR}/../jniLibs/${ANDROID_ABI}/libtensorflowlite_gpu_delegate.so)
 
-add_library(gstreamer_android_player SHARED gstreamer_android_player.cpp yolo_far.cpp midas_far.cpp)
+include_directories(include)
+
+file(GLOB SOURCE_FILES
+        src/*.cpp
+        gstreamer_android_player.cpp)
+#add_library(gstreamer_android_player SHARED gstreamer_android_player.cpp yolo_far.cpp midas_far.cpp)
+add_library(gstreamer_android_player SHARED ${SOURCE_FILES})
 
 target_link_libraries(gstreamer_android_player gstreamer_android tflite tflitegpu
         ${GLIB_LIBRARIES}

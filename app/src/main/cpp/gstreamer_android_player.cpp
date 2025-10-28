@@ -10,8 +10,7 @@
 #include <android/asset_manager_jni.h>
 #include <opencv2/core/core.hpp>
 #include <gst/app/gstappsink.h>
-#include "yolo.h"
-#include "midas.h"
+#include "yolo11.h"
 
 // Dynamic RTSP URL - will be set from Java side
 static char g_rtsp_url[512] = "rtsp://onvif:test@192.168.2.1/live1.sdp"; // Default fallback
@@ -51,8 +50,7 @@ typedef struct _CustomData {
 } CustomData;
 
 
-static Yolo* g_yolo = 0;
-static Midas* g_midas = 0;
+static YOLO11* g_yolo11 = 0;
 
 static ncnn::Mutex lock;
 
@@ -245,40 +243,37 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
         }
         cv::Mat bgr(sample_height, sample_width, CV_8UC3);
         memcpy(bgr.data, gstBufferMap.data, gstBufferMap.size);
+
         GST_DEBUG("Frame size is : %d %d", bgr.cols, bgr.rows);
         gst_buffer_unmap(buffer, &gstBufferMap);
         gst_sample_unref(sample);
+
         // nanodet
         {
             ncnn::MutexLockGuard g(lock);
 
-            if (data->od && g_yolo) {
+            if (data->od && g_yolo11) {
                 std::vector<float> dep_thres;
                 int midas_ret=1;
 //                dep_thres.reserve(objects.size());
-                if(data->ds && g_midas) {
-                    midas_ret=g_midas->invokeProcessAsync(bgr);
-                }
+
                 std::vector<Object> objects;
                 auto start_time = std::chrono::system_clock::now();
-                g_yolo->detect(bgr, objects);//yolo od threshold 0.4
+
+                g_yolo11->detect(bgr, objects);//yolo od threshold 0.4
+                auto end_time = std::chrono::system_clock::now();
                 std::vector<cv::Point2f> points2F;
                 points2F.reserve(objects.size());
+                int x_start = 210;
                 for(Object &obj:objects) {
                     points2F.emplace_back((obj.rect.x+obj.rect.width/2), (obj.rect.y+obj.rect.height/2));
-                    obj.rect.x=obj.rect.x/bgr.cols;
-                    obj.rect.y=obj.rect.y/bgr.rows;
-                    obj.rect.width=obj.rect.width/bgr.cols;
+                    obj.rect.x= (obj.rect.x + x_start) /(bgr.cols + (2*x_start));
+                    obj.rect.y= obj.rect.y/bgr.rows;
+                    obj.rect.width=obj.rect.width/(bgr.cols + (2*x_start));
                     obj.rect.height=obj.rect.height/bgr.rows;
                 }
 
-                if(data->ds && g_midas) {
-                    if(midas_ret==0) {
-                        g_midas->updatePoints(points2F);
-                        g_midas->postProcess(bgr.cols, bgr.rows, dep_thres);
-                    }
-                }
-                auto end_time = std::chrono::system_clock::now();
+//                auto end_time = std::chrono::system_clock::now();
                 std::chrono::duration<double> elapsed_seconds = end_time - start_time;
                 GST_DEBUG("YOLO time: %f", elapsed_seconds.count());
                 od_callback(objects, dep_thres, data);
@@ -306,18 +301,7 @@ static void *app_function (void *userdata) {
     char rtsp_pipeline[1000];
     if(data->od) {
 
-        /*sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
-                               "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               "glimagesink t. ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               "glcolorconvert ! gldownload ! "
-                               "video/x-raw,width=1920,height=1080,format=BGR ! "
-                               "videoscale ! "
-                               "video/x-raw,width=960,height=540,format=BGR ! "
-                               "appsink max-buffers=2 drop=true name=rtspappsink",
-                RTSP_URL, data->avc_decoder);*/
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=1100 drop-on-latency=true ! "
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=600 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! "
                                "amcviddec-%s ! tee name=t ! "
                                "queue ! "
@@ -325,34 +309,14 @@ static void *app_function (void *userdata) {
                                "queue leaky=2 max-size-buffers=2 ! "
                                "glcolorconvert ! gldownload ! "
                                "video/x-raw,width=1920,height=1080,format=BGR ! "
+                               "videocrop left=420 right=420 top=0 bottom=0 ! "
                                "videoscale ! "
-                               "video/x-raw,width=960,height=540,format=BGR ! "
+                               "video/x-raw,width=640,height=640,format=BGR ! "
                                "appsink max-buffers=2 drop=true name=rtspappsink",
                 g_rtsp_url, data->avc_decoder);
-        /*sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
-                               "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               "glimagesink t. ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               "glcolorconvert ! gldownload ! "
-                               "video/x-raw,width=1920,height=1080,format=BGR ! "
-                               "videoscale ! "
-                               "video/x-raw,width=960,height=540,format=BGR ! "
-                               "appsink max-buffers=2 drop=true name=rtspappsink",
-                                RTSP_URL, data->avc_decoder);*/
-//        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=100 drop-on-latency=true ! "
-//                               "rtph264depay ! h264parse ! amcviddec-%s ! tee name=t ! "
-//                               "queue leaky=2 max-size-buffers=2 ! "
-//                               "glimagesink t. ! "
-//                               "queue leaky=2 max-size-buffers=2 ! "
-//                               "gldownload ! "
-//                               "videoscale ! "
-//                               "videoconvert ! "
-//                               "video/x-raw,width=960,height=540 ! "
-//                               "appsink max-buffers=2 drop=true name=rtspappsink",
-//                RTSP_URL, data->avc_decoder);
+
     } else {
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=1100 drop-on-latency=true ! "
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=600 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! amcviddec-%s  ! glimagesink",
                 g_rtsp_url, data->avc_decoder);
     }
@@ -365,21 +329,14 @@ static void *app_function (void *userdata) {
         return nullptr;
     }
 
-//    GstElement *glsink= gst_bin_get_by_name(GST_BIN(data->pipeline), "glimgsink");
-//    g_object_set (glsink, "emit-signals", TRUE, nullptr);
-//    g_signal_connect (glsink, "client-draw", G_CALLBACK (drawCallback), &data);
 
     if(data->od) {
         data->app_sink = gst_bin_get_by_name(GST_BIN(data->pipeline), "rtspappsink");
-        GstCaps *caps = gst_caps_new_simple("video/x-raw",
-                                            "width", G_TYPE_INT, 960,
-                                            "height", G_TYPE_INT, 540,
-                                            "format", G_TYPE_STRING, "BGR", nullptr);
 
-//        GstCaps *caps = gst_caps_new_simple("video/x-raw",
-//                                            "width", G_TYPE_INT, 1920,
-//                                            "height", G_TYPE_INT, 1080,
-//                                            "format", G_TYPE_STRING, "BGR", nullptr);
+        GstCaps *caps = gst_caps_new_simple("video/x-raw",
+                                            "width", G_TYPE_INT, 640,
+                                            "height", G_TYPE_INT, 640,
+                                            "format", G_TYPE_STRING, "BGR", nullptr);
         gst_app_sink_set_caps(GST_APP_SINK(data->app_sink), caps);
         g_object_set (data->app_sink, "emit-signals", TRUE, nullptr);
         g_signal_connect (data->app_sink, "new-sample", G_CALLBACK (new_sample), data);
@@ -478,12 +435,10 @@ static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height,
     data->od=od;
     data->ds = ds;
     data->far_roi=far_roi;
-    if(data->od && g_yolo) {
-        g_yolo->useFarROI(far_roi);
-    }
-    if(data->ds && g_midas) {
-        g_midas->useFarROI(far_roi);
-    }
+//    if(data->od && g_yolo) {
+//        g_yolo->useFarROI(far_roi);
+//    }
+
     if (!data) return;
     GST_DEBUG ("Setting state to PLAYING");
     pthread_create (&gst_app_thread, nullptr, &app_function, data);
@@ -617,6 +572,9 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
 
     const char* modeltype = modeltypes[(int)modelid];
     const char* modelName = modelNames[(int)modelId];
+
+    std::string parampath = "yolo11n.ncnn.param";
+    std::string modelpath = "yolo11n.ncnn.bin";
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %s %s", modeltype, modelName);
     int target_size = target_sizes[(int)modelid];
     bool use_gpu = (int)cpugpu == 1;
@@ -629,21 +587,26 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
         if (use_gpu && ncnn::get_gpu_count() == 0)
         {
             // no gpu
-            delete g_yolo;
-            g_yolo = nullptr;
+            delete g_yolo11;
+            g_yolo11 = nullptr;
         }
         else
         {
-            if (!g_yolo) {
-                g_yolo = new Yolo(rect);
-            }
-            g_yolo->load(mgr, modeltype, modelName, target_size, mean_vals[(int)modelid], norm_vals[(int)modelid], use_gpu);
+            GST_DEBUG("load yolo11");
+            ncnn::destroy_gpu_instance();
+            ncnn::create_gpu_instance();
+//            if (!g_yolo11) {
+//                g_yolo = new Yolo(rect);
+            GST_DEBUG("load yolo11 det");
+                g_yolo11 = new YOLO11_det;
+//            }
+            GST_DEBUG("load yolo11");
+            g_yolo11->load(mgr, "yolo11n.ncnn.param", "yolo11n.ncnn.bin", true);
+            GST_DEBUG("load yolo11");
+            g_yolo11->set_det_target_size(640);
+//            g_yolo->load(mgr, modeltype, modelName, target_size, mean_vals[(int)modelid], norm_vals[(int)modelid], use_gpu);
         }
 
-        if(midas) {
-            g_midas=new Midas(rect);
-            g_midas->load(mgr, true);
-        }
     }
 
     return JNI_TRUE;

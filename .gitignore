@@ -11,7 +11,7 @@ app/src/main/cpp/opencv-mobile-4.6.0-android
 /app/src/main/jniLibs/
 /app/src/main/cpp/abseil/
 /app/src/main/cpp/flatbuffers/
-/app/src/main/cpp/ncnn-20230517-android-vulkan/
+/app/src/main/cpp/ncnn-20250916-android-vulkan/
 /app/src/main/cpp/opencv-mobile-4.6.0-android/
 /app/src/main/gstreamer_1_0_android_1_22_4/
 /app/src/main/cpp/tensorflow/

@@ -628,7 +628,7 @@ fun drawOverlay1(
         val size = labelList.size
 
         for (i in 0 until size) {
-            val label = if (CameraConfigurationManager.getModelVersion() == 0) COCO_LABELS[labelList[i]] else BOAT_LABELS[labelList[i]]
+            val label = if (CameraConfigurationManager.getModelVersion() == 1) COCO_LABELS[labelList[i]] else COCO_LABELS[labelList[i]]
 
             val x = pointState.pointXs[i] * viewWidth / 1920f
             val y = pointState.pointYs[i] * viewHeight / 1080f
@@ -677,7 +677,7 @@ fun drawOverlay(
         val labelSize = pointState.labels.size
         for (index in 0 until labelSize) {
             val labelIndex = pointState.labels[index]
-            val label = if (CameraConfigurationManager.getModelVersion() == 0) BOAT_LABELS[labelIndex] else BOAT_LABELS[labelIndex]
+            val label = if (CameraConfigurationManager.getModelVersion() == 0) COCO_LABELS[labelIndex] else COCO_LABELS[labelIndex]
 
             // Scale detection coordinates from model space to screen space
             val x = pointState.pointXs[index] * viewWidth / 1920f
