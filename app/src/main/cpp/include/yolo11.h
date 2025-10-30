@@ -16,6 +16,10 @@
 #define YOLO11_H
 
 #include <opencv2/core/core.hpp>
+#include <mutex>
+#include <memory>
+#include <future>
+#include <thread>
 
 #include <net.h>
 
@@ -36,18 +40,40 @@ struct Object
     std::vector<KeyPoint> keypoints;
 };
 
+// Async inference context
+struct AsyncInferenceContext
+{
+    cv::Mat preprocessed_image;  // Preprocessed input image
+    ncnn::Mat in_pad;            // NCNN input mat
+    int img_w;                   // Original image width
+    int img_h;                   // Original image height
+    float scale;                 // Scale factor
+    int wpad;                    // Width padding
+    int hpad;                    // Height padding
+    bool ready;                  // Whether preprocessing is done
+    bool inference_done;         // Whether inference is complete
+    ncnn::Mat out;               // Output from network
+    std::mutex mtx;              // Mutex for thread safety
+    std::future<int> inference_future;  // Future for async inference result
+    
+    AsyncInferenceContext() 
+        : img_w(0), img_h(0), scale(1.0f), wpad(0), hpad(0), 
+          ready(false), inference_done(false) {}
+};
+
 class YOLO11
 {
 public:
     virtual ~YOLO11();
 
-    int load(const char* parampath, const char* modelpath, bool use_gpu = false);
     int load(AAssetManager* mgr, const char* parampath, const char* modelpath, bool use_gpu = false);
 
     void set_det_target_size(int target_size);
 
-    virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects) = 0;
-    virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects) = 0;
+    virtual std::shared_ptr<AsyncInferenceContext> detect_async(const cv::Mat& rgb) = 0;
+
+    // Step 2: Fetch results from async inference (blocking until ready)
+    virtual int fetch_results(std::shared_ptr<AsyncInferenceContext> ctx, std::vector<Object>& objects) = 0;
 
 protected:
     ncnn::Net yolo11;
@@ -57,36 +83,20 @@ protected:
 class YOLO11_det : public YOLO11
 {
 public:
-    virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects);
-    virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects);
-};
 
-class YOLO11_seg : public YOLO11
-{
-public:
-    virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects);
-    virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects);
-};
-
-class YOLO11_pose : public YOLO11
-{
-public:
-    virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects);
-    virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects);
-};
-
-class YOLO11_cls : public YOLO11
-{
-public:
-    virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects);
-    virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects);
-};
-
-class YOLO11_obb : public YOLO11
-{
-public:
-    virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects);
-    virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects);
+    // Async inference API
+    // Step 1: Submit image for async inference, returns context handle
+    virtual std::shared_ptr<AsyncInferenceContext> detect_async(const cv::Mat& rgb);
+    
+    // Step 2: Fetch results from async inference (blocking until ready)
+    virtual int fetch_results(std::shared_ptr<AsyncInferenceContext> ctx, std::vector<Object>& objects);
+    
+private:
+    // Helper function for preprocessing
+    void preprocess(const cv::Mat& rgb, AsyncInferenceContext& ctx);
+    
+    // Helper function for postprocessing
+    int postprocess(AsyncInferenceContext& ctx, std::vector<Object>& objects);
 };
 
 #endif // YOLO11_H

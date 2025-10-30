@@ -11,7 +11,6 @@
 #include <opencv2/core/core.hpp>
 #include <gst/app/gstappsink.h>
 #include "yolo11.h"
-
 // Dynamic RTSP URL - will be set from Java side
 static char g_rtsp_url[512] = "rtsp://onvif:test@192.168.2.1/live1.sdp"; // Default fallback
 
@@ -50,9 +49,12 @@ typedef struct _CustomData {
 } CustomData;
 
 
-static YOLO11* g_yolo11 = 0;
+static YOLO11* g_yolo11 = nullptr;
 
 static ncnn::Mutex lock;
+
+std::shared_ptr<AsyncInferenceContext> ctx;
+
 
 static char const* TAG = "GStreamerPlayer";
 static JavaVM  *java_vm = nullptr;
@@ -70,7 +72,6 @@ static JNIEnv *attach_current_thread (void) {
     JNIEnv *env;
     JavaVMAttachArgs args;
 
-    GST_DEBUG ("Attaching thread %p", g_thread_self ());
     args.version = JNI_VERSION_1_6;
     args.name = nullptr;
     args.group = nullptr;
@@ -85,7 +86,6 @@ static JNIEnv *attach_current_thread (void) {
 
 /* Unregister this thread from the VM */
 static void detach_current_thread (void *env) {
-    GST_DEBUG ("Detaching thread %p", g_thread_self ());
     java_vm->DetachCurrentThread ();
 }
 
@@ -220,7 +220,7 @@ static void check_initialization_complete (CustomData *data) {
 
 static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
     GstSample *sample;
-
+    GST_DEBUG("NEW SAMPLE");
     /* Retrieve the buffer */
     g_signal_emit_by_name (sink, "pull-sample", &sample);
     if (sample) {
@@ -241,27 +241,27 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
             gst_sample_unref(sample);
             return GST_FLOW_ERROR;
         }
-        cv::Mat bgr(sample_height, sample_width, CV_8UC3);
-        memcpy(bgr.data, gstBufferMap.data, gstBufferMap.size);
-
-        GST_DEBUG("Frame size is : %d %d", bgr.cols, bgr.rows);
-        gst_buffer_unmap(buffer, &gstBufferMap);
-        gst_sample_unref(sample);
+        cv::Mat bgr(sample_height, sample_width, CV_8UC3, gstBufferMap.data);
+//        memcpy(bgr.data, gstBufferMap.data, gstBufferMap.size);
 
         // nanodet
         {
             ncnn::MutexLockGuard g(lock);
-
             if (data->od && g_yolo11) {
-                std::vector<float> dep_thres;
-                int midas_ret=1;
-//                dep_thres.reserve(objects.size());
+                std::vector<float> depthThreshold;
 
                 std::vector<Object> objects;
                 auto start_time = std::chrono::system_clock::now();
-
-                g_yolo11->detect(bgr, objects);//yolo od threshold 0.4
+                if(ctx != nullptr)
+                {
+                    g_yolo11->fetch_results(ctx, objects);
+                }
                 auto end_time = std::chrono::system_clock::now();
+
+                ctx = g_yolo11->detect_async(bgr);
+
+
+//                auto end_time = std::chrono::system_clock::now();
                 std::vector<cv::Point2f> points2F;
                 points2F.reserve(objects.size());
                 int x_start = 210;
@@ -273,12 +273,13 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                     obj.rect.height=obj.rect.height/bgr.rows;
                 }
 
-//                auto end_time = std::chrono::system_clock::now();
                 std::chrono::duration<double> elapsed_seconds = end_time - start_time;
-                GST_DEBUG("YOLO time: %f", elapsed_seconds.count());
-                od_callback(objects, dep_thres, data);
+                GST_DEBUG("YOLO INFERENCE TIME IS %f", elapsed_seconds.count());
+                od_callback(objects, depthThreshold, data);
             }
         }
+        gst_buffer_unmap(buffer, &gstBufferMap);
+        gst_sample_unref(sample);
         return GST_FLOW_OK;
     }
 
@@ -308,10 +309,10 @@ static void *app_function (void *userdata) {
                                "glimagesink t. ! "
                                "queue leaky=2 max-size-buffers=2 ! "
                                "glcolorconvert ! gldownload ! "
-                               "video/x-raw,width=1920,height=1080,format=BGR ! "
+                               "video/x-raw,width=1920,height=1080,format=RGB ! "
                                "videocrop left=420 right=420 top=0 bottom=0 ! "
                                "videoscale ! "
-                               "video/x-raw,width=640,height=640,format=BGR ! "
+                               "video/x-raw,width=640,height=640,format=RGB ! "
                                "appsink max-buffers=2 drop=true name=rtspappsink",
                 g_rtsp_url, data->avc_decoder);
 
@@ -336,27 +337,24 @@ static void *app_function (void *userdata) {
         GstCaps *caps = gst_caps_new_simple("video/x-raw",
                                             "width", G_TYPE_INT, 640,
                                             "height", G_TYPE_INT, 640,
-                                            "format", G_TYPE_STRING, "BGR", nullptr);
+                                            "format", G_TYPE_STRING, "RGB", nullptr);
         gst_app_sink_set_caps(GST_APP_SINK(data->app_sink), caps);
         g_object_set (data->app_sink, "emit-signals", TRUE, nullptr);
         g_signal_connect (data->app_sink, "new-sample", G_CALLBACK (new_sample), data);
     }
 
     /* Set the pipeline to READY, so it can already accept a window handle, if we have one */
-//    gst_element_set_state(data->pipeline, GST_STATE_READY);
     gst_element_set_state(data->pipeline, GST_STATE_PLAYING);
 
     data->video_sink = gst_bin_get_by_interface(GST_BIN(data->pipeline), GST_TYPE_VIDEO_OVERLAY);
-//    g_object_set(data->video_sink, "sync", FALSE, nullptr);
-//    g_object_set(data->video_sink, "max-buffers", 2, nullptr);
-//    g_object_set(data->video_sink, "drop", TRUE, nullptr);
+
     if (!data->video_sink) {
-        GST_ERROR ("Could not retrieve video sink/app sink");
+        GST_ERROR ("Could not retrieve video sink");
         return nullptr;
     }
 
     if (data->od && !data->app_sink) {
-        GST_ERROR ("Could not retrieve video sink/app sink");
+        GST_ERROR ("Could not retrieve app sink");
         return nullptr;
     }
 
@@ -372,11 +370,9 @@ static void *app_function (void *userdata) {
     gst_object_unref (bus);
 
     /* Create a GLib Main Loop and set it to run */
-    GST_DEBUG ("Entering main loop... (CustomData:%p)", data);
     data->main_loop = g_main_loop_new (data->context, FALSE);
     check_initialization_complete (data);
     g_main_loop_run (data->main_loop);
-    GST_DEBUG ("Exited main loop");
     g_main_loop_unref (data->main_loop);
     data->main_loop = nullptr;
 
@@ -401,30 +397,21 @@ static void gst_native_init (JNIEnv* env, jobject thiz, jstring avc_decoder) {
     SET_CUSTOM_DATA (env, thiz, custom_data_field_id, data);
     GST_DEBUG_CATEGORY_INIT (debug_category, TAG, 0, "GStreamer Player");
     gst_debug_set_threshold_for_name(TAG, GST_LEVEL_DEBUG);
-    GST_DEBUG ("Created CustomData at %p", data);
     data->app = env->NewGlobalRef (thiz);
-    GST_DEBUG ("Created GlobalRef for app object at %p", data->app);
     const char* charArray = env->GetStringUTFChars(avc_decoder, nullptr);
     if(charArray != nullptr) {
         sprintf(data->avc_decoder, "%s", charArray);
     }
-//    pthread_create (&gst_app_thread, nullptr, &app_function, data);
 }
 
 /* Quit the main loop, remove the native thread and free resources */
 static void gst_native_finalize (JNIEnv* env, jobject thiz) {
     auto *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     if (!data) return;
-    GST_DEBUG ("Quitting main loop...");
-//    g_main_loop_quit (data->main_loop);
-//    GST_DEBUG ("Waiting for thread to finish...");
-//    pthread_join (gst_app_thread, nullptr);
-    GST_DEBUG ("Deleting GlobalRef for app object at %p", data->app);
+
     env->DeleteGlobalRef (data->app);
-    GST_DEBUG ("Freeing CustomData at %p", data);
     g_free (data);
     SET_CUSTOM_DATA (env, thiz, custom_data_field_id, nullptr);
-    GST_DEBUG ("Done finalizing");
 }
 
 /* Set pipeline to PLAYING state */
@@ -435,12 +422,8 @@ static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height,
     data->od=od;
     data->ds = ds;
     data->far_roi=far_roi;
-//    if(data->od && g_yolo) {
-//        g_yolo->useFarROI(far_roi);
-//    }
 
     if (!data) return;
-    GST_DEBUG ("Setting state to PLAYING");
     pthread_create (&gst_app_thread, nullptr, &app_function, data);
 }
 
@@ -448,17 +431,14 @@ static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height,
 static void gst_native_pause (JNIEnv* env, jobject thiz) {
     auto *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     if (!data) return;
-    GST_DEBUG ("Setting state to PAUSED");
     gst_element_set_state (data->pipeline, GST_STATE_PAUSED);
     g_main_loop_quit (data->main_loop);
-    GST_DEBUG ("Waiting for thread to finish...");
     pthread_join (gst_app_thread, nullptr);
 }
 
 /* Set RTSP URL for streaming */
 static void gst_native_set_rtsp_url (JNIEnv* env, jobject thiz, jstring rtsp_url) {
     if (rtsp_url == nullptr) {
-        GST_WARNING ("RTSP URL is null, using default");
         return;
     }
     
@@ -466,7 +446,6 @@ static void gst_native_set_rtsp_url (JNIEnv* env, jobject thiz, jstring rtsp_url
     if (url_chars != nullptr) {
         strncpy(g_rtsp_url, url_chars, sizeof(g_rtsp_url) - 1);
         g_rtsp_url[sizeof(g_rtsp_url) - 1] = '\0'; // Ensure null termination
-        GST_DEBUG ("RTSP URL set to: %s", g_rtsp_url);
         env->ReleaseStringUTFChars(rtsp_url, url_chars);
     } else {
         GST_ERROR ("Failed to get RTSP URL string");
@@ -498,17 +477,6 @@ static void gst_native_surface_init (JNIEnv *env, jobject thiz, jobject surface)
 
     if (data->native_window) {
         ANativeWindow_release (data->native_window);
-//        if (data->native_window == new_native_window) {
-//            GST_DEBUG ("New native window is the same as the previous one %p", data->native_window);
-//            if (data->pipeline) {
-//                gst_video_overlay_expose(GST_VIDEO_OVERLAY (data->video_sink));
-//                gst_video_overlay_expose(GST_VIDEO_OVERLAY (data->video_sink));
-//            }
-//            return;
-//        } else {
-//            GST_DEBUG ("Released previous native window %p", data->native_window);
-//            data->initialized = FALSE;
-//        }
     }
     data->native_window = new_native_window;
 
@@ -540,45 +508,9 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
     AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %p", mgr);
 
-    const char* modelNames[] =
-            {
-                    "generic",
-                    "marine",
-            };
-
-    const char* modeltypes[] =
-            {
-                    "n",
-                    "s",
-            };
-
-    const int target_sizes[] =
-            {
-                    640,
-                    640,
-            };
-
-    const float mean_vals[][3] =
-            {
-                    {103.53f, 116.28f, 123.675f},
-                    {103.53f, 116.28f, 123.675f},
-            };
-
-    const float norm_vals[][3] =
-            {
-                    { 1 / 255.f, 1 / 255.f, 1 / 255.f },
-                    { 1 / 255.f, 1 / 255.f, 1 / 255.f },
-            };
-
-    const char* modeltype = modeltypes[(int)modelid];
-    const char* modelName = modelNames[(int)modelId];
-
-    std::string parampath = "yolo11n.ncnn.param";
-    std::string modelpath = "yolo11n.ncnn.bin";
-    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %s %s", modeltype, modelName);
-    int target_size = target_sizes[(int)modelid];
+    std::string paramPath = "yolo11n.ncnn.param";
+    std::string modelPath = "yolo11n.ncnn.bin";
     bool use_gpu = (int)cpugpu == 1;
-    cv::Rect rect(0,0,640,540);
 
     // reload
     {
@@ -592,19 +524,11 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
         }
         else
         {
-            GST_DEBUG("load yolo11");
             ncnn::destroy_gpu_instance();
             ncnn::create_gpu_instance();
-//            if (!g_yolo11) {
-//                g_yolo = new Yolo(rect);
-            GST_DEBUG("load yolo11 det");
-                g_yolo11 = new YOLO11_det;
-//            }
-            GST_DEBUG("load yolo11");
-            g_yolo11->load(mgr, "yolo11n.ncnn.param", "yolo11n.ncnn.bin", true);
-            GST_DEBUG("load yolo11");
+            g_yolo11 = new YOLO11_det;
+            g_yolo11->load(mgr, paramPath.c_str(), modelPath.c_str(), true);
             g_yolo11->set_det_target_size(640);
-//            g_yolo->load(mgr, modeltype, modelName, target_size, mean_vals[(int)modelid], norm_vals[(int)modelid], use_gpu);
         }
 
     }

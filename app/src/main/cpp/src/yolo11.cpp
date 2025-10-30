@@ -19,39 +19,22 @@ YOLO11::~YOLO11()
     det_target_size = 320;
 }
 
-int YOLO11::load(const char* parampath, const char* modelpath, bool use_gpu)
-{
-    yolo11.clear();
 
-    yolo11.opt = ncnn::Option();
+ int YOLO11::load(AAssetManager* mgr, const char* parampath, const char* modelpath, bool use_gpu)
+ {
+     yolo11.clear();
 
-#if NCNN_VULKAN
-    yolo11.opt.use_vulkan_compute = use_gpu;
-#endif
+     yolo11.opt = ncnn::Option();
 
-    yolo11.load_param(parampath);
-    yolo11.load_model(modelpath);
+ #if NCNN_VULKAN
+     yolo11.opt.use_vulkan_compute = use_gpu;
+ #endif
 
-    return 0;
-}
+     yolo11.load_param(mgr, parampath);
+     yolo11.load_model(mgr, modelpath);
 
-int YOLO11::load(AAssetManager* mgr, const char* parampath, const char* modelpath, bool use_gpu)
-{
-    yolo11.clear();
-
-    yolo11.opt = ncnn::Option();
-
-#if NCNN_VULKAN
-    yolo11.opt.use_vulkan_compute = use_gpu;
-#endif
-
-    printf("parampath=%s", parampath);
-    printf("modelpath=%s", modelpath);
-    yolo11.load_param(mgr, parampath);
-    yolo11.load_model(mgr, modelpath);
-
-    return 0;
-}
+     return 0;
+ }
 
 void YOLO11::set_det_target_size(int target_size)
 {

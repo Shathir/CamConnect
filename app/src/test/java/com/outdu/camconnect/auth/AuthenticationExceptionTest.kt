@@ -160,3 +160,4 @@ class AuthenticationExceptionTest {
         assertTrue("Stack trace should have elements", stackTrace.isNotEmpty())
     }
 }
+
