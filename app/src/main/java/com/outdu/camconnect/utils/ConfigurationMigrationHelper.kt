@@ -58,7 +58,7 @@ object ConfigurationMigrationHelper {
                 Log.i(TAG, "Configuration migrated successfully: $migratedConfig")
                 // Optionally rename or delete old config file
                 val backupFile = File(context.getExternalFilesDir(null), "${OLD_CONFIG_FILE}.backup")
-                oldConfigFile.renameTo(backupFile)
+                if(!oldConfigFile.renameTo(backupFile)) Log.e(TAG, "Failed to rename old configuration file")
                 Log.d(TAG, "Old configuration backed up to ${backupFile.name}")
             } else {
                 Log.e(TAG, "Failed to save migrated configuration")

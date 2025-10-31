@@ -279,10 +279,34 @@ static void generate_proposals(const ncnn::Mat& pred, int stride, const ncnn::Ma
     }
 }
 
+//static void generate_proposals(const ncnn::Mat& pred, const std::vector<int>& strides, const ncnn::Mat& in_pad, float prob_threshold, std::vector<Object>& objects)
+//{
+//    const int w = in_pad.w;
+//    const int h = in_pad.h;
+//
+//    int pred_row_offset = 0;
+//    for (size_t i = 0; i < strides.size(); i++)
+//    {
+//        const int stride = strides[i];
+//
+//        const int num_grid_x = w / stride;
+//        const int num_grid_y = h / stride;
+//        const int num_grid = num_grid_x * num_grid_y;
+//
+//        generate_proposals(pred.row_range(pred_row_offset, num_grid), stride, in_pad, prob_threshold, objects);
+//        pred_row_offset += num_grid;
+//    }
+//}
+
 static void generate_proposals(const ncnn::Mat& pred, const std::vector<int>& strides, const ncnn::Mat& in_pad, float prob_threshold, std::vector<Object>& objects)
 {
     const int w = in_pad.w;
     const int h = in_pad.h;
+
+    // Parallel processing: each stride in a separate thread
+    std::vector<std::thread> threads;
+    std::vector<std::vector<Object>> thread_objects(strides.size());
+    std::mutex merge_mutex;
 
     int pred_row_offset = 0;
     for (size_t i = 0; i < strides.size(); i++)
@@ -293,11 +317,217 @@ static void generate_proposals(const ncnn::Mat& pred, const std::vector<int>& st
         const int num_grid_y = h / stride;
         const int num_grid = num_grid_x * num_grid_y;
 
-        generate_proposals(pred.row_range(pred_row_offset, num_grid), stride, in_pad, prob_threshold, objects);
+        // Launch thread for this stride
+        threads.emplace_back([&, i, stride, pred_row_offset, num_grid]() {
+            generate_proposals(pred.row_range(pred_row_offset, num_grid), stride, in_pad, prob_threshold, thread_objects[i]);
+        });
+
         pred_row_offset += num_grid;
+    }
+
+    // Wait for all threads to complete
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    // Merge results from all threads
+    for (const auto& thread_objs : thread_objects)
+    {
+        objects.insert(objects.end(), thread_objs.begin(), thread_objs.end());
     }
 }
 
+int YOLO11_det::detect(const cv::Mat& rgb, std::vector<Object>& objects)
+{
+    const int target_size = det_target_size;//640;
+    const float prob_threshold = 0.25f;
+    const float nms_threshold = 0.45f;
+
+    int img_w = rgb.cols;
+    int img_h = rgb.rows;
+
+    // ultralytics/cfg/models/v8/yolo11.yaml
+    std::vector<int> strides(3);
+    strides[0] = 8;
+    strides[1] = 16;
+    strides[2] = 32;
+    const int max_stride = 32;
+
+    ncnn::Mat in_pad;
+    int wpad = 0;
+    int hpad = 0;
+    float scale = 1.f;
+
+    // Check if image is already target_size x target_size
+    if (img_w == target_size && img_h == target_size)
+    {
+        // No resize or padding needed, directly convert to ncnn::Mat
+        ncnn::Mat in = ncnn::Mat::from_pixels(rgb.data, ncnn::Mat::PIXEL_RGB, img_w, img_h);
+        
+        const float norm_vals[3] = {1 / 255.f, 1 / 255.f, 1 / 255.f};
+        in.substract_mean_normalize(0, norm_vals);
+        
+        in_pad = in;
+    }
+    else
+    {
+        // letterbox pad to multiple of max_stride
+        int w = img_w;
+        int h = img_h;
+        if (w > h)
+        {
+            scale = (float)target_size / w;
+            w = target_size;
+            h = h * scale;
+        }
+        else
+        {
+            scale = (float)target_size / h;
+            h = target_size;
+            w = w * scale;
+        }
+
+        ncnn::Mat in = ncnn::Mat::from_pixels_resize(rgb.data, ncnn::Mat::PIXEL_RGB, img_w, img_h, w, h);
+
+        // letterbox pad to target_size rectangle
+        wpad = (w + max_stride - 1) / max_stride * max_stride - w;
+        hpad = (h + max_stride - 1) / max_stride * max_stride - h;
+        ncnn::copy_make_border(in, in_pad, hpad / 2, hpad - hpad / 2, wpad / 2, wpad - wpad / 2, ncnn::BORDER_CONSTANT, 114.f);
+
+        const float norm_vals[3] = {1 / 255.f, 1 / 255.f, 1 / 255.f};
+        in_pad.substract_mean_normalize(0, norm_vals);
+    }
+
+    // Round-robin between two model instances
+    int current_selector = instance_selector.fetch_add(1, std::memory_order_relaxed);
+    bool use_i1 = (current_selector % 2) == 0;
+    
+    ncnn::Extractor ex = use_i1 ? yolo11_i1.create_extractor() 
+                                : yolo11_i2.create_extractor();
+
+    ex.input("in0", in_pad);
+
+    ncnn::Mat out;
+    ex.extract("out0", out);
+
+    std::vector<Object> proposals;
+    generate_proposals(out, strides, in_pad, prob_threshold, proposals);
+
+    // sort all proposals by score from highest to lowest
+    qsort_descent_inplace(proposals);
+
+    // apply nms with nms_threshold
+    std::vector<int> picked;
+    nms_sorted_bboxes(proposals, picked, nms_threshold);
+
+    int count = picked.size();
+
+    objects.resize(count);
+    for (int i = 0; i < count; i++)
+    {
+        objects[i] = proposals[picked[i]];
+
+        // adjust offset to original unpadded
+        float x0 = (objects[i].rect.x - (wpad / 2)) / scale;
+        float y0 = (objects[i].rect.y - (hpad / 2)) / scale;
+        float x1 = (objects[i].rect.x + objects[i].rect.width - (wpad / 2)) / scale;
+        float y1 = (objects[i].rect.y + objects[i].rect.height - (hpad / 2)) / scale;
+
+        // clip
+        x0 = std::max(std::min(x0, (float)(img_w - 1)), 0.f);
+        y0 = std::max(std::min(y0, (float)(img_h - 1)), 0.f);
+        x1 = std::max(std::min(x1, (float)(img_w - 1)), 0.f);
+        y1 = std::max(std::min(y1, (float)(img_h - 1)), 0.f);
+
+        objects[i].rect.x = x0;
+        objects[i].rect.y = y0;
+        objects[i].rect.width = x1 - x0;
+        objects[i].rect.height = y1 - y0;
+    }
+
+    // sort objects by area
+    struct
+    {
+        bool operator()(const Object& a, const Object& b) const
+        {
+            return a.rect.area() > b.rect.area();
+        }
+    } objects_area_greater;
+    std::sort(objects.begin(), objects.end(), objects_area_greater);
+
+    return 0;
+}
+
+int YOLO11_det::draw(cv::Mat& rgb, const std::vector<Object>& objects)
+{
+    static const char* class_names[] = {
+        "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
+        "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
+        "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
+        "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
+        "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+        "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
+        "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
+        "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
+        "hair drier", "toothbrush"
+    };
+
+    static cv::Scalar colors[] = {
+        cv::Scalar( 67,  54, 244),
+        cv::Scalar( 30,  99, 233),
+        cv::Scalar( 39, 176, 156),
+        cv::Scalar( 58, 183, 103),
+        cv::Scalar( 81, 181,  63),
+        cv::Scalar(150, 243,  33),
+        cv::Scalar(169, 244,   3),
+        cv::Scalar(188, 212,   0),
+        cv::Scalar(150, 136,   0),
+        cv::Scalar(175,  80,  76),
+        cv::Scalar(195,  74, 139),
+        cv::Scalar(220,  57, 205),
+        cv::Scalar(235,  59, 255),
+        cv::Scalar(193,   7, 255),
+        cv::Scalar(152,   0, 255),
+        cv::Scalar( 87,  34, 255),
+        cv::Scalar( 85,  72, 121),
+        cv::Scalar(158, 158, 158),
+        cv::Scalar(125, 139,  96)
+    };
+
+    for (size_t i = 0; i < objects.size(); i++)
+    {
+        const Object& obj = objects[i];
+
+        const cv::Scalar& color = colors[i % 19];
+
+        // fprintf(stderr, "%d = %.5f at %.2f %.2f %.2f x %.2f\n", obj.label, obj.prob,
+                // obj.rect.x, obj.rect.y, obj.rect.width, obj.rect.height);
+
+        cv::rectangle(rgb, obj.rect, color);
+
+        char text[256];
+        sprintf(text, "%s %.1f%%", class_names[obj.label], obj.prob * 100);
+
+        int baseLine = 0;
+        cv::Size label_size = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
+
+        int x = obj.rect.x;
+        int y = obj.rect.y - label_size.height - baseLine;
+        if (y < 0)
+            y = 0;
+        if (x + label_size.width > rgb.cols)
+            x = rgb.cols - label_size.width;
+
+        cv::rectangle(rgb, cv::Rect(cv::Point(x, y), cv::Size(label_size.width, label_size.height + baseLine)),
+                      cv::Scalar(255, 255, 255), -1);
+
+        cv::putText(rgb, text, cv::Point(x, y + label_size.height),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
+    }
+
+    return 0;
+}
 
 // Async inference implementation
 
@@ -318,7 +548,6 @@ void YOLO11_det::preprocess(const cv::Mat& rgb, AsyncInferenceContext& ctx)
     {
         // No resize or padding needed, directly convert to ncnn::Mat
         ncnn::Mat in = ncnn::Mat::from_pixels(rgb.data, ncnn::Mat::PIXEL_RGB, ctx.img_w, ctx.img_h);
-
         const float norm_vals[3] = {1 / 255.f, 1 / 255.f, 1 / 255.f};
         in.substract_mean_normalize(0, norm_vals);
         
@@ -362,28 +591,74 @@ void YOLO11_det::preprocess(const cv::Mat& rgb, AsyncInferenceContext& ctx)
 
 std::shared_ptr<AsyncInferenceContext> YOLO11_det::detect_async(const cv::Mat& rgb)
 {
+    // Step 1: Check if any instance is available
+    // Try instance 1 first
+    bool i1_was_free = false;
+    bool expected = false;
+    if (i1_busy.compare_exchange_strong(expected, true, std::memory_order_acquire)) {
+        i1_was_free = true;
+    }
+    
+    // If i1 busy, try instance 2
+    bool i2_was_free = false;
+    if (!i1_was_free) {
+        expected = false;
+        if (i2_busy.compare_exchange_strong(expected, true, std::memory_order_acquire)) {
+            i2_was_free = true;
+        }
+    }
+    
+    // If both instances are busy, return nullptr
+    if (!i1_was_free && !i2_was_free) {
+        return nullptr;  // Both instances busy, caller can skip this frame
+    }
+    
+    bool use_i1 = i1_was_free;
+    
     auto ctx = std::make_shared<AsyncInferenceContext>();
     
-    // Step 1: Preprocess the image (synchronous, fast)
+    // Step 2: Preprocess the image (synchronous, fast)
     preprocess(rgb, *ctx);
     
-    // Step 2: Launch inference in a separate thread (truly async!)
-    ctx->inference_future = std::async(std::launch::async, [this, ctx]() -> int {
-    // This runs in a background thread
-    ncnn::Extractor ex = yolo11.create_extractor();
-    ex.input("in0", ctx->in_pad);
-
-    ncnn::Mat out;
-    int ret = ex.extract("out0", out);
-
-    // Lock only when writing shared data
-    {
-        std::lock_guard<std::mutex> lock(ctx->mtx);
-        ctx->out = out;
-        ctx->inference_done = true;
-    }
-    return ret;
+    // Step 3: Launch inference in a separate thread (truly async!)
+    // Use std::thread instead of std::async for better Android compatibility
+    std::thread inference_thread([this, ctx, use_i1]() {
+        int ret = -1;
+        
+        // Run inference
+        if (use_i1) {
+            ncnn::Extractor ex = yolo11_i1.create_extractor();
+            ex.input("in0", ctx->in_pad);
+            ncnn::Mat out;
+            ret = ex.extract("out0", out);
+            
+            // Lock and write results
+            ctx->mtx.lock();
+            ctx->out = out;
+            ctx->inference_done = true;
+            ctx->mtx.unlock();
+            
+            // Mark instance available
+            i1_busy.store(false, std::memory_order_release);
+        } else {
+            ncnn::Extractor ex = yolo11_i2.create_extractor();
+            ex.input("in0", ctx->in_pad);
+            ncnn::Mat out;
+            ret = ex.extract("out0", out);
+            
+            // Lock and write results
+            ctx->mtx.lock();
+            ctx->out = out;
+            ctx->inference_done = true;
+            ctx->mtx.unlock();
+            
+            // Mark instance available
+            i2_busy.store(false, std::memory_order_release);
+        }
     });
+    
+    // Detach thread so it runs independently
+    inference_thread.detach();
     
     // Returns immediately without waiting for inference to complete!
     return ctx;
@@ -462,22 +737,18 @@ int YOLO11_det::fetch_results(std::shared_ptr<AsyncInferenceContext> ctx, std::v
         return -1; // Invalid context
     }
     
-    // Wait for inference to complete (blocking until the async thread finishes)
-    if (ctx->inference_future.valid())
+    // Wait for inference to complete (busy wait with sleep)
+    bool done = false;
+    while (!done)
     {
-        int inference_result = ctx->inference_future.get();  // Blocks here until inference is done
-        if (inference_result != 0)
+        ctx->mtx.lock();
+        done = ctx->inference_done;
+        ctx->mtx.unlock();
+        
+        if (!done)
         {
-            return -1; // Inference failed
-        }
-    }
-    
-    // Check if inference completed successfully
-    {
-        std::lock_guard<std::mutex> lock(ctx->mtx);
-        if (!ctx->inference_done)
-        {
-            return -1; // Inference not complete
+            // Sleep briefly to avoid busy spinning
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
     

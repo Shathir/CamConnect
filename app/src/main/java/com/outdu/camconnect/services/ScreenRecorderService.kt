@@ -49,8 +49,8 @@ class ScreenRecorderService : Service() {
 
     private val outputFile by lazy {
         File(cacheDir, "tmp.mp4").also {
-            if (it.exists()) {
-                it.delete()
+            if (it.exists() && !it.delete()) {
+                    Log.w(TAG, "Failed to delete existing tmp.mp4")
             }
         }
     }

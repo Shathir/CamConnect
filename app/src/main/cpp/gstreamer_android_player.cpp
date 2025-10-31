@@ -53,7 +53,8 @@ static YOLO11* g_yolo11 = nullptr;
 
 static ncnn::Mutex lock;
 
-std::shared_ptr<AsyncInferenceContext> ctx;
+//std::shared_ptr<AsyncInferenceContext> ctx;
+std::vector<std::shared_ptr<AsyncInferenceContext>> ctx;
 
 
 static char const* TAG = "GStreamerPlayer";
@@ -252,16 +253,17 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
 
                 std::vector<Object> objects;
                 auto start_time = std::chrono::system_clock::now();
-                if(ctx != nullptr)
+
+                if(!ctx.empty() && ctx.size() >= 2)
                 {
-                    g_yolo11->fetch_results(ctx, objects);
+                    g_yolo11->fetch_results(ctx[0], objects);
+                    ctx.erase(ctx.begin());
                 }
-                auto end_time = std::chrono::system_clock::now();
+                auto curr_ctx = g_yolo11->detect_async(bgr);
+                if(curr_ctx != nullptr) {
+                    ctx.emplace_back(std::move(curr_ctx));
+                }
 
-                ctx = g_yolo11->detect_async(bgr);
-
-
-//                auto end_time = std::chrono::system_clock::now();
                 std::vector<cv::Point2f> points2F;
                 points2F.reserve(objects.size());
                 int x_start = 210;
@@ -272,7 +274,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                     obj.rect.width=obj.rect.width/(bgr.cols + (2*x_start));
                     obj.rect.height=obj.rect.height/bgr.rows;
                 }
-
+                auto end_time = std::chrono::system_clock::now();
                 std::chrono::duration<double> elapsed_seconds = end_time - start_time;
                 GST_DEBUG("YOLO INFERENCE TIME IS %f", elapsed_seconds.count());
                 od_callback(objects, depthThreshold, data);
@@ -302,7 +304,8 @@ static void *app_function (void *userdata) {
     char rtsp_pipeline[1000];
     if(data->od) {
 
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=600 drop-on-latency=true ! "
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=200 ! "
+                               " rtpjitterbuffer latency=200 drop-on-latency=true do-lost=true ! "
                                "rtph264depay ! h264parse ! "
                                "amcviddec-%s ! tee name=t ! "
                                "queue ! "
@@ -317,8 +320,23 @@ static void *app_function (void *userdata) {
                 g_rtsp_url, data->avc_decoder);
 
     } else {
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=600 drop-on-latency=true ! "
-                               "rtph264depay ! h264parse ! amcviddec-%s  ! glimagesink",
+//        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=600 drop-on-latency=true ! "
+//                               "rtph264depay ! h264parse ! amcviddec-%s  ! glimagesink",
+//                g_rtsp_url, data->avc_decoder);
+
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=200 ! "
+                               " rtpjitterbuffer latency=200 drop-on-latency=true do-lost=true ! "
+                               "rtph264depay ! h264parse ! "
+                               "amcviddec-%s ! tee name=t ! "
+                               "queue ! "
+                               "glimagesink t. ! "
+                               "queue leaky=2 max-size-buffers=2 ! "
+                               "glcolorconvert ! gldownload ! "
+                               "video/x-raw,width=1920,height=1080,format=RGB ! "
+                               "videocrop left=420 right=420 top=0 bottom=0 ! "
+                               "videoscale ! "
+                               "video/x-raw,width=640,height=640,format=RGB ! "
+                               "appsink max-buffers=2 drop=true name=rtspappsink1",
                 g_rtsp_url, data->avc_decoder);
     }
     data->pipeline = gst_parse_launch(rtsp_pipeline, &error);
@@ -527,7 +545,7 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
             ncnn::destroy_gpu_instance();
             ncnn::create_gpu_instance();
             g_yolo11 = new YOLO11_det;
-            g_yolo11->load(mgr, paramPath.c_str(), modelPath.c_str(), true);
+            g_yolo11->load(mgr, paramPath.c_str(), modelPath.c_str(), false);
             g_yolo11->set_det_target_size(640);
         }
 

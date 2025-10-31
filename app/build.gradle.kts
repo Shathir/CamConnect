@@ -5,8 +5,26 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
     kotlin("plugin.serialization") version "1.9.0"
+    id("org.sonarqube") version "5.1.0.4882"
     jacoco
 }
+
+
+sonar {
+    properties {
+        property("sonar.projectKey", "Stravion")
+        property("sonar.projectName", "Stravion")
+        property("sonar.host.url", "http://192.168.1.172:9000")
+        property("sonar.token", "sqp_10bde5825ded07be9e2078a18ef297b227ee2719")
+
+        property("sonar.sourceEncoding", "UTF-8")
+        property("sonar.sources", "src/main/java")
+
+        // 👇 This is your fix
+        property("sonar.exclusions", "**/*.java")
+    }
+}
+
 
 android {
     namespace = "com.outdu.camconnect"

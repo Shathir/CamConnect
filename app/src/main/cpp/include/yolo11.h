@@ -18,8 +18,9 @@
 #include <opencv2/core/core.hpp>
 #include <mutex>
 #include <memory>
-#include <future>
 #include <thread>
+#include <atomic>
+#include <chrono>
 
 #include <net.h>
 
@@ -54,7 +55,6 @@ struct AsyncInferenceContext
     bool inference_done;         // Whether inference is complete
     ncnn::Mat out;               // Output from network
     std::mutex mtx;              // Mutex for thread safety
-    std::future<int> inference_future;  // Future for async inference result
     
     AsyncInferenceContext() 
         : img_w(0), img_h(0), scale(1.0f), wpad(0), hpad(0), 
@@ -66,9 +66,13 @@ class YOLO11
 public:
     virtual ~YOLO11();
 
-    int load(AAssetManager* mgr, const char* parampath, const char* modelpath, bool use_gpu = false);
+//    int load(const char* parampath, const char* modelpath, bool use_gpu = false);
+     int load(AAssetManager* mgr, const char* parampath, const char* modelpath, bool use_gpu = false);
 
     void set_det_target_size(int target_size);
+
+    virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects) = 0;
+    virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects) = 0;
 
     virtual std::shared_ptr<AsyncInferenceContext> detect_async(const cv::Mat& rgb) = 0;
 
@@ -76,14 +80,20 @@ public:
     virtual int fetch_results(std::shared_ptr<AsyncInferenceContext> ctx, std::vector<Object>& objects) = 0;
 
 protected:
-    ncnn::Net yolo11;
+    ncnn::Net yolo11_i1;  // Model instance 1
+    ncnn::Net yolo11_i2;  // Model instance 2
     int det_target_size;
+    std::atomic<int> instance_selector;  // Round-robin selector (0 or 1)
+    std::atomic<bool> i1_busy;  // True if instance 1 is processing
+    std::atomic<bool> i2_busy;  // True if instance 2 is processing
 };
 
 class YOLO11_det : public YOLO11
 {
 public:
-
+    virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects);
+    virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects);
+    
     // Async inference API
     // Step 1: Submit image for async inference, returns context handle
     virtual std::shared_ptr<AsyncInferenceContext> detect_async(const cv::Mat& rgb);

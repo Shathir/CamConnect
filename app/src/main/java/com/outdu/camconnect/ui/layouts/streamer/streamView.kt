@@ -628,7 +628,7 @@ fun drawOverlay1(
         val size = labelList.size
 
         for (i in 0 until size) {
-            val label = if (CameraConfigurationManager.getModelVersion() == 1) COCO_LABELS[labelList[i]] else COCO_LABELS[labelList[i]]
+            val label = BOAT_LABELS[labelList[i]]
 
             val x = pointState.pointXs[i] * viewWidth / 1920f
             val y = pointState.pointYs[i] * viewHeight / 1080f
@@ -677,7 +677,7 @@ fun drawOverlay(
         val labelSize = pointState.labels.size
         for (index in 0 until labelSize) {
             val labelIndex = pointState.labels[index]
-            val label = if (CameraConfigurationManager.getModelVersion() == 0) COCO_LABELS[labelIndex] else COCO_LABELS[labelIndex]
+            val label = BOAT_LABELS[labelIndex]
 
             // Scale detection coordinates from model space to screen space
             val x = pointState.pointXs[index] * viewWidth / 1920f
@@ -700,8 +700,18 @@ fun drawOverlay(
             // Draw the bounding box
             canvas.drawRect(left, top, right, bottom, boxPaint)
 
+            // Draw the label text position dynamically
+            val textY = if (top - textPaint.textSize - 4f < 0f) {
+                // Not enough space above → draw inside the box
+                top + textPaint.textSize + 4f
+            } else {
+                // Enough space above → draw above the box
+                top - 8f
+            }
+
             // Draw the label just above the top-left corner of the box
-            canvas.drawText(label, left + 8f, top - 12f, textPaint)
+//            canvas.drawText(label, left + 8f, top - 12f, textPaint)
+            canvas.drawText(label, left + 8f, textY, textPaint)
             Log.d("CameraConfigurationManager", "Overlay text is : ${label}")
         }
 
@@ -711,7 +721,3 @@ fun drawOverlay(
         holder.unlockCanvasAndPost(canvas)
     }
 }
-
-
-
-

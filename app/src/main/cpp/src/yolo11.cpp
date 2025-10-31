@@ -19,19 +19,62 @@ YOLO11::~YOLO11()
     det_target_size = 320;
 }
 
+//int YOLO11::load(const char* parampath, const char* modelpath, bool use_gpu)
+//{
+//    // Clear both instances
+//    yolo11_i1.clear();
+//    yolo11_i2.clear();
+//
+//    // Initialize instance 1
+//    yolo11_i1.opt = ncnn::Option();
+//#if NCNN_VULKAN
+//    yolo11_i1.opt.use_vulkan_compute = true;
+//#endif
+//    yolo11_i1.load_param(parampath);
+//    yolo11_i1.load_model(modelpath);
+//
+//    // Initialize instance 2
+//    yolo11_i2.opt = ncnn::Option();
+//#if NCNN_VULKAN
+//    yolo11_i2.opt.use_vulkan_compute = false;
+//#endif
+//    yolo11_i2.load_param(parampath);
+//    yolo11_i2.load_model(modelpath);
+//
+//    // Initialize selector and busy flags
+//    instance_selector.store(0);
+//    i1_busy.store(false);
+//    i2_busy.store(false);
+//
+//    return 0;
+//}
 
  int YOLO11::load(AAssetManager* mgr, const char* parampath, const char* modelpath, bool use_gpu)
  {
-     yolo11.clear();
+     // Clear both instances
+     yolo11_i1.clear();
+     yolo11_i2.clear();
 
-     yolo11.opt = ncnn::Option();
+     // Initialize instance 1
+     yolo11_i1.opt = ncnn::Option();
+#if NCNN_VULKAN
+     yolo11_i1.opt.use_vulkan_compute = false;
+#endif
+     yolo11_i1.load_param(mgr,parampath);
+     yolo11_i1.load_model(mgr, modelpath);
 
- #if NCNN_VULKAN
-     yolo11.opt.use_vulkan_compute = use_gpu;
- #endif
+     // Initialize instance 2
+     yolo11_i2.opt = ncnn::Option();
+#if NCNN_VULKAN
+     yolo11_i2.opt.use_vulkan_compute = false;
+#endif
+     yolo11_i2.load_param(mgr, parampath);
+     yolo11_i2.load_model(mgr, modelpath);
 
-     yolo11.load_param(mgr, parampath);
-     yolo11.load_model(mgr, modelpath);
+     // Initialize selector and busy flags
+     instance_selector.store(0);
+     i1_busy.store(false);
+     i2_busy.store(false);
 
      return 0;
  }

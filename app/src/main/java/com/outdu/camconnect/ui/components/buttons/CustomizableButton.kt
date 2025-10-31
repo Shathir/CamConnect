@@ -68,12 +68,11 @@ fun CustomizableButton(
     // Determine button size
     val buttonSize = if (isCompact) {
 
-        if(deviceType == DeviceType.TABLET) 76.dp else 48.dp
-    }else
-    {
-        if(deviceType == DeviceType.TABLET) 112.dp else 56.dp
+        if (deviceType == DeviceType.TABLET) 76.dp else 48.dp
+    } else {
+        if (deviceType == DeviceType.TABLET) 112.dp else 56.dp
     }
-    
+
     // Check if we're in dark theme
     val isDarkTheme = isSystemInDarkTheme()
 
@@ -87,15 +86,14 @@ fun CustomizableButton(
         Box(
             modifier = Modifier
                 .fillMaxSize() // Fill the square parent
-                .clip(RoundedCornerShape(if(deviceType == DeviceType.TABLET)20.dp else 14.dp))
+                .clip(RoundedCornerShape(if (deviceType == DeviceType.TABLET) 20.dp else 14.dp))
                 .background(
-                    if (config.enabled) config.backgroundColor 
-                    else config.backgroundColor
+                    config.backgroundColor
                 )
                 .border(
                     width = if (isDarkTheme) 0.dp else 1.dp, // No border in dark theme
                     color = config.BorderColor,
-                    shape = RoundedCornerShape(if(deviceType == DeviceType.TABLET)20.dp else 14.dp)
+                    shape = RoundedCornerShape(if (deviceType == DeviceType.TABLET) 20.dp else 14.dp)
                 )
                 .clickable(enabled = config.enabled) { config.onClick() },
             contentAlignment = Alignment.Center
@@ -122,7 +120,7 @@ fun CustomizableButton(
                 }
             } else {
                 // Full mode with icon and text - arranged vertically to fit square shape
-                if(layout == "Row") {
+                if (layout == "Row") {
                     Row(
                         modifier = Modifier.padding(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -131,8 +129,7 @@ fun CustomizableButton(
                         IconLayout(config = config)
                     }
 
-                }
-                else {
+                } else {
                     Column(
                         modifier = Modifier.padding(4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -150,8 +147,8 @@ fun CustomizableButton(
 
 @Composable
 fun IconLayout(
-    config : ButtonConfig
-){
+    config: ButtonConfig
+) {
     // Validate and render icon
     val resourceId = config.iconPlaceholder.toIntOrNull()
     val deviceType = rememberDeviceType()
@@ -159,7 +156,7 @@ fun IconLayout(
         Image(
             painter = painterResource(id = resourceId),
             contentDescription = null,
-            modifier = Modifier.size(if(deviceType == DeviceType.TABLET) 24.dp else 16.dp),
+            modifier = Modifier.size(if (deviceType == DeviceType.TABLET) 24.dp else 16.dp),
             colorFilter = ColorFilter.tint(config.color),
             contentScale = ContentScale.Fit
         )
@@ -170,7 +167,7 @@ fun IconLayout(
         text = config.text,
         style = TextStyle(
             color = config.color,
-            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 12.sp,
+            fontSize = if (deviceType == DeviceType.TABLET) 16.sp else 12.sp,
             lineHeight = 14.02.sp,
             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
             fontWeight = FontWeight(500),

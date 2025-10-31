@@ -417,7 +417,7 @@ object MotocamAPIAndroidHelper {
     ) {
         scope.launch {
             try {
-                val result = MotocamAPIHelperWrapper.getWifiHotspotConfig()
+                val result = MotocamAPIHelperWrapper.getWifiHotspotConfig().toMap()
                 callback(result, null)
             } catch (e: Exception) {
                 Log.e(TAG, "getWifiHotspotConfigAsync failed", e)
@@ -432,7 +432,7 @@ object MotocamAPIAndroidHelper {
     ) {
         scope.launch {
             try {
-                val result = MotocamAPIHelperWrapper.getWifiClientConfig()
+                val result = MotocamAPIHelperWrapper.getWifiClientConfig().toMap()
                 callback(result, null)
             } catch (e: Exception) {
                 Log.e(TAG, "getWifiClientConfigAsync failed", e)

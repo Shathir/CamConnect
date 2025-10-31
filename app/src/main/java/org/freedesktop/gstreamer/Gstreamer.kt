@@ -61,8 +61,8 @@ class GStreamer {
 
         @Throws(IOException::class)
         private fun copyFile(assetManager: AssetManager, assetPath: String, outFile: File) {
-            if(outFile.exists()) {
-                outFile.delete()
+            if(outFile.exists() && !outFile.delete()) {
+                    throw IOException("Failed to delete file: " + outFile.absolutePath)
             }
             val buffer = ByteArray(1024)
             val inputStream = assetManager.open(assetPath)

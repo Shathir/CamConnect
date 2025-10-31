@@ -37,10 +37,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.R
 import com.outdu.camconnect.communication.MotocamAPIAndroidHelper.getDeviceModeAsync
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
+import com.outdu.camconnect.ui.viewmodels.NetworkConfigurationViewModel
 
 
 @Composable
@@ -48,7 +51,7 @@ fun NetworkLayout() {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var deviceMode by remember { mutableStateOf(DeviceMode.HOTSPOT) }
-
+    val networkConfigurationViewModel: NetworkConfigurationViewModel = viewModel()
     LaunchedEffect(Unit) {
         getDeviceModeAsync(
             scope = scope,
@@ -82,9 +85,13 @@ fun NetworkLayout() {
         )
 
         if (deviceMode.value == DeviceMode.HOTSPOT.value) {
-            HotspotLayout()
+            HotspotLayout(
+                networkConfigurationViewModel
+            )
         } else {
-            DeviceLayout()
+            DeviceLayout(
+                networkConfigurationViewModel
+            )
         }
     }
 }
@@ -194,14 +201,16 @@ fun ModeButtonRow(
 
 @Composable
 fun HotspotLayout(
-
+    networkConfigurationViewModel: NetworkConfigurationViewModel
 ) {
 
-    var ssid by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var ipAddress by remember { mutableStateOf("192.168.2.1") }
-    var subnetMask by remember { mutableStateOf("255.255.255.0") }
+//    var ssid by remember { mutableStateOf("") }
+//    var password by remember { mutableStateOf("") }
+//    var ipAddress by remember { mutableStateOf("192.168.2.1") }
+//    var subnetMask by remember { mutableStateOf("255.255.255.0") }
     var errorMessage by remember { mutableStateOf("") }
+
+    val hotspotConfiguration by networkConfigurationViewModel.hotspotState.collectAsStateWithLifecycle()
     Text(
         text = "Configure network settings to create a Wi-Fi hotspot hosted by your camera",
         style = TextStyle(
@@ -229,12 +238,12 @@ fun HotspotLayout(
         )
 
         OutlinedTextField(
-            value = ssid,
-            onValueChange = { ssid = it },
-            label = { Text("Enter hotspot name") },
+            value = hotspotConfiguration.hotspot_ssid,
+            onValueChange = { networkConfigurationViewModel.updateHotspotSSID(it)},
+            label = { Text(hotspotConfiguration.hotspot_ssid) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            isError = ssid.isEmpty() && errorMessage.isNotEmpty(),
+            isError = hotspotConfiguration.hotspot_ssid.isEmpty() && errorMessage.isNotEmpty(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next
@@ -251,12 +260,12 @@ fun HotspotLayout(
             )
         )
         OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Enter hotspot name") },
+            value = hotspotConfiguration.hotspot_password,
+            onValueChange = { networkConfigurationViewModel.updateHotspotPassword(it) },
+            label = { Text(hotspotConfiguration.hotspot_password) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            isError = password.isEmpty() && errorMessage.isNotEmpty(),
+            isError = hotspotConfiguration.hotspot_password.isEmpty() && errorMessage.isNotEmpty(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next
@@ -273,12 +282,12 @@ fun HotspotLayout(
             )
         )
         OutlinedTextField(
-            value = ipAddress,
-            onValueChange = { ipAddress = it },
-            label = { Text("Enter ip address") },
+            value = hotspotConfiguration.hotspot_ip_address,
+            onValueChange = { networkConfigurationViewModel.updateHotspotIPAddress(it) },
+            label = { Text(hotspotConfiguration.hotspot_ip_address) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            isError = ipAddress.isEmpty() && errorMessage.isNotEmpty(),
+            isError = hotspotConfiguration.hotspot_ip_address.isEmpty() && errorMessage.isNotEmpty(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next
@@ -296,12 +305,12 @@ fun HotspotLayout(
             )
         )
         OutlinedTextField(
-            value = subnetMask,
-            onValueChange = { subnetMask = it },
+            value = hotspotConfiguration.hotspot_subnet_mask,
+            onValueChange = { networkConfigurationViewModel.updateHotspotSubnetMask(it) },
             label = { Text("Enter subnet mask") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            isError = subnetMask.isEmpty() && errorMessage.isNotEmpty(),
+            isError = hotspotConfiguration.hotspot_subnet_mask.isEmpty() && errorMessage.isNotEmpty(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next
@@ -338,6 +347,7 @@ fun HotspotLayout(
 
 @Composable
 fun DeviceLayout(
+    networkConfigurationViewModel: NetworkConfigurationViewModel
 ) {
     Text(
         text = "Configure network settings to connect your camera to an existing Wi-Fi network",
@@ -351,10 +361,11 @@ fun DeviceLayout(
 
 
 
-    var ssid by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var ipAddress by remember { mutableStateOf("192.168.2.1") }
-    var subnetMask by remember { mutableStateOf("255.255.255.0") }
+//    var ssid by remember { mutableStateOf("") }
+//    var password by remember { mutableStateOf("") }
+//    var ipAddress by remember { mutableStateOf("192.168.2.1") }
+//    var subnetMask by remember { mutableStateOf("255.255.255.0") }
+    val wifiConfiguration by networkConfigurationViewModel.wifiState.collectAsStateWithLifecycle()
     var errorMessage by remember { mutableStateOf("") }
 
     Column(
@@ -374,12 +385,12 @@ fun DeviceLayout(
         )
 
         OutlinedTextField(
-            value = ssid,
-            onValueChange = { ssid = it },
-            label = { Text("Enter hotspot name") },
+            value = wifiConfiguration.wifi_ssid,
+            onValueChange = { networkConfigurationViewModel.updateWifiSSID(it) },
+            label = { Text(wifiConfiguration.wifi_ssid) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            isError = ssid.isEmpty() && errorMessage.isNotEmpty(),
+            isError = wifiConfiguration.wifi_ssid.isEmpty() && errorMessage.isNotEmpty(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next
@@ -396,12 +407,12 @@ fun DeviceLayout(
             )
         )
         OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Enter hotspot name") },
+            value = wifiConfiguration.wifi_password,
+            onValueChange = { networkConfigurationViewModel.updateWifiPassword(it) },
+            label = { Text(wifiConfiguration.wifi_password) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            isError = password.isEmpty() && errorMessage.isNotEmpty(),
+            isError = wifiConfiguration.wifi_password.isEmpty() && errorMessage.isNotEmpty(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next
@@ -418,12 +429,12 @@ fun DeviceLayout(
             )
         )
         OutlinedTextField(
-            value = ipAddress,
-            onValueChange = { ipAddress = it },
-            label = { Text("Enter ip address") },
+            value = wifiConfiguration.wifi_ip_address,
+            onValueChange = { networkConfigurationViewModel.updateWfiIPAddress(it) },
+            label = { Text(wifiConfiguration.wifi_ip_address) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            isError = ipAddress.isEmpty() && errorMessage.isNotEmpty(),
+            isError = wifiConfiguration.wifi_ip_address.isEmpty() && errorMessage.isNotEmpty(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next
@@ -441,12 +452,12 @@ fun DeviceLayout(
             )
         )
         OutlinedTextField(
-            value = subnetMask,
-            onValueChange = { subnetMask = it },
-            label = { Text("Enter subnet mask") },
+            value = wifiConfiguration.wifi_subnet_mask,
+            onValueChange = { networkConfigurationViewModel.updateWifiSubnetMask(it) },
+            label = { Text(wifiConfiguration.wifi_subnet_mask) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            isError = subnetMask.isEmpty() && errorMessage.isNotEmpty(),
+            isError = wifiConfiguration.wifi_subnet_mask.isEmpty() && errorMessage.isNotEmpty(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next
