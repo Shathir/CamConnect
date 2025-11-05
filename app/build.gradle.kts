@@ -147,10 +147,10 @@ dependencies {
     implementation("androidx.camera:camera-view:1.3.4")
 
     // TensorFlow Lite (stable version without conflicts)
-    implementation(libs.tensorflow.lite)
-    implementation(libs.tensorflow.lite.support)
-    // GPU delegate for hardware acceleration (matching versions)
-    implementation(libs.tensorflow.lite.gpu)
+//    implementation(libs.tensorflow.lite)
+//    implementation(libs.tensorflow.lite.support)
+//    // GPU delegate for hardware acceleration (matching versions)
+//    implementation(libs.tensorflow.lite.gpu)
 
 
 
@@ -166,7 +166,6 @@ dependencies {
     
     // Navigation Compose
     implementation(libs.androidx.navigation.compose)
-    
     // Unit Testing Dependencies
     testImplementation(libs.junit)
     testImplementation("org.mockito:mockito-core:5.1.1")

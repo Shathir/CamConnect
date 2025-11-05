@@ -29,5 +29,15 @@ class CamConnectApplication : Application() {
                 Log.e("CamConnectApplication", "Failed to load camera configuration", error)
             }
         }
+        
+        // Load network configuration from .env-like properties file
+        applicationScope.launch {
+            val networkResult = com.outdu.camconnect.utils.NetworkConfigManager.loadConfiguration(this@CamConnectApplication)
+            networkResult.onSuccess { config ->
+                Log.i("CamConnectApplication", "Network configuration loaded successfully: $config")
+            }.onFailure { error ->
+                Log.e("CamConnectApplication", "Failed to load network configuration", error)
+            }
+        }
     }
 } 

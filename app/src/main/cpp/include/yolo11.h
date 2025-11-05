@@ -55,9 +55,9 @@ struct AsyncInferenceContext
     bool inference_done;         // Whether inference is complete
     ncnn::Mat out;               // Output from network
     std::mutex mtx;              // Mutex for thread safety
-    
-    AsyncInferenceContext() 
-        : img_w(0), img_h(0), scale(1.0f), wpad(0), hpad(0), 
+
+    AsyncInferenceContext()
+        : img_w(0), img_h(0), scale(1.0f), wpad(0), hpad(0),
           ready(false), inference_done(false) {}
 };
 
@@ -93,18 +93,18 @@ class YOLO11_det : public YOLO11
 public:
     virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects);
     virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects);
-    
+
     // Async inference API
     // Step 1: Submit image for async inference, returns context handle
     virtual std::shared_ptr<AsyncInferenceContext> detect_async(const cv::Mat& rgb);
-    
+
     // Step 2: Fetch results from async inference (blocking until ready)
     virtual int fetch_results(std::shared_ptr<AsyncInferenceContext> ctx, std::vector<Object>& objects);
-    
+
 private:
     // Helper function for preprocessing
     void preprocess(const cv::Mat& rgb, AsyncInferenceContext& ctx);
-    
+
     // Helper function for postprocessing
     int postprocess(AsyncInferenceContext& ctx, std::vector<Object>& objects);
 };

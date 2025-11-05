@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Network Configuration Defaults -->
+    <!-- Standard /24 subnet mask (255.255.255.0) - most common for local networks -->
+    <string name="default_subnet_mask">255.255.255.0</string>
+    
+    <!-- Default IP addresses for network configurations -->
+    <string name="default_hotspot_ip">192.168.2.1</string>
+    <string name="default_wifi_ip">192.168.1.100</string>
+</resources>
+
+

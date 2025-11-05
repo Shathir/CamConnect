@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10.2)
-
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if (${ANDROID_ABI} STREQUAL "armeabi-v7a")
     set(GSTREAMER_ARCH armv7)
 elseif (${ANDROID_ABI} STREQUAL "arm64-v8a")
@@ -300,8 +301,8 @@ link_directories(
         ${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}
 )
 
-set(OpenCV_DIR ${CMAKE_SOURCE_DIR}/opencv-mobile-4.6.0-android/sdk/native/jni)
-find_package(OpenCV REQUIRED core imgproc highgui)
+set(OpenCV_DIR ${CMAKE_SOURCE_DIR}/opencv-4.9.0-android-sdk/sdk/native/jni)
+find_package(OpenCV REQUIRED core imgproc highgui dnn)
 set(ncnn_DIR ${CMAKE_SOURCE_DIR}/ncnn-20250916-android-vulkan/${ANDROID_ABI}/lib/cmake/ncnn)
 find_package(ncnn REQUIRED)
 
@@ -321,7 +322,8 @@ file(GLOB SOURCE_FILES
 #add_library(gstreamer_android_player SHARED gstreamer_android_player.cpp yolo_far.cpp midas_far.cpp)
 add_library(gstreamer_android_player SHARED ${SOURCE_FILES})
 
-target_link_libraries(gstreamer_android_player gstreamer_android tflite tflitegpu
+target_link_libraries(gstreamer_android_player gstreamer_android
+#        tflite tflitegpu
         ${GLIB_LIBRARIES}
         ${GST_LIBRARIES}
         ${log-lib}
@@ -330,5 +332,6 @@ target_link_libraries(gstreamer_android_player gstreamer_android tflite tflitegp
         c++_shared
         -lm -ldl -llog -lbz2 -lz -ljpeg -ldl -pthread -lGLESv2 -lEGL -lpng16 -lexpat
         -lgstisoff-1.0 -lgsturidownloader-1.0 -lgstadaptivedemux-1.0 -lintl -lmp3lame
-        ncnn ${OpenCV_LIBS} camera2ndk mediandk
+        ncnn
+        ${OpenCV_LIBS} camera2ndk mediandk
 )

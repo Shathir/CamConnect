@@ -364,10 +364,10 @@ int YOLO11_det::detect(const cv::Mat& rgb, std::vector<Object>& objects)
     {
         // No resize or padding needed, directly convert to ncnn::Mat
         ncnn::Mat in = ncnn::Mat::from_pixels(rgb.data, ncnn::Mat::PIXEL_RGB, img_w, img_h);
-        
+
         const float norm_vals[3] = {1 / 255.f, 1 / 255.f, 1 / 255.f};
         in.substract_mean_normalize(0, norm_vals);
-        
+
         in_pad = in;
     }
     else
@@ -402,8 +402,8 @@ int YOLO11_det::detect(const cv::Mat& rgb, std::vector<Object>& objects)
     // Round-robin between two model instances
     int current_selector = instance_selector.fetch_add(1, std::memory_order_relaxed);
     bool use_i1 = (current_selector % 2) == 0;
-    
-    ncnn::Extractor ex = use_i1 ? yolo11_i1.create_extractor() 
+
+    ncnn::Extractor ex = use_i1 ? yolo11_i1.create_extractor()
                                 : yolo11_i2.create_extractor();
 
     ex.input("in0", in_pad);
@@ -534,15 +534,15 @@ int YOLO11_det::draw(cv::Mat& rgb, const std::vector<Object>& objects)
 void YOLO11_det::preprocess(const cv::Mat& rgb, AsyncInferenceContext& ctx)
 {
     std::lock_guard<std::mutex> lock(ctx.mtx);
-    
+
     const int target_size = det_target_size;
-    
+
     ctx.img_w = rgb.cols;
     ctx.img_h = rgb.rows;
-    
+
     // ultralytics/cfg/models/v8/yolo11.yaml
     const int max_stride = 32;
-    
+
     // Check if image is already target_size x target_size
     if (ctx.img_w == target_size && ctx.img_h == target_size)
     {
@@ -550,7 +550,7 @@ void YOLO11_det::preprocess(const cv::Mat& rgb, AsyncInferenceContext& ctx)
         ncnn::Mat in = ncnn::Mat::from_pixels(rgb.data, ncnn::Mat::PIXEL_RGB, ctx.img_w, ctx.img_h);
         const float norm_vals[3] = {1 / 255.f, 1 / 255.f, 1 / 255.f};
         in.substract_mean_normalize(0, norm_vals);
-        
+
         ctx.in_pad = in;
         ctx.scale = 1.0f;
         ctx.wpad = 0;
@@ -579,13 +579,13 @@ void YOLO11_det::preprocess(const cv::Mat& rgb, AsyncInferenceContext& ctx)
         // letterbox pad to target_size rectangle
         ctx.wpad = (w + max_stride - 1) / max_stride * max_stride - w;
         ctx.hpad = (h + max_stride - 1) / max_stride * max_stride - h;
-        ncnn::copy_make_border(in, ctx.in_pad, ctx.hpad / 2, ctx.hpad - ctx.hpad / 2, 
+        ncnn::copy_make_border(in, ctx.in_pad, ctx.hpad / 2, ctx.hpad - ctx.hpad / 2,
                               ctx.wpad / 2, ctx.wpad - ctx.wpad / 2, ncnn::BORDER_CONSTANT, 114.f);
 
         const float norm_vals[3] = {1 / 255.f, 1 / 255.f, 1 / 255.f};
         ctx.in_pad.substract_mean_normalize(0, norm_vals);
     }
-    
+
     ctx.ready = true;
 }
 
@@ -598,7 +598,7 @@ std::shared_ptr<AsyncInferenceContext> YOLO11_det::detect_async(const cv::Mat& r
     if (i1_busy.compare_exchange_strong(expected, true, std::memory_order_acquire)) {
         i1_was_free = true;
     }
-    
+
     // If i1 busy, try instance 2
     bool i2_was_free = false;
     if (!i1_was_free) {
@@ -607,37 +607,38 @@ std::shared_ptr<AsyncInferenceContext> YOLO11_det::detect_async(const cv::Mat& r
             i2_was_free = true;
         }
     }
-    
+
     // If both instances are busy, return nullptr
     if (!i1_was_free && !i2_was_free) {
         return nullptr;  // Both instances busy, caller can skip this frame
     }
-    
+
     bool use_i1 = i1_was_free;
-    
+
     auto ctx = std::make_shared<AsyncInferenceContext>();
-    
+
     // Step 2: Preprocess the image (synchronous, fast)
     preprocess(rgb, *ctx);
-    
+
+
     // Step 3: Launch inference in a separate thread (truly async!)
     // Use std::thread instead of std::async for better Android compatibility
     std::thread inference_thread([this, ctx, use_i1]() {
         int ret = -1;
-        
+
         // Run inference
         if (use_i1) {
             ncnn::Extractor ex = yolo11_i1.create_extractor();
             ex.input("in0", ctx->in_pad);
             ncnn::Mat out;
             ret = ex.extract("out0", out);
-            
+
             // Lock and write results
             ctx->mtx.lock();
             ctx->out = out;
             ctx->inference_done = true;
             ctx->mtx.unlock();
-            
+
             // Mark instance available
             i1_busy.store(false, std::memory_order_release);
         } else {
@@ -645,21 +646,21 @@ std::shared_ptr<AsyncInferenceContext> YOLO11_det::detect_async(const cv::Mat& r
             ex.input("in0", ctx->in_pad);
             ncnn::Mat out;
             ret = ex.extract("out0", out);
-            
+
             // Lock and write results
             ctx->mtx.lock();
             ctx->out = out;
             ctx->inference_done = true;
             ctx->mtx.unlock();
-            
+
             // Mark instance available
             i2_busy.store(false, std::memory_order_release);
         }
     });
-    
+
     // Detach thread so it runs independently
     inference_thread.detach();
-    
+
     // Returns immediately without waiting for inference to complete!
     return ctx;
 }
@@ -667,56 +668,56 @@ std::shared_ptr<AsyncInferenceContext> YOLO11_det::detect_async(const cv::Mat& r
 int YOLO11_det::postprocess(AsyncInferenceContext& ctx, std::vector<Object>& objects)
 {
     std::lock_guard<std::mutex> lock(ctx.mtx);
-    
+
     if (!ctx.inference_done)
     {
         return -1; // Inference not complete
     }
-    
-    const float prob_threshold = 0.25f;
+
+    const float prob_threshold = 0.55f;
     const float nms_threshold = 0.45f;
-    
+
     // ultralytics/cfg/models/v8/yolo11.yaml
     std::vector<int> strides(3);
     strides[0] = 8;
     strides[1] = 16;
     strides[2] = 32;
-    
+
     std::vector<Object> proposals;
     generate_proposals(ctx.out, strides, ctx.in_pad, prob_threshold, proposals);
-    
+
     // sort all proposals by score from highest to lowest
     qsort_descent_inplace(proposals);
-    
+
     // apply nms with nms_threshold
     std::vector<int> picked;
     nms_sorted_bboxes(proposals, picked, nms_threshold);
-    
+
     int count = picked.size();
-    
+
     objects.resize(count);
     for (int i = 0; i < count; i++)
     {
         objects[i] = proposals[picked[i]];
-        
+
         // adjust offset to original unpadded
         float x0 = (objects[i].rect.x - (ctx.wpad / 2)) / ctx.scale;
         float y0 = (objects[i].rect.y - (ctx.hpad / 2)) / ctx.scale;
         float x1 = (objects[i].rect.x + objects[i].rect.width - (ctx.wpad / 2)) / ctx.scale;
         float y1 = (objects[i].rect.y + objects[i].rect.height - (ctx.hpad / 2)) / ctx.scale;
-        
+
         // clip
         x0 = std::max(std::min(x0, (float)(ctx.img_w - 1)), 0.f);
         y0 = std::max(std::min(y0, (float)(ctx.img_h - 1)), 0.f);
         x1 = std::max(std::min(x1, (float)(ctx.img_w - 1)), 0.f);
         y1 = std::max(std::min(y1, (float)(ctx.img_h - 1)), 0.f);
-        
+
         objects[i].rect.x = x0;
         objects[i].rect.y = y0;
         objects[i].rect.width = x1 - x0;
         objects[i].rect.height = y1 - y0;
     }
-    
+
     // sort objects by area
     struct
     {
@@ -726,7 +727,7 @@ int YOLO11_det::postprocess(AsyncInferenceContext& ctx, std::vector<Object>& obj
         }
     } objects_area_greater;
     std::sort(objects.begin(), objects.end(), objects_area_greater);
-    
+
     return 0;
 }
 
@@ -736,7 +737,7 @@ int YOLO11_det::fetch_results(std::shared_ptr<AsyncInferenceContext> ctx, std::v
     {
         return -1; // Invalid context
     }
-    
+
     // Wait for inference to complete (busy wait with sleep)
     bool done = false;
     while (!done)
@@ -744,14 +745,14 @@ int YOLO11_det::fetch_results(std::shared_ptr<AsyncInferenceContext> ctx, std::v
         ctx->mtx.lock();
         done = ctx->inference_done;
         ctx->mtx.unlock();
-        
+
         if (!done)
         {
             // Sleep briefly to avoid busy spinning
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
-    
+
     // Perform postprocessing and return results
     return postprocess(*ctx, objects);
 }

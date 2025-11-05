@@ -43,6 +43,7 @@ import android.content.Context
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import android.provider.OpenableColumns
+import com.outdu.camconnect.profiler.*
 
 @Composable
 fun OtaLayout() {
@@ -66,6 +67,16 @@ fun OtaLayout() {
     )
 
     LaunchedEffect(Unit) {
+
+        val specs = getDeviceSpecs(context)
+        val score = estimatePerformanceScore(specs)
+        val tier = classifyPerformance(score)
+        val message = getPerformanceMessage(tier)
+
+        Log.d("Hardware Profiler", specs.toString())
+        Log.d("Hardware Profiler", "Score: $score, Tier: ${tier.label}")
+        Log.w("Hardware Profiler", message)
+
         // Api call to get firmware version
         fetchFirmwareVersion(
             scope = scope,
@@ -351,7 +362,7 @@ private fun uploadFirmwareFile(
             
             // Initialize MotocamSocketClient with current camera IP
             val client = MotocamSocketClient()
-            client.init("192.168.1.165")// Use the current camera IP
+            client.init(currentCameraIp)// Use the current camera IP
             
             // Upload the firmware file to the web UI server (like the web interface does)
             val uploadSuccess = client.uploadFile(

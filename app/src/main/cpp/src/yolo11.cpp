@@ -58,7 +58,7 @@ YOLO11::~YOLO11()
      // Initialize instance 1
      yolo11_i1.opt = ncnn::Option();
 #if NCNN_VULKAN
-     yolo11_i1.opt.use_vulkan_compute = false;
+     yolo11_i1.opt.use_vulkan_compute = true;
 #endif
      yolo11_i1.load_param(mgr,parampath);
      yolo11_i1.load_model(mgr, modelpath);
@@ -68,8 +68,8 @@ YOLO11::~YOLO11()
 #if NCNN_VULKAN
      yolo11_i2.opt.use_vulkan_compute = false;
 #endif
-     yolo11_i2.load_param(mgr, parampath);
-     yolo11_i2.load_model(mgr, modelpath);
+//     yolo11_i2.load_param(mgr, parampath);
+//     yolo11_i2.load_model(mgr, modelpath);
 
      // Initialize selector and busy flags
      instance_selector.store(0);

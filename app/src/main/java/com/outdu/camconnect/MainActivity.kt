@@ -38,7 +38,6 @@ import android.content.res.Configuration
 import androidx.compose.runtime.mutableStateOf
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import android.app.Activity
-import android.content.Context
 import android.media.MediaCodecInfo
 import androidx.annotation.RequiresApi
 import com.outdu.camconnect.communication.CameraConfigurationManager
@@ -47,10 +46,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.net.Uri
 import android.os.Environment
-import android.provider.MediaStore
 import android.provider.Settings
-import android.view.WindowInsets
-import android.view.WindowInsetsController
 import com.outdu.camconnect.security.MandatoryPermissionManager
 
 data class OverlayPoints(
@@ -310,9 +306,6 @@ class MainActivity : ComponentActivity() {
                             handleLogout()
                         }
                     )
-//                    MainScreen()
-//                    MainScreenZeroDCE()
-//                    OnvifScreen()
                 }
             }
         }
@@ -440,6 +433,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        Log.d("MainActivity", "onPause called")
         // Pause native streaming when app goes to background
         try {
             MemoryManager.cleanupWeakReferences()
@@ -450,6 +444,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        Log.d("MainActivity", "onResume called")
         // Resume will be handled by surface callbacks when they become available
         Log.d("MainActivity", "Memory stats: ${MemoryManager.getMemoryStats()}")
     }

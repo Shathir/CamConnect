@@ -11,8 +11,10 @@
 #include <opencv2/core/core.hpp>
 #include <gst/app/gstappsink.h>
 #include "yolo11.h"
+//#include "yolov8_tflite.h"
 // Dynamic RTSP URL - will be set from Java side
 static char g_rtsp_url[512] = "rtsp://onvif:test@192.168.2.1/live1.sdp"; // Default fallback
+static char g_rtsp_url2[512] = "rtsp://onvif:test@192.168.2.1/live3.sdp"; // Default fallback
 
 GST_DEBUG_CATEGORY_STATIC (debug_category);
 #define GST_CAT_DEFAULT debug_category
@@ -50,7 +52,7 @@ typedef struct _CustomData {
 
 
 static YOLO11* g_yolo11 = nullptr;
-
+//static YoloV8TFLite* g_yolo = nullptr;
 static ncnn::Mutex lock;
 
 //std::shared_ptr<AsyncInferenceContext> ctx;
@@ -243,18 +245,15 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
             return GST_FLOW_ERROR;
         }
         cv::Mat bgr(sample_height, sample_width, CV_8UC3, gstBufferMap.data);
-//        memcpy(bgr.data, gstBufferMap.data, gstBufferMap.size);
 
         // nanodet
         {
-            ncnn::MutexLockGuard g(lock);
             if (data->od && g_yolo11) {
                 std::vector<float> depthThreshold;
 
                 std::vector<Object> objects;
                 auto start_time = std::chrono::system_clock::now();
-
-                if(!ctx.empty() && ctx.size() >= 2)
+                if(!ctx.empty() && ctx.size() >= 1)
                 {
                     g_yolo11->fetch_results(ctx[0], objects);
                     ctx.erase(ctx.begin());
@@ -263,10 +262,9 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                 if(curr_ctx != nullptr) {
                     ctx.emplace_back(std::move(curr_ctx));
                 }
-
                 std::vector<cv::Point2f> points2F;
                 points2F.reserve(objects.size());
-                int x_start = 210;
+                int x_start = 280;
                 for(Object &obj:objects) {
                     points2F.emplace_back((obj.rect.x+obj.rect.width/2), (obj.rect.y+obj.rect.height/2));
                     obj.rect.x= (obj.rect.x + x_start) /(bgr.cols + (2*x_start));
@@ -279,7 +277,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                 GST_DEBUG("YOLO INFERENCE TIME IS %f", elapsed_seconds.count());
                 od_callback(objects, depthThreshold, data);
             }
-        }
+        } 
         gst_buffer_unmap(buffer, &gstBufferMap);
         gst_sample_unref(sample);
         return GST_FLOW_OK;
@@ -304,40 +302,26 @@ static void *app_function (void *userdata) {
     char rtsp_pipeline[1000];
     if(data->od) {
 
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=200 ! "
-                               " rtpjitterbuffer latency=200 drop-on-latency=true do-lost=true ! "
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=200 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! "
                                "amcviddec-%s ! tee name=t ! "
                                "queue ! "
                                "glimagesink t. ! "
                                "queue leaky=2 max-size-buffers=2 ! "
                                "glcolorconvert ! gldownload ! "
-                               "video/x-raw,width=1920,height=1080,format=RGB ! "
-                               "videocrop left=420 right=420 top=0 bottom=0 ! "
+                               "video/x-raw,width=1280,height=720,format=RGB ! "
+                               "videocrop left=280 right=280 top=0 bottom=0 ! "
                                "videoscale ! "
                                "video/x-raw,width=640,height=640,format=RGB ! "
                                "appsink max-buffers=2 drop=true name=rtspappsink",
-                g_rtsp_url, data->avc_decoder);
-
+                g_rtsp_url2, data->avc_decoder);
     } else {
-//        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=600 drop-on-latency=true ! "
-//                               "rtph264depay ! h264parse ! amcviddec-%s  ! glimagesink",
-//                g_rtsp_url, data->avc_decoder);
-
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=200 ! "
-                               " rtpjitterbuffer latency=200 drop-on-latency=true do-lost=true ! "
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=200 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! "
-                               "amcviddec-%s ! tee name=t ! "
-                               "queue ! "
-                               "glimagesink t. ! "
-                               "queue leaky=2 max-size-buffers=2 ! "
-                               "glcolorconvert ! gldownload ! "
-                               "video/x-raw,width=1920,height=1080,format=RGB ! "
-                               "videocrop left=420 right=420 top=0 bottom=0 ! "
-                               "videoscale ! "
-                               "video/x-raw,width=640,height=640,format=RGB ! "
-                               "appsink max-buffers=2 drop=true name=rtspappsink1",
+                               "amcviddec-%s ! glimagesink",
                 g_rtsp_url, data->avc_decoder);
+
+
     }
     data->pipeline = gst_parse_launch(rtsp_pipeline, &error);
     if (error) {
@@ -464,6 +448,8 @@ static void gst_native_set_rtsp_url (JNIEnv* env, jobject thiz, jstring rtsp_url
     if (url_chars != nullptr) {
         strncpy(g_rtsp_url, url_chars, sizeof(g_rtsp_url) - 1);
         g_rtsp_url[sizeof(g_rtsp_url) - 1] = '\0'; // Ensure null termination
+        strncpy(g_rtsp_url2, url_chars, sizeof(g_rtsp_url2) - 1);
+        g_rtsp_url2[sizeof(g_rtsp_url2) - 1] = '\0'; // Ensure null termination
         env->ReleaseStringUTFChars(rtsp_url, url_chars);
     } else {
         GST_ERROR ("Failed to get RTSP URL string");
@@ -532,23 +518,21 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
 
     // reload
     {
-        ncnn::MutexLockGuard g(lock);
-
-        if (use_gpu && ncnn::get_gpu_count() == 0)
+        if(g_yolo11 != nullptr)
         {
-            // no gpu
             delete g_yolo11;
             g_yolo11 = nullptr;
         }
-        else
-        {
-            ncnn::destroy_gpu_instance();
-            ncnn::create_gpu_instance();
-            g_yolo11 = new YOLO11_det;
-            g_yolo11->load(mgr, paramPath.c_str(), modelPath.c_str(), false);
-            g_yolo11->set_det_target_size(640);
-        }
-
+        g_yolo11 = new YOLO11_det;
+        g_yolo11->load(mgr, paramPath.c_str(), modelPath.c_str(), true);
+        g_yolo11->set_det_target_size(640);
+//        if(g_yolo != nullptr)
+//        {
+//            delete g_yolo;
+//            g_yolo = nullptr;
+//        }
+//        g_yolo = new YoloV8TFLite(modelPath="yolov8n_float16.tflite");
+//        g_yolo->load(mgr);
     }
 
     return JNI_TRUE;

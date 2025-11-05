@@ -54,11 +54,6 @@ fun discoverOnvifDevices(callback: ((List<OnvifDevice>) -> Unit)? = null) {
                 val packet = DatagramPacket(probe, probe.size, multicastAddr, port)
                 socket.send(packet)
 
-                Log.d("OnvifService", "🔍 Starting ONVIF device discovery...")
-                Log.d("OnvifService", "📡 Probe sent to ${multicastAddr.hostAddress}:$port")
-                Log.d("OnvifService", "📏 Probe size: ${probe.size} bytes")
-                Log.d("OnvifService", "⏱️ Waiting for responses (10 second timeout)...")
-                Log.d("OnvifService", "🎯 Looking specifically for device: 10.109.79.100")
 
                 // Receive responses
                 val buf = ByteArray(8192)
@@ -76,14 +71,6 @@ fun discoverOnvifDevices(callback: ((List<OnvifDevice>) -> Unit)? = null) {
                         
                         Log.d("OnvifService", "📥 Response #$responseCount from $deviceIP:$devicePort")
                         
-                        // Special logging for the target device
-                        if (deviceIP == "10.109.79.100") {
-                            Log.d("OnvifService", "🎯 TARGET DEVICE FOUND! Response from 10.109.79.100")
-                            Log.d("OnvifService", "🔍 Full XML Response from target:\n$responseXml")
-                        } else {
-                            Log.d("OnvifService", "📄 Response from $deviceIP (not target):\n$responseXml")
-                        }
-                        
                         // Parse the response to extract endpoint URLs
                         val device = parseOnvifResponse(deviceIP, responseXml)
                         if (device != null && !discoveredIPs.contains(deviceIP)) {
@@ -96,11 +83,7 @@ fun discoverOnvifDevices(callback: ((List<OnvifDevice>) -> Unit)? = null) {
                             Log.d("OnvifService", "   📱 Device Type: ${device.deviceType ?: "Unknown"}")
                             Log.d("OnvifService", "   🏷️ Scopes: ${device.scopes}")
                             
-                            if (deviceIP == "10.109.79.100") {
-                                Log.d("OnvifService", "🎉 SUCCESS: Target device 10.109.79.100 discovered and parsed!")
-                            }
-                        } else if (deviceIP == "10.109.79.100") {
-                            Log.w("OnvifService", "⚠️ Target device 10.109.79.100 responded but failed to parse!")
+
                         }
                     }
                 } catch (e: Exception) {
@@ -109,18 +92,7 @@ fun discoverOnvifDevices(callback: ((List<OnvifDevice>) -> Unit)? = null) {
                     Log.d("OnvifService", "📊 Total devices discovered: ${discoveredDevices.size}")
                     Log.d("OnvifService", "📋 All responding IPs: ${allResponses.joinToString(", ")}")
                     
-                    // Check if target device responded
-                    val targetResponded = allResponses.any { it.startsWith("10.109.79.100") }
-                    if (targetResponded) {
-                        Log.d("OnvifService", "✅ Target device 10.109.79.100 DID respond to discovery")
-                    } else {
-                        Log.w("OnvifService", "❌ Target device 10.109.79.100 did NOT respond to discovery")
-                        Log.w("OnvifService", "🔧 Troubleshooting suggestions:")
-                        Log.w("OnvifService", "   1. Check if device is on same network segment")
-                        Log.w("OnvifService", "   2. Verify device has ONVIF discovery enabled")
-                        Log.w("OnvifService", "   3. Check firewall settings on device")
-                        Log.w("OnvifService", "   4. Try direct connection test to device")
-                    }
+
                     
                     // Log summary of all discovered devices
                     if (discoveredDevices.isNotEmpty()) {

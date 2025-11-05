@@ -78,6 +78,13 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.CamConnect" />
+
+        <uses-native-library
+            android:name="libOpenCL.so"
+            android:required="false"/>
+        <uses-native-library
+            android:name="libOpenCL-pixel.so"
+            android:required="false" />
     </application>
 
 </manifest>

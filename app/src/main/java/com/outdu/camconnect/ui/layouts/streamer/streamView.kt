@@ -60,6 +60,10 @@ import com.outdu.camconnect.OverlayPoints
 import com.outdu.camconnect.ui.modelLabels.BOAT_LABELS
 import com.outdu.camconnect.ui.modelLabels.COCO_LABELS
 import com.outdu.camconnect.communication.CameraConfigurationManager
+import com.outdu.camconnect.profiler.classifyPerformance
+import com.outdu.camconnect.profiler.estimatePerformanceScore
+import com.outdu.camconnect.profiler.getDeviceSpecs
+import com.outdu.camconnect.profiler.getPerformanceMessage
 
 @Composable
 fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
@@ -471,6 +475,8 @@ fun ZoomableVideoTextureView(
                                 val s = Surface(surface)
                                 MemoryManager.registerSurface(s)
                                 MainActivitySingleton.nativeSurfaceInit(s)
+
+
                                 // Load configuration synchronously for immediate use
                                 CameraConfigurationManager.loadConfiguration(currentContext)
                                 Log.d("CameraConfigurationManager", "${CameraConfigurationManager.isFarDetectionEnabled()}")
@@ -481,6 +487,7 @@ fun ZoomableVideoTextureView(
                                     CameraConfigurationManager.isDepthSensingEnabled(),
                                     CameraConfigurationManager.isFarDetectionEnabled()
                                 )
+
                                 isSurfaceFinalized = false
                             } catch (e: Exception) {
                                 Log.e("ZoomableTextureView", "Surface init error", e)
@@ -516,67 +523,6 @@ fun ZoomableVideoTextureView(
                 }
                 .fillMaxSize()
         )
-
-
-//        Canvas(
-//            modifier = Modifier
-//                .graphicsLayer {
-//                    scaleX = animatedScale.value
-//                    scaleY = animatedScale.value
-//                    translationX = animatedOffset.value.x
-//                    translationY = animatedOffset.value.y
-//                }
-//                .fillMaxSize()
-//        ) {
-//            val labels = pointState.value.labels
-//            val width = size.width
-//            val height = size.height
-//
-//            val paint = Paint().apply {
-//                style = android.graphics.Paint.Style.STROKE
-//                strokeWidth = 6f
-//                color = android.graphics.Color.RED
-//                isAntiAlias = true
-//            }
-//
-//            val textPaint = Paint().apply {
-//                style = android.graphics.Paint.Style.FILL
-//                textSize = 48f
-//                color = android.graphics.Color.RED
-//                isAntiAlias = true
-//            }
-//
-//            for (i in labels.indices) {
-//                val labelIndex = labels[i]
-//                val label = if (Data.getMODEL() == 0) COCO_LABELS[labelIndex] else BOAT_LABELS[labelIndex]
-//
-//                val x = pointState.value.pointXs[i] * width / 1920f
-//                val y = pointState.value.pointYs[i] * height / 1080f
-//                val w = pointState.value.pointWs[i] * width / 1920f
-//                val h = pointState.value.pointHs[i] * height / 1080f
-//
-//                val left = x
-//                val top = y
-//                val right = x + w
-//                val bottom = y + h
-//
-//                val depThresh = pointState.value.depThres.getOrNull(i)
-//                val isDanger = depThresh != null && depThresh > Data.getDsThreshold()
-//
-//                paint.color = if (isDanger) android.graphics.Color.RED else android.graphics.Color.YELLOW
-//                textPaint.color = paint.color
-//
-//                drawRect(
-//                    topLeft = Offset(left, top),
-//                    size = Size(w, h),
-//                    color = Color(paint.color),
-//                    style = Stroke(width = paint.strokeWidth)
-//                )
-//
-//                drawContext.canvas.nativeCanvas.drawText(label, left + 8f, top - 12f, textPaint)
-//            }
-//        }
-
 
 
         // --- Overlay Layer (SurfaceView) ---
@@ -677,7 +623,7 @@ fun drawOverlay(
         val labelSize = pointState.labels.size
         for (index in 0 until labelSize) {
             val labelIndex = pointState.labels[index]
-            val label = BOAT_LABELS[labelIndex]
+            val label = COCO_LABELS[labelIndex]
 
             // Scale detection coordinates from model space to screen space
             val x = pointState.pointXs[index] * viewWidth / 1920f
@@ -710,7 +656,6 @@ fun drawOverlay(
             }
 
             // Draw the label just above the top-left corner of the box
-//            canvas.drawText(label, left + 8f, top - 12f, textPaint)
             canvas.drawText(label, left + 8f, textY, textPaint)
             Log.d("CameraConfigurationManager", "Overlay text is : ${label}")
         }
