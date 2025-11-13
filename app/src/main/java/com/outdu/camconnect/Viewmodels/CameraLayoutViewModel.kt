@@ -101,11 +101,13 @@ class CameraLayoutViewModel : ViewModel() {
                         }
 
                         // Parse Camera Mode from MISC
-                        _currentCameraMode.value = when (misc % 4) {
-                            1 -> CameraMode.OFF
-                            2 -> CameraMode.EIS
-                            3 -> CameraMode.HDR
-                            0 -> CameraMode.BOTH
+                        _currentCameraMode.value = when {
+                            // 4K mode: misc = 4 (visible) or misc = 12 (IR)
+                            misc == 4 || misc == 12 -> CameraMode.FOURK
+                            misc % 4 == 1 -> CameraMode.OFF
+                            misc % 4 == 2 -> CameraMode.EIS
+                            misc % 4 == 3 -> CameraMode.HDR
+                            misc % 4 == 0 -> CameraMode.BOTH
                             else -> CameraMode.OFF
                         }
 
@@ -130,6 +132,15 @@ class CameraLayoutViewModel : ViewModel() {
     }
 
     private fun calculateMiscValue(): Int {
+        // Handle 4K mode separately
+        if (_currentCameraMode.value == CameraMode.FOURK) {
+            return when (_currentVisionMode.value) {
+                VisionMode.VISION -> 4      // Visible mode: misc = 4
+                VisionMode.INFRARED -> 12   // IR mode: misc = 12
+                else -> 4                   // Default to visible 4K
+            }
+        }
+
         // Extract HDR and EIS from camera mode
         val hdr = _currentCameraMode.value == CameraMode.HDR || _currentCameraMode.value == CameraMode.BOTH
         val eis = _currentCameraMode.value == CameraMode.EIS || _currentCameraMode.value == CameraMode.BOTH
@@ -487,16 +498,21 @@ class CameraLayoutViewModel : ViewModel() {
         // Handle different vision mode transitions
         when (mode) {
             VisionMode.VISION -> {
-                // When switching to Visible mode, turn off both EIS and HDR
-                _currentCameraMode.value = CameraMode.OFF
+                // When switching to Visible mode, preserve 4K if selected, otherwise turn off both EIS and HDR
+                if (_currentCameraMode.value != CameraMode.FOURK) {
+                    _currentCameraMode.value = CameraMode.OFF
+                }
             }
             VisionMode.BOTH -> {
                 // When Low Light is selected, set to OFF so Color button appears selected by default
+                // 4K is not available in Low Light mode
                 _currentCameraMode.value = CameraMode.OFF
             }
             VisionMode.INFRARED -> {
-                // When IR mode is selected, turn off both EIS and HDR
-                _currentCameraMode.value = CameraMode.OFF
+                // When IR mode is selected, preserve 4K if selected, otherwise turn off both EIS and HDR
+                if (_currentCameraMode.value != CameraMode.FOURK) {
+                    _currentCameraMode.value = CameraMode.OFF
+                }
             }
         }
         
@@ -526,6 +542,7 @@ class CameraLayoutViewModel : ViewModel() {
                     CameraMode.EIS -> CameraMode.HDR  // If EIS is on, switch directly to HDR
                     CameraMode.BOTH -> CameraMode.OFF // BOTH is not possible anymore
                     CameraMode.OFF -> CameraMode.HDR  // If nothing is on, turn on HDR
+                    CameraMode.FOURK -> CameraMode.HDR // If 4K is on, switch to HDR
                 }
             }
             CameraMode.EIS -> {
@@ -534,6 +551,13 @@ class CameraLayoutViewModel : ViewModel() {
                     CameraMode.HDR -> CameraMode.EIS  // If HDR is on, switch directly to EIS
                     CameraMode.BOTH -> CameraMode.OFF // BOTH is not possible anymore
                     CameraMode.OFF -> CameraMode.EIS  // If nothing is on, turn on EIS
+                    CameraMode.FOURK -> CameraMode.EIS // If 4K is on, switch to EIS
+                }
+            }
+            CameraMode.FOURK -> {
+                when (_currentCameraMode.value) {
+                    CameraMode.FOURK -> CameraMode.OFF // If 4K is on, turn it off
+                    else -> CameraMode.FOURK // Switch to 4K mode
                 }
             }
             else -> _currentCameraMode.value

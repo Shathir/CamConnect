@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
@@ -56,6 +57,17 @@ import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import com.outdu.camconnect.ui.viewmodels.HotspotConfiguration
 import com.outdu.camconnect.ui.viewmodels.NetworkConfigurationViewModel
 import com.outdu.camconnect.ui.viewmodels.WifiConfiguration
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.text.style.TextAlign
+import com.outdu.camconnect.auth.SessionManager
+import android.content.Intent
+import android.app.Activity
+import com.outdu.camconnect.SetupActivity
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 
 @Composable
@@ -197,6 +209,9 @@ fun HotspotLayout(
     val isDarkTheme = isSystemInDarkTheme()
     var errorMessage by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    var isLoggingOut by remember { mutableStateOf(false) }
+    var showLogoutProgress by remember { mutableStateOf(false) }
 
     val labelColor = getLabelColor(isDarkTheme)
     val titleTextStyle = getTitleTextStyle(labelColor)
@@ -266,24 +281,50 @@ fun HotspotLayout(
         )
 
         ActionButton(text = "Start Hosting") {
-            networkConfigurationViewModel.setHotspotMode(
-                scope = scope,
-                onSuccess = {
-                    Toast.makeText(
-                        context,
-                        "Hotspot mode started successfully",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                },
-                onError = { error ->
-                    Toast.makeText(
-                        context,
-                        "Failed to start hotspot: $error",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            )
+            showConfirmationDialog = true
         }
+    }
+
+    if (showConfirmationDialog) {
+        NetworkConfigurationConfirmationDialog(
+            isHotspotMode = true,
+            ssid = hotspotConfiguration.hotspot_ssid,
+            password = hotspotConfiguration.hotspot_password,
+            ipAddress = hotspotConfiguration.hotspot_ip_address,
+            subnetMask = hotspotConfiguration.hotspot_subnet_mask,
+            onConfirm = {
+                showConfirmationDialog = false
+                isLoggingOut = true
+                showLogoutProgress = true
+                // Send request to change device to hotspot mode (fire and forget)
+                // Don't wait for response as IP will change immediately
+                networkConfigurationViewModel.setHotspotMode(
+                    scope = scope,
+                    onSuccess = { /* Ignore - we navigate immediately */ },
+                    onError = { /* Ignore - we navigate immediately */ }
+                )
+            },
+            onDismiss = {
+                showConfirmationDialog = false
+            },
+            isLoggingOut = isLoggingOut
+        )
+    }
+
+    // Show logout progress dialog and wait 5 seconds before redirecting
+    if (showLogoutProgress) {
+        LogoutProgressDialog(
+            onComplete = {
+                // Clear local session without calling server (network IP will change)
+                SessionManager.clearSession()
+                // Navigate directly to SetupActivity
+                val intent = Intent(context, SetupActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+                context.startActivity(intent)
+                (context as? Activity)?.finish()
+            }
+        )
     }
 }
 
@@ -372,6 +413,9 @@ fun DeviceLayout(
     val isDarkTheme = isSystemInDarkTheme()
     var errorMessage by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    var isLoggingOut by remember { mutableStateOf(false) }
+    var showLogoutProgress by remember { mutableStateOf(false) }
 
     val labelColor = getLabelColor(isDarkTheme)
     val titleTextStyle = getTitleTextStyle(labelColor)
@@ -423,7 +467,7 @@ fun DeviceLayout(
             )
         )
 
-        if (wifiConfiguration.dynamicIpEnabled) {
+        if (!wifiConfiguration.dynamicIpEnabled) {
             StaticIpConfigurationFields(
                 wifiConfiguration = wifiConfiguration,
                 networkConfigurationViewModel = networkConfigurationViewModel,
@@ -433,24 +477,50 @@ fun DeviceLayout(
         }
 
         ActionButton(text = "Connect to Network") {
-            networkConfigurationViewModel.setClientMode(
-                scope = scope,
-                onSuccess = {
-                    Toast.makeText(
-                        context,
-                        "Connected to network successfully",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                },
-                onError = { error ->
-                    Toast.makeText(
-                        context,
-                        "Failed to connect: $error",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            )
+            showConfirmationDialog = true
         }
+    }
+
+    if (showConfirmationDialog) {
+        NetworkConfigurationConfirmationDialog(
+            isHotspotMode = false,
+            ssid = wifiConfiguration.wifi_ssid,
+            password = wifiConfiguration.wifi_password,
+            ipAddress = wifiConfiguration.wifi_ip_address,
+            subnetMask = wifiConfiguration.wifi_subnet_mask,
+            onConfirm = {
+                showConfirmationDialog = false
+                isLoggingOut = true
+                showLogoutProgress = true
+                // Send request to change device to client mode (fire and forget)
+                // Don't wait for response as IP will change immediately
+                networkConfigurationViewModel.setClientMode(
+                    scope = scope,
+                    onSuccess = { /* Ignore - we navigate immediately */ },
+                    onError = { /* Ignore - we navigate immediately */ }
+                )
+            },
+            onDismiss = {
+                showConfirmationDialog = false
+            },
+            isLoggingOut = isLoggingOut
+        )
+    }
+
+    // Show logout progress dialog and wait 5 seconds before redirecting
+    if (showLogoutProgress) {
+        LogoutProgressDialog(
+            onComplete = {
+                // Clear local session without calling server (network IP will change)
+                SessionManager.clearSession()
+                // Navigate directly to SetupActivity
+                val intent = Intent(context, SetupActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+                context.startActivity(intent)
+                (context as? Activity)?.finish()
+            }
+        )
     }
 }
 
@@ -494,9 +564,8 @@ fun DynamicIpToggleButton(
 @Composable
 private fun getToggleButtonBackgroundColor(isEnabled: Boolean, isDarkTheme: Boolean): Color {
     return when {
-        isEnabled && isDarkTheme -> Color(0xFF515151)
-        isEnabled && !isDarkTheme -> StravionBlue
-        !isEnabled && isDarkTheme -> Color(0xFF333333)
+        isEnabled -> StravionBlue
+        isDarkTheme -> Color(0xFF333333)
         else -> Color(0xFFFFFFFF)
     }
 }
@@ -584,10 +653,166 @@ private fun StaticIpConfigurationFields(
     )
 }
 
+@Composable
+private fun LogoutProgressDialog(
+    onComplete: () -> Unit
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val labelColor = getLabelColor(isDarkTheme)
+    
+    // Wait 5 seconds then call onComplete
+    LaunchedEffect(Unit) {
+        delay(5000) // 5 seconds
+        onComplete()
+    }
+    
+    AlertDialog(
+        onDismissRequest = { /* Cannot dismiss */ },
+        title = {
+            Text(
+                text = "Logging you out",
+                style = TextStyle(
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily(Font(R.font.arial_regular)),
+                    color = labelColor
+                )
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = StravionBlue
+                )
+                Text(
+                    text = "Please wait...",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
+                        color = labelColor
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {},
+        containerColor = if (isDarkTheme) Color(0xFF1A1A1C) else Color.White
+    )
+}
+
 enum class DeviceMode(
     val displayName: String,
     val value: String
 ) {
     HOTSPOT("Hotspot Mode", "Hotspot"),
     DEVICE("Device Mode", "Client")
+}
+
+@Composable
+private fun NetworkConfigurationConfirmationDialog(
+    isHotspotMode: Boolean,
+    ssid: String,
+    password: String,
+    ipAddress: String,
+    subnetMask: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    isLoggingOut: Boolean
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val labelColor = getLabelColor(isDarkTheme)
+    val textStyle = getDescriptionTextStyle(labelColor)
+    
+    val dialogTitle = if (isHotspotMode) {
+        "Device to Hotspot"
+    } else {
+        "Hotspot to Device"
+    }
+    
+    val dialogMessage = if (isHotspotMode) {
+        buildString {
+            append("The camera will create a new Wi-Fi network with:\n")
+            append("• SSID: $ssid\n")
+            append("• Password: $password\n")
+            append("• IP Address: $ipAddress\n")
+            append("• Subnet Mask: $subnetMask\n\n")
+            append("After applying these settings:\n")
+            append("Connect your device to this Wi-Fi network")
+        }
+    } else {
+        buildString {
+            append("Make sure your Wi-Fi router is configured with:\n")
+            append("• SSID: $ssid\n")
+            append("• Password: $password\n")
+            if (ipAddress.isNotEmpty()) {
+                append("• IP: $ipAddress\n")
+            }
+            if (subnetMask.isNotEmpty()) {
+                append("• Subnet: $subnetMask\n")
+            }
+            append("\nThe camera will attempt to join this network. If connection fails after 3 attempts, it will automatically return to Hotspot mode.")
+        }
+    }
+    
+    AlertDialog(
+        onDismissRequest = { /* Cannot dismiss */ },
+        title = {
+            Text(
+                text = dialogTitle,
+                style = TextStyle(
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily(Font(R.font.arial_regular)),
+                    color = labelColor
+                )
+            )
+        },
+        text = {
+            Text(
+                text = dialogMessage,
+                style = textStyle,
+                textAlign = TextAlign.Start
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = !isLoggingOut,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = StravionBlue
+                )
+            ) {
+                Text(
+                    text = if (isLoggingOut) "Logging out..." else "Confirm",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
+                        color = Color.White
+                    )
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isLoggingOut
+            ) {
+                Text(
+                    text = "Cancel",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
+                        color = labelColor
+                    )
+                )
+            }
+        },
+        containerColor = if (isDarkTheme) Color(0xFF1A1A1C) else Color.White
+    )
 }

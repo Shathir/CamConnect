@@ -15,7 +15,7 @@ app/src/main/cpp/opencv-4.9.0-android-sdk
 /app/src/main/cpp/opencv-mobile-4.6.0-android/
 /app/src/main/gstreamer_1_0_android_1_22_4/
 /app/src/main/cpp/tensorflow/
-
+.kotlin/
 git_token.txt
 
 # Local configuration file (sdk path, etc)

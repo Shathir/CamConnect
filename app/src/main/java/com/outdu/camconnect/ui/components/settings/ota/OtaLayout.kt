@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.R
 import com.outdu.camconnect.communication.MotocamAPIAndroidHelper
 import com.outdu.camconnect.communication.MotocamSocketClient
-import com.outdu.camconnect.communication.CameraApiManager
+import com.outdu.camconnect.communication.MotocamAPIHelperWrapper
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import io.ktor.http.ContentType
 import java.io.InputStream
@@ -241,7 +241,7 @@ fun OtaLayout() {
         // OTA Update Dialog
         if (showOtaDialog) {
             androidx.compose.material3.AlertDialog(
-                onDismissRequest = { showOtaDialog = false },
+                onDismissRequest = {  },
                 title = {
                     Text(
                         text = if (otaStatus == null) "Flashing firmware..." else "Firmware Update Result",
@@ -355,29 +355,50 @@ private fun uploadFirmwareFile(
             Log.d("OTALayout", "Original filename: $originalFileName, Resolved displayName: $displayName, Using: $fileName")
             Log.d("OTALayout", "FileName is : ${selectedFile}")
             
-            // Get current camera IP from CameraApiManager
-            val cameraApiManager = CameraApiManager.getInstance()
-            val currentCameraIp = cameraApiManager.getCurrentDeviceIP()
-            Log.d("OTALayout", "Using camera IP: $currentCameraIp")
+            // Get current camera IP from MotocamAPIHelperWrapper (same source as MainActivity)
+            val currentCameraIp = MotocamAPIHelperWrapper.getDeviceIpAddress()
+            
+            // Validate IP address - if empty, fail early
+            if (currentCameraIp.isEmpty()) {
+                onError("No camera IP configured. Please connect to a camera first.")
+                return@launch
+            }
+            
+            Log.d("OTALayout", "Using camera IP from MotocamAPIHelperWrapper: $currentCameraIp")
             
             // Initialize MotocamSocketClient with current camera IP
             val client = MotocamSocketClient()
-            client.init(currentCameraIp)// Use the current camera IP
-            
-            // Upload the firmware file to the web UI server (like the web interface does)
-            val uploadSuccess = client.uploadFile(
-                fileName = fileName,
-                fileBytes = fileBytes,
-                port = 80, // Use web UI server port (matching web interface)
-                fieldName = "file",
-                contentType = ContentType.Application.OctetStream
-            )
-            
-            if (uploadSuccess) {
-                Log.d("OTALayout", "Firmware file uploaded successfully")
-                onSuccess("Firmware uploaded successfully")
-            } else {
-                onError("Upload failed - server returned error")
+            try {
+                client.init(currentCameraIp) // Use the current camera IP
+                
+                // Verify the IP was set correctly
+                val verifiedIp = client.getCameraIp()
+                Log.d("OTALayout", "MotocamSocketClient IP after init: $verifiedIp")
+                if (verifiedIp != currentCameraIp) {
+                    Log.w("OTALayout", "IP mismatch! Expected: $currentCameraIp, Got: $verifiedIp")
+                    // Force set the IP if it doesn't match
+                    client.setCameraIp(currentCameraIp)
+                    Log.d("OTALayout", "IP forced to: ${client.getCameraIp()}")
+                }
+                
+                // Upload the firmware file to the web UI server (like the web interface does)
+                val uploadSuccess = client.uploadFile(
+                    fileName = fileName,
+                    fileBytes = fileBytes,
+                    port = 80, // Use web UI server port (matching web interface)
+                    fieldName = "file",
+                    contentType = ContentType.Application.OctetStream
+                )
+                
+                if (uploadSuccess) {
+                    Log.d("OTALayout", "Firmware file uploaded successfully")
+                    onSuccess("Firmware uploaded successfully")
+                } else {
+                    onError("Upload failed - server returned error")
+                }
+            } finally {
+                // Clean up the client
+                client.destroy()
             }
             
         } catch (e: Exception) {
@@ -446,10 +467,10 @@ private fun checkOTAStatus(
                         Log.d("OTALayout", "OTA status response: $it")
                         // Parse the response and show appropriate message
                         when {
-                            it.toString().contains("success", ignoreCase = true) -> {
+                            it.contains("success", ignoreCase = true) -> {
                                 onSuccess("✅ Firmware update successful. Please reboot the camera manually.")
                             }
-                            it.toString().contains("fail", ignoreCase = true) -> {
+                            it.contains("fail", ignoreCase = true) -> {
                                 onError("❌ Firmware update failed.")
                             }
                             else -> {

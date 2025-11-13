@@ -7,7 +7,8 @@ enum class CameraMode {
     HDR,
     EIS,
     BOTH,
-    OFF
+    OFF,
+    FOURK
 }
 
 /**

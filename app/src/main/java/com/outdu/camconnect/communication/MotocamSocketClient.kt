@@ -44,8 +44,8 @@ class MotocamSocketClient {
     }
 
     fun init(cameraIp: String? = null) {
-        // Set camera IP if provided, otherwise use default
-        if (cameraIp != null) {
+        // Set camera IP if provided and not empty, otherwise use default
+        if (!cameraIp.isNullOrEmpty()) {
             this.cameraIp = cameraIp
             Log.i(TAG, "Camera IP set to: $cameraIp")
         } else {
@@ -195,7 +195,7 @@ class MotocamSocketClient {
         val client = httpClient ?: throw IllegalStateException("HTTP client not initialized")
 
         Log.d(TAG,"cameraIp : ${cameraIp}")
-        val url = "http://192.168.1.165:$port/api/upload"
+        val url = "http://$cameraIp:$port/api/upload"
         Log.d(TAG, "upload url: $url")
 
         // Log payload characteristics (size, short hex preview, SHA-256 hash)

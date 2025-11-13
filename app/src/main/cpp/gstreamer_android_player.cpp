@@ -302,7 +302,7 @@ static void *app_function (void *userdata) {
     char rtsp_pipeline[1000];
     if(data->od) {
 
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=200 drop-on-latency=true ! "
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=600 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! "
                                "amcviddec-%s ! tee name=t ! "
                                "queue ! "
@@ -316,7 +316,7 @@ static void *app_function (void *userdata) {
                                "appsink max-buffers=2 drop=true name=rtspappsink",
                 g_rtsp_url2, data->avc_decoder);
     } else {
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=200 drop-on-latency=true ! "
+        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=600 drop-on-latency=true ! "
                                "rtph264depay ! h264parse ! "
                                "amcviddec-%s ! glimagesink",
                 g_rtsp_url, data->avc_decoder);
@@ -439,21 +439,38 @@ static void gst_native_pause (JNIEnv* env, jobject thiz) {
 }
 
 /* Set RTSP URL for streaming */
-static void gst_native_set_rtsp_url (JNIEnv* env, jobject thiz, jstring rtsp_url) {
-    if (rtsp_url == nullptr) {
+static void gst_native_set_camera_ip (JNIEnv* env, jobject thiz, jstring camera_ip) {
+    if (camera_ip == nullptr) {
         return;
     }
-    
-    const char* url_chars = env->GetStringUTFChars(rtsp_url, nullptr);
-    if (url_chars != nullptr) {
-        strncpy(g_rtsp_url, url_chars, sizeof(g_rtsp_url) - 1);
-        g_rtsp_url[sizeof(g_rtsp_url) - 1] = '\0'; // Ensure null termination
-        strncpy(g_rtsp_url2, url_chars, sizeof(g_rtsp_url2) - 1);
-        g_rtsp_url2[sizeof(g_rtsp_url2) - 1] = '\0'; // Ensure null termination
-        env->ReleaseStringUTFChars(rtsp_url, url_chars);
-    } else {
-        GST_ERROR ("Failed to get RTSP URL string");
+
+    const char* ip_chars = env->GetStringUTFChars(camera_ip, nullptr);
+    if (!ip_chars) {
+        return;
     }
+
+    // Validate length (avoid overflow)
+    if (strlen(ip_chars) > 100) {
+        env->ReleaseStringUTFChars(camera_ip, ip_chars);
+        return;
+    }
+
+    // Rebuild URLs keeping format constant
+    snprintf(g_rtsp_url, sizeof(g_rtsp_url),  "rtsp://onvif:test@%s/live1.sdp", ip_chars);
+    snprintf(g_rtsp_url2, sizeof(g_rtsp_url2), "rtsp://onvif:test@%s/live3.sdp", ip_chars);
+
+    env->ReleaseStringUTFChars(camera_ip, ip_chars);
+
+//    const char* url_chars = env->GetStringUTFChars(rtsp_url, nullptr);
+//    if (url_chars != nullptr) {
+//        strncpy(g_rtsp_url, url_chars, sizeof(g_rtsp_url) - 1);
+//        g_rtsp_url[sizeof(g_rtsp_url) - 1] = '\0'; // Ensure null termination
+//        strncpy(g_rtsp_url2, url_chars, sizeof(g_rtsp_url2) - 1);
+//        g_rtsp_url2[sizeof(g_rtsp_url2) - 1] = '\0'; // Ensure null termination
+//        env->ReleaseStringUTFChars(rtsp_url, url_chars);
+//    } else {
+//        GST_ERROR ("Failed to get RTSP URL string");
+//    }
 }
 
 /* Static class initializer: retrieve method and field IDs */
@@ -544,7 +561,7 @@ static JNINativeMethod native_methods[] = {
         { "nativeFinalize", "()V", (void *) gst_native_finalize},
         { "nativePlay", "(IIZZZ)V", (void *) gst_native_play},
         { "nativePause", "()V", (void *) gst_native_pause},
-        { "nativeSetRtspUrl", "(Ljava/lang/String;)V", (void *) gst_native_set_rtsp_url},
+        { "nativeSetCameraIp", "(Ljava/lang/String;)V", (void *) gst_native_set_camera_ip},
         { "nativeSurfaceInit", "(Ljava/lang/Object;)V", (void *) gst_native_surface_init},
         { "nativeSurfaceFinalize", "()V", (void *) gst_native_surface_finalize},
         { "nativeClassInit", "(J)Z", (void *) gst_native_class_init},

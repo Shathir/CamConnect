@@ -1,6 +1,5 @@
 package com.outdu.camconnect.ui.viewmodels
 
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,14 +10,14 @@ import kotlinx.coroutines.launch
 import com.outdu.camconnect.communication.MotocamAPIAndroidHelper
 
 data class HotspotConfiguration (
-    val hotspot_ssid: String = "Enter hotspot name",
-    val hotspot_password: String = "Enter Password",
+    val hotspot_ssid: String = "SaberAthena01",
+    val hotspot_password: String = "1234567890",
     val hotspot_ip_address: String = NetworkDefaults.DEFAULT_HOTSPOT_IP,
     val hotspot_subnet_mask: String = NetworkDefaults.DEFAULT_SUBNET_MASK
 )
 
 data class WifiConfiguration (
-    val wifi_ssid: String = "test_Network",
+    val wifi_ssid: String = "SaberAthena01",
     val wifi_password: String = "1234567890",
     val wifi_ip_address: String = NetworkDefaults.DEFAULT_WIFI_IP,
     val wifi_subnet_mask: String = NetworkDefaults.DEFAULT_SUBNET_MASK,
@@ -113,12 +112,12 @@ class NetworkConfigurationViewModel: ViewModel() {
         val config = _wifiState.value
         
         // Validate required fields
-        if (config.wifi_ssid.isEmpty() || config.wifi_ssid == "test_Network") {
+        if (config.wifi_ssid.isEmpty()) {
             onError("Please enter a valid SSID")
             return
         }
         
-        if (config.wifi_password.isEmpty() || config.wifi_password == "1234567890") {
+        if (config.wifi_password.isEmpty()) {
             onError("Please enter a password")
             return
         }
@@ -141,7 +140,7 @@ class NetworkConfigurationViewModel: ViewModel() {
         }
 
         scope.launch {
-            com.outdu.camconnect.communication.MotocamAPIAndroidHelper.setWifiClientAsync(
+            MotocamAPIAndroidHelper.setWifiClientAsync(
                 scope = scope,
                 ssid = config.wifi_ssid,
                 encryptionType = "WPA2", // Default encryption type

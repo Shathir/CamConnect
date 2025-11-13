@@ -36,8 +36,8 @@ object MainActivitySingleton {
         mainActivity?.nativePause()
     }
 
-    fun nativeSetRtspUrl(rtspUrl: String) {
-        mainActivity?.nativeSetRtspUrl(rtspUrl)
+    fun nativeSetCameraIp(cameraIp: String) {
+        mainActivity?.nativeSetCameraIp(cameraIp)
     }
 
     fun nativeSurfaceInit(surface: Any) {

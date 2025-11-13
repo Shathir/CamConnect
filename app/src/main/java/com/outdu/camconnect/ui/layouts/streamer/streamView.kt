@@ -623,7 +623,7 @@ fun drawOverlay(
         val labelSize = pointState.labels.size
         for (index in 0 until labelSize) {
             val labelIndex = pointState.labels[index]
-            val label = COCO_LABELS[labelIndex]
+            val label = BOAT_LABELS[labelIndex]
 
             // Scale detection coordinates from model space to screen space
             val x = pointState.pointXs[index] * viewWidth / 1920f

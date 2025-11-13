@@ -860,10 +860,10 @@ public class MotocamAPIHelper {
         if(encryptionType == null) {
             throw new Exception("Invalid encryptionType");
         }
-        byte[] ssidByteArray = ssid.getBytes();
-        byte[] encryptionKeyByteArray = encryptionKey.getBytes();
-        byte[] ipaddressByteArray = ipAddress.getBytes();
-        byte[] subnetmaskByteArray = subnetMask.getBytes();
+        byte[] ssidByteArray = ssid.trim().getBytes();
+        byte[] encryptionKeyByteArray = encryptionKey.trim().getBytes();
+        byte[] ipaddressByteArray = ipAddress.trim().getBytes();
+        byte[] subnetmaskByteArray = subnetMask.trim().getBytes();
 
         int dataLength = 1 + ssidByteArray.length + 1 + 1 + encryptionKeyByteArray.length + 1 + ipaddressByteArray.length +
                 1 + subnetmaskByteArray.length;

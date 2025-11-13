@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
     external fun nativeInit(avcDecoder: String) // Initialize native code, build pipeline, etc.
     external fun nativePause() // Set pipeline to PAUSED
     external fun nativeFinalize()
-    external fun nativeSetRtspUrl(rtspUrl: String) // Set RTSP URL for streaming
+    external fun nativeSetCameraIp(cameraIp: String) // Set RTSP URL for streaming
     external fun nativeSurfaceInit(surface: Any) // A new surface is available
     external fun nativeSurfaceFinalize() // Surface about to be destroyed
     external fun nativeLoadOdModel(
@@ -215,6 +215,35 @@ class MainActivity : ComponentActivity() {
         } else {
             Log.w("Downloads", "Downloads directory does not exist.")
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    fun find4KDecoder(mimeType: String = "video/avc"): String? {
+        val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+        val codecInfos = codecList.codecInfos
+
+        for (codecInfo in codecInfos) {
+            if (codecInfo.isEncoder) continue
+
+            val capabilities = try {
+                codecInfo.getCapabilitiesForType(mimeType)
+            } catch (e: IllegalArgumentException) {
+                continue
+            }
+
+            val videoCaps = capabilities.videoCapabilities ?: continue
+            val widthRange = videoCaps.supportedWidths
+            val heightRange = videoCaps.supportedHeights
+
+            // Check if it supports 4K (3840x2160)
+            if (widthRange.contains(3840) && heightRange.contains(2160)) {
+                Log.i("4K_DECODER", "Found decoder: ${codecInfo.name} (HW=${codecInfo.isHardwareAccelerated})")
+                return codecInfo.name
+            }
+        }
+
+        Log.w("4K_DECODER", "No explicit 4K decoder found.")
+        return null
     }
 
 
@@ -361,9 +390,9 @@ class MainActivity : ComponentActivity() {
             
             // Set RTSP URL for GStreamer pipeline
             try {
-                val rtspUrl = cameraRtspUrl ?: "rtsp://onvif:test@$cameraIp/live1.sdp"
-                nativeSetRtspUrl(rtspUrl)
-                Log.i("MainActivity", "RTSP URL set to: $rtspUrl")
+                val CameraIp = cameraIp ?: "192.168.2.1"
+                nativeSetCameraIp(CameraIp)
+                Log.i("MainActivity", "Camera IP set to: $CameraIp")
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error setting RTSP URL", e)
             }
