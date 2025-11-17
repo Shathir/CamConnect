@@ -48,6 +48,12 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.Settings
 import com.outdu.camconnect.security.MandatoryPermissionManager
+import com.outdu.camconnect.profiler.selectBestDecoder
+import android.app.ActivityManager
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import kotlin.system.exitProcess
 
 data class OverlayPoints(
     var labels: IntArray,
@@ -199,6 +205,47 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun showUnsupportedDeviceDialog() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Device Not Supported")
+            .setMessage("Your device does not support HEVC (H.265) video decoding, which is required for this application. The application will now exit.")
+            .setPositiveButton("OK") { _, _ ->
+                exitApp()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun exitApp() {
+        try {
+            // 1. Stop native pipeline first (CRITICAL)
+            try {
+                nativePause()
+                nativeSurfaceFinalize()
+                nativeFinalize()
+            } catch (_: Exception) {}
+
+            // 2. Clear static/singleton references
+            MainActivitySingleton.clearMainActivity()
+
+            // 3. Remove task from recent apps
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                finishAndRemoveTask()
+            } else {
+                finishAffinity()
+            }
+
+            // 4. Kill process FORCEFULLY
+            android.os.Process.killProcess(android.os.Process.myPid())
+            exitProcess(0)
+
+        } catch (e: Exception) {
+            Log.e("EXIT", "Exit error", e)
+            // emergency exit fallback
+            Runtime.getRuntime().exit(0)
+        }
+    }
+
     // Public function to request location permissions from UI
     fun requestLocationPermissions() {
         checkAndRequestPermissions()
@@ -217,34 +264,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
-    fun find4KDecoder(mimeType: String = "video/avc"): String? {
-        val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
-        val codecInfos = codecList.codecInfos
 
-        for (codecInfo in codecInfos) {
-            if (codecInfo.isEncoder) continue
-
-            val capabilities = try {
-                codecInfo.getCapabilitiesForType(mimeType)
-            } catch (e: IllegalArgumentException) {
-                continue
-            }
-
-            val videoCaps = capabilities.videoCapabilities ?: continue
-            val widthRange = videoCaps.supportedWidths
-            val heightRange = videoCaps.supportedHeights
-
-            // Check if it supports 4K (3840x2160)
-            if (widthRange.contains(3840) && heightRange.contains(2160)) {
-                Log.i("4K_DECODER", "Found decoder: ${codecInfo.name} (HW=${codecInfo.isHardwareAccelerated})")
-                return codecInfo.name
-            }
-        }
-
-        Log.w("4K_DECODER", "No explicit 4K decoder found.")
-        return null
-    }
 
 
     private var actualCodecName: String = ""
@@ -268,22 +288,52 @@ class MainActivity : ComponentActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        val mediaCodecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
-        val codecInfos: Array<MediaCodecInfo> = mediaCodecList.codecInfos
-        for (codecInfo in codecInfos) {
-            Log.i("CODECLISTS", codecInfo.name + codecInfo.isHardwareAccelerated)
-        }
-        val codecName = mediaCodecList.findDecoderForFormat(
-            MediaFormat.createVideoFormat(
-                "video/avc",
-                1920,
-                1080
+        // Select best available HEVC (h265) decoder with priority: 4K HEVC > 2K HEVC
+        val decoderResult = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            selectBestDecoder()
+        } else {
+            // For Android < Q, try to find HEVC decoder using old method
+            val mediaCodecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+            // Try 4K first
+            val codecName4K = mediaCodecList.findDecoderForFormat(
+                MediaFormat.createVideoFormat(
+                    "video/hevc",
+                    3840,
+                    2160
+                )
             )
-        )
-        Log.i("CODECLISTS", "codecName is : $codecName")
-        actualCodecName = codecName.replace(".", "").lowercase(Locale.getDefault())
-
+            if (codecName4K != null) {
+                codecName4K to "4K"
+            } else {
+                // Try 2K
+                val codecName2K = mediaCodecList.findDecoderForFormat(
+                    MediaFormat.createVideoFormat(
+                        "video/hevc",
+                        1920,
+                        1080
+                    )
+                )
+                if (codecName2K != null) {
+                    codecName2K to "2K"
+                } else {
+                    null
+                }
+            }
+        }
+        
         super.onCreate(savedInstanceState)
+        
+        if (decoderResult != null) {
+            val (codecName, resolution) = decoderResult
+            actualCodecName = codecName.replace(".", "").lowercase(Locale.getDefault())
+            Log.i("CODECLISTS", "Selected decoder: $codecName (resolution: $resolution)")
+            Log.i("CODECLISTS", "Normalized codec name: $actualCodecName")
+        } else {
+            // No HEVC decoder available - show error dialog and exit
+            Log.e("CODECLISTS", "No HEVC decoder found - device not supported")
+            showUnsupportedDeviceDialog()
+            return
+        }
         enableEdgeToEdge()
 
         listDownloadsLegacy()

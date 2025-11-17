@@ -53,9 +53,9 @@ fun OptionButton(
             )
             .background(
                 when {
-                    !enabled -> if(!isDarkTheme) Color(0xFFE2E8F0) else Color(0xFF2C2C2C) // Disabled state background
+                    !enabled -> if (!isDarkTheme) Color(0xFFE2E8F0) else Color(0xFF2C2C2C) // Disabled state background
                     isRed && isSelected -> Color(0xFFF43823)
-                    isSelected -> if(!isDarkTheme) Color(0xFFD7D7D7) else Color(0xFF515151)
+                    isSelected -> if (!isDarkTheme) Color(0xFFD7D7D7) else Color(0xFF515151)
                     else -> DarkBackground3
                 }
             )
@@ -64,38 +64,42 @@ fun OptionButton(
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier.padding(if(deviceType == DeviceType.TABLET)16.dp else 8.dp),
+            modifier = Modifier.padding(if (deviceType == DeviceType.TABLET) 16.dp else 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
 //            if (isSelected && !isRed) {
-                Icon(
-                    painter = painterResource(iconVal),
-                    contentDescription = null,
-                    tint = if(!enabled) {
-                        if(!isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF666666)
-                    } else if(isSelected) {
-                        if(!isDarkTheme) if(isRed) Color.White else Color(0xFF222222) else Color(0xFFFFFFFF)
-                    } else {
-                        if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)
-                    }
-                ,
-                    modifier = Modifier.size(if(deviceType == DeviceType.TABLET) (24.dp) else (16.dp))
-                        .padding(1.dp)
-                )
+            Icon(
+                painter = painterResource(iconVal),
+                contentDescription = null,
+                tint = if (!enabled) {
+                    if (!isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF666666)
+                } else if (isSelected) {
+                    if (!isDarkTheme) if (isRed) Color.White else Color(0xFF222222) else Color(
+                        0xFFFFFFFF
+                    )
+                } else {
+                    if (!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)
+                },
+                modifier = Modifier
+                    .size(if (deviceType == DeviceType.TABLET) (24.dp) else (16.dp))
+                    .padding(1.dp)
+            )
 //            }
             Text(
                 text = text,
                 style = TextStyle(
-                    fontSize = if(deviceType == DeviceType.TABLET) 18.sp else 12.sp,
+                    fontSize = if (deviceType == DeviceType.TABLET) 18.sp else 12.sp,
                     fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                     fontWeight = FontWeight(400),
-                    color = if(!enabled) {
-                        if(!isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF666666)
-                    } else if(isSelected) {
-                        if(!isDarkTheme) if (isRed) Color(0xFFFFFFFF) else Color(0xFF222222) else Color(0xFFFFFFFF)
+                    color = if (!enabled) {
+                        if (!isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF666666)
+                    } else if (isSelected) {
+                        if (!isDarkTheme) if (isRed) Color(0xFFFFFFFF) else Color(0xFF222222) else Color(
+                            0xFFFFFFFF
+                        )
                     } else {
-                        if(!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)
+                        if (!isDarkTheme) Color(0xFFAEAEAE) else Color(0xFF8E8E8E)
                     }
                 ),
                 maxLines = 1
@@ -196,7 +200,7 @@ fun CameraLayout(
                     Text(
                         text = "Display Modes",
                         style = TextStyle(
-                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                            fontSize = if (deviceType == DeviceType.TABLET) 16.sp else 14.sp,
                             lineHeight = 14.02.sp,
                             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                             fontWeight = FontWeight(500),
@@ -244,7 +248,7 @@ fun CameraLayout(
                     Text(
                         text = "Camera Capture",
                         style = TextStyle(
-                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                            fontSize = if (deviceType == DeviceType.TABLET) 16.sp else 14.sp,
                             lineHeight = 14.02.sp,
                             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                             fontWeight = FontWeight(500),
@@ -255,7 +259,7 @@ fun CameraLayout(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OptionButton(
-                            text = if(currentVisionMode == VisionMode.BOTH) "Color" else "EIS",
+                            text = if (currentVisionMode == VisionMode.BOTH) "Color" else "EIS",
                             isSelected = if (currentVisionMode == VisionMode.BOTH) {
                                 // In Low Light mode, Color button is selected when camera mode is OFF
                                 currentCameraMode == CameraMode.OFF
@@ -274,10 +278,10 @@ fun CameraLayout(
                             },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.git_commit_line,
-//                            enabled = currentCameraMode != CameraMode.FOURK
+                            enabled = currentCameraMode != CameraMode.FOURK
                         )
                         OptionButton(
-                            text = if(currentVisionMode == VisionMode.BOTH) "Mono" else "HDR",
+                            text = if (currentVisionMode == VisionMode.BOTH) "Mono" else "HDR",
                             isSelected = if (currentVisionMode == VisionMode.BOTH) {
                                 // In Low Light mode, Mono button is selected when camera mode is BOTH
                                 currentCameraMode == CameraMode.BOTH
@@ -303,28 +307,26 @@ fun CameraLayout(
                             enabled = currentCameraMode != CameraMode.FOURK
                         )
                         // 4K button - only show in Visible and IR modes
-//                        if (currentVisionMode == VisionMode.VISION || currentVisionMode == VisionMode.INFRARED) {
-//                            OptionButton(
-//                                text = "4K",
-//                                isSelected = currentCameraMode == CameraMode.FOURK,
-//                                onClick = {
-//                                    viewModel.toggleCameraMode(CameraMode.FOURK)
-//                                },
-//                                modifier = Modifier.weight(1f),
-//                                iconVal = R.drawable.hd_line,
-//                                enabled = true
-//                            )
-//                        }
+                        if (currentVisionMode == VisionMode.VISION || currentVisionMode == VisionMode.INFRARED) {
+                            OptionButton(
+                                text = "4K",
+                                isSelected = currentCameraMode == CameraMode.FOURK,
+                                onClick = {
+                                    viewModel.toggleCameraMode(CameraMode.FOURK)
+                                },
+                                modifier = Modifier.weight(1f),
+                                iconVal = R.drawable.hd_line,
+                                enabled = true
+                            )
+                        }
                     }
                 }
-
-
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
-            ){
+            ) {
                 // Orientation section
                 Column(
                     modifier = Modifier.weight(1f),
@@ -333,7 +335,7 @@ fun CameraLayout(
                     Text(
                         text = "Orientation",
                         style = TextStyle(
-                            fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                            fontSize = if (deviceType == DeviceType.TABLET) 16.sp else 14.sp,
                             lineHeight = 14.02.sp,
                             fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                             fontWeight = FontWeight(500),
@@ -344,7 +346,7 @@ fun CameraLayout(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OptionButton(
-                            text = if(deviceType == DeviceType.TABLET) "Flip Vertical" else "Flip",
+                            text = if (deviceType == DeviceType.TABLET) "Flip Vertical" else "Flip",
                             isSelected = currentOrientationMode == OrientationMode.FLIP || currentOrientationMode == OrientationMode.BOTH,
                             onClick = { viewModel.toggleOrientationMode(OrientationMode.FLIP) },
                             modifier = Modifier.weight(1f),
@@ -365,11 +367,11 @@ fun CameraLayout(
             Text(
                 text = "To Activate Zoom Control, Disable HDR & EIS",
                 style = TextStyle(
-                    fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                    fontSize = if (deviceType == DeviceType.TABLET) 16.sp else 14.sp,
                     lineHeight = 10.51.sp,
                     fontFamily = FontFamily(Font(R.font.just_sans_regular)),
                     fontWeight = FontWeight(500),
-                    color = if(isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF777777)
+                    color = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF777777)
                 )
             )
         }

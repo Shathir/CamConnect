@@ -16,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -30,16 +29,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
 import com.outdu.camconnect.R
+import com.outdu.camconnect.profiler.classifyPerformance
+import com.outdu.camconnect.profiler.estimatePerformanceScore
+import com.outdu.camconnect.profiler.getDeviceSpecs
+import com.outdu.camconnect.profiler.getPerformanceMessage
+import com.outdu.camconnect.profiler.PerformanceTier
 import com.outdu.camconnect.services.OnvifDevice
 import com.outdu.camconnect.viewmodels.ViewerFlowViewModel
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
+import android.util.Log
+
 
 /**
  * Main screen for the Viewer Flow
@@ -273,6 +278,41 @@ private fun StartStreamingSection(
                 )
             }
         }
+
+
+        val specs = getDeviceSpecs(LocalContext.current)
+        val score = estimatePerformanceScore(specs)
+        val tier = classifyPerformance(score)
+        val message = getPerformanceMessage(tier)
+
+        Log.d("ViewerFlow1", "Performance score: $score")
+        Log.d("ViewerFlow1", "Performance tier: $tier")
+        Log.d("ViewerFlow1", "Performance message: $message")
+
+        var showMessage by remember { mutableStateOf(false) }
+        LaunchedEffect(message) {
+            showMessage = true
+        }
+
+        if(showMessage) {
+            val textColor = when (tier) {
+                PerformanceTier.LOW, PerformanceTier.CRITICAL -> Color(0xFFFF3B30) // Red
+                else -> Color(0xFF1A1A1C) // Black
+            }
+            
+            Text(
+                text = message,
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    fontFamily = FontFamily(Font(R.font.arial_regular)),
+                    fontWeight = FontWeight(700),
+                    color = textColor
+                ),
+                modifier = Modifier.fillMaxWidth(0.8f),
+                textAlign = TextAlign.Center
+            )
+        }
+
         
         // Error message
         if (errorMessage != null) {

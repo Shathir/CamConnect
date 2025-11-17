@@ -2,6 +2,7 @@ package com.outdu.camconnect.profiler
 
 import android.app.ActivityManager
 import android.content.Context
+import android.media.MediaCodecList
 import android.opengl.EGL14
 import android.opengl.EGLConfig
 import android.opengl.EGLContext
@@ -10,6 +11,7 @@ import android.opengl.EGLSurface
 import android.opengl.GLES20
 import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import java.io.File
 
 data class DeviceSpecs(
@@ -466,12 +468,118 @@ fun classifyPerformance(score: Int): PerformanceTier {
 fun getPerformanceMessage(tier: PerformanceTier): String {
     return when (tier) {
         PerformanceTier.HIGH ->
-            "Your device is well-suited for this app. Expect smooth performance with ~10 FPS during object detection."
+                    "Your device is well-equipped for high-resolution streaming and on-device AI. Expect smooth performance with ~10 FPS AI processing."
         PerformanceTier.MEDIUM ->
-            "Your device can handle this app fairly well, but heavy operations may slow down. Expected FPS: ~7-8 FPS."
+            "Your device can handle moderate AI workloads reliably. Heavy operations may reduce responsiveness. Expected AI FPS: ~7–8 FPS."
         PerformanceTier.LOW ->
-            "Your device may struggle with performance. Expect frame drops and higher battery use. Expected FPS: ~4-5 FPS."
+            "Your device may struggle with continuous AI processing.You may notice frame drops and increased power usage. Expected AI FPS: ~4–5 FPS."
         PerformanceTier.CRITICAL ->
-            "This device's hardware is below recommended specs. Performance will likely be poor with ~3 FPS during object detection."
+            "Your device’s hardware falls below the recommended level for smooth AI-assisted streaming.Performance may be degraded. Expected AI FPS: ~3 FPS."
     }
+}
+
+@RequiresApi(Build.VERSION_CODES.Q)
+fun find4KDecoder(mimeType: String = "video/avc"): String? {
+    val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+    val codecInfos = codecList.codecInfos
+
+    for (codecInfo in codecInfos) {
+        if (codecInfo.isEncoder) continue
+
+        val capabilities = try {
+            codecInfo.getCapabilitiesForType(mimeType)
+        } catch (e: IllegalArgumentException) {
+            continue
+        }
+
+        val videoCaps = capabilities.videoCapabilities ?: continue
+        val widthRange = videoCaps.supportedWidths
+        val heightRange = videoCaps.supportedHeights
+
+        // Check if it supports 4K (3840x2160)
+        if (widthRange.contains(3840) && heightRange.contains(2160)) {
+            Log.i("4K_DECODER", "Found decoder: ${codecInfo.name} (HW=${codecInfo.isHardwareAccelerated})")
+            return codecInfo.name
+        }
+    }
+
+    Log.w("4K_DECODER", "No explicit 4K decoder found.")
+    return null
+}
+
+@RequiresApi(Build.VERSION_CODES.Q)
+fun find4KDecoders(): Map<String, String> {
+    val mimeTypes = listOf("video/avc", "video/hevc")
+    val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+
+    return mimeTypes.mapNotNull { mime ->
+        codecList.codecInfos
+            .asSequence()
+            .filter { !it.isEncoder }
+            .mapNotNull { info ->
+                val caps = runCatching { info.getCapabilitiesForType(mime) }.getOrNull() ?: return@mapNotNull null
+                val video = caps.videoCapabilities ?: return@mapNotNull null
+                if (video.supportedWidths.contains(3840) && video.supportedHeights.contains(2160))
+                    mime to info.name
+                else null
+            }
+            .firstOrNull()
+    }.toMap()
+}
+
+@RequiresApi(Build.VERSION_CODES.Q)
+fun find2KDecoders(): Map<String, String> {
+    val mimeTypes = listOf("video/avc", "video/hevc")
+    val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+
+    return mimeTypes.mapNotNull { mime ->
+        codecList.codecInfos
+            .asSequence()
+            .filter { !it.isEncoder }
+            .mapNotNull { info ->
+                val caps = runCatching { info.getCapabilitiesForType(mime) }.getOrNull() ?: return@mapNotNull null
+                val video = caps.videoCapabilities ?: return@mapNotNull null
+                // Check for 2K support (1920x1080)
+                if (video.supportedWidths.contains(1920) && video.supportedHeights.contains(1080))
+                    mime to info.name
+                else null
+            }
+            .firstOrNull()
+    }.toMap()
+}
+
+/**
+ * Selects the best available HEVC (h265) decoder with priority:
+ * 1. 4K HEVC (h265)
+ * 2. 2K HEVC (h265)
+ * 
+ * Returns a Pair of (codecName, resolution) where resolution is "4K" or "2K"
+ * Returns null if no HEVC decoder is available
+ */
+@RequiresApi(Build.VERSION_CODES.Q)
+fun selectBestDecoder(): Pair<String, String>? {
+    Log.d("SpecProfiler", "Selecting best HEVC decoder...")
+    
+    // Try 4K HEVC decoder first
+    val decoders4K = find4KDecoders()
+    Log.d("SpecProfiler", "4K decoders found: $decoders4K")
+    
+    // Priority 1: 4K HEVC (h265)
+    decoders4K["video/hevc"]?.let { codecName ->
+        Log.i("SpecProfiler", "Selected: 4K HEVC decoder - $codecName")
+        return codecName to "4K"
+    }
+    
+    // Fallback to 2K HEVC decoder
+    val decoders2K = find2KDecoders()
+    Log.d("SpecProfiler", "2K decoders found: $decoders2K")
+    
+    // Priority 2: 2K HEVC (h265)
+    decoders2K["video/hevc"]?.let { codecName ->
+        Log.i("SpecProfiler", "Selected: 2K HEVC decoder - $codecName")
+        return codecName to "2K"
+    }
+    
+    Log.w("SpecProfiler", "No HEVC decoder found (neither 4K nor 2K)")
+    return null
 }

@@ -303,7 +303,7 @@ static void *app_function (void *userdata) {
     if(data->od) {
 
         sprintf(rtsp_pipeline, "rtspsrc location=%s latency=600 drop-on-latency=true ! "
-                               "rtph264depay ! h264parse ! "
+                               "rtph265depay ! h265parse ! "
                                "amcviddec-%s ! tee name=t ! "
                                "queue ! "
                                "glimagesink t. ! "
@@ -316,12 +316,10 @@ static void *app_function (void *userdata) {
                                "appsink max-buffers=2 drop=true name=rtspappsink",
                 g_rtsp_url2, data->avc_decoder);
     } else {
-        sprintf(rtsp_pipeline, "rtspsrc location=%s latency=600 drop-on-latency=true ! "
-                               "rtph264depay ! h264parse ! "
+        sprintf(rtsp_pipeline, "rtspsrc location=%s do-retransmission=false protocols=GST_RTSP_LOWER_TRANS_UDP latency=600 drop-on-latency=true ! "
+                               "rtph265depay ! h265parse ! "
                                "amcviddec-%s ! glimagesink",
                 g_rtsp_url, data->avc_decoder);
-
-
     }
     data->pipeline = gst_parse_launch(rtsp_pipeline, &error);
     if (error) {
@@ -331,7 +329,6 @@ static void *app_function (void *userdata) {
         g_free (message);
         return nullptr;
     }
-
 
     if(data->od) {
         data->app_sink = gst_bin_get_by_name(GST_BIN(data->pipeline), "rtspappsink");

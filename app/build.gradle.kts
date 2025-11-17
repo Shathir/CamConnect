@@ -62,6 +62,20 @@ android {
         disable += "NullSafeMutableLiveData"
     }
 
+//    flavorDimensions("aiMode")
+//
+//    productFlavors {
+//        create("generic") {
+//            dimension = "aiMode"
+//            applicationIdSuffix = ".generic"
+//        }
+//
+//        create("marine"){
+//            dimension = "aiMode"
+//            applicationIdSuffix = ".marine"
+//        }
+//    }
+
     buildTypes {
         debug {
             isDebuggable = true

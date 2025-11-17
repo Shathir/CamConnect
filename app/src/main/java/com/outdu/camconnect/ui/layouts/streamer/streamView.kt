@@ -16,14 +16,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.rememberSplineBasedDecay
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.drag
-import androidx.compose.foundation.gestures.forEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,18 +33,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.viewinterop.AndroidView
-import com.outdu.camconnect.communication.Data
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import android.graphics.Typeface
 import com.outdu.camconnect.singleton.MainActivitySingleton
 import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.utils.MemoryManager
@@ -60,10 +52,6 @@ import com.outdu.camconnect.OverlayPoints
 import com.outdu.camconnect.ui.modelLabels.BOAT_LABELS
 import com.outdu.camconnect.ui.modelLabels.COCO_LABELS
 import com.outdu.camconnect.communication.CameraConfigurationManager
-import com.outdu.camconnect.profiler.classifyPerformance
-import com.outdu.camconnect.profiler.estimatePerformanceScore
-import com.outdu.camconnect.profiler.getDeviceSpecs
-import com.outdu.camconnect.profiler.getPerformanceMessage
 
 @Composable
 fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
@@ -122,7 +110,6 @@ fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
                                     Log.i("Data values : ", CameraConfigurationManager.isObjectDetectionEnabled().toString())
                                     MemoryManager.registerSurface(holder.surface)
                                     MainActivitySingleton.nativeSurfaceInit(holder.surface)
-                                    val recording_path = MainActivitySingleton.getRecordingPath()
                                     Log.i("Gstreamer MainActivity", "Playing Stream")
                                     MainActivitySingleton.nativePlay(
                                         width = width, 
@@ -525,30 +512,155 @@ fun ZoomableVideoTextureView(
         )
 
 
-        // --- Overlay Layer (SurfaceView) ---
-        AndroidView(
-            factory = { context ->
-                SurfaceView(context).apply {
-                    // Use setZOrderMediaOverlay instead of setZOrderOnTop
-                    // This makes the overlay appear above the video but below other UI elements
-                    setZOrderOnTop(true)
-                    holder.setFormat(PixelFormat.TRANSPARENT)
-                    overlaySurfaceView = this
-                }
-            },
-            modifier = Modifier
-                .graphicsLayer {
-                    scaleX = animatedScale.value
-                    scaleY = animatedScale.value
-                    translationX = animatedOffset.value.x
-                    translationY = animatedOffset.value.y
-                }
-                .fillMaxSize()
-        )
+        // --- Detection Overlay (Compose Canvas) ---
+        // This overlay is drawn as a Compose element so it respects z-ordering
+        // and appears below UI elements but above the video stream
+        if (viewSize.width > 0 && viewSize.height > 0) {
+            Canvas(
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = animatedScale.value
+                        scaleY = animatedScale.value
+                        translationX = animatedOffset.value.x
+                        translationY = animatedOffset.value.y
+                    }
+                    .fillMaxSize()
+            ) {
+                val labelSize = pointState.value.labels.size
+                if (labelSize > 0) {
+                    drawIntoCanvas { canvas ->
+                        val boxPaint = Paint().apply {
+                            style = Paint.Style.STROKE
+                            strokeWidth = 6f
+                            color = android.graphics.Color.RED
+                            isAntiAlias = true
+                        }
 
-        LaunchedEffect(pointState.value) {
-            overlaySurfaceView?.holder?.let {
-                drawOverlay(it, pointState.value, viewSize.width, viewSize.height)
+                        val textPaint = Paint().apply {
+                            style = Paint.Style.FILL
+                            textSize = 48f
+                            color = android.graphics.Color.RED
+                            isAntiAlias = true
+                            typeface = Typeface.DEFAULT_BOLD
+                        }
+
+                        for (index in 0 until labelSize) {
+                            val labelIndex = pointState.value.labels[index]
+                            val label = BOAT_LABELS[labelIndex]
+
+                            // Scale detection coordinates from model space to screen space
+                            val x = pointState.value.pointXs[index] * size.width / 1920f
+                            val y = pointState.value.pointYs[index] * size.height / 1080f
+                            val w = pointState.value.pointWs[index] * size.width / 1920f
+                            val h = pointState.value.pointHs[index] * size.height / 1080f
+
+                            val left = x
+                            val top = y
+                            val right = x + w
+                            val bottom = y + h
+
+                            // Optional: color based on depth threshold
+                            val depThresh = pointState.value.depThres.getOrNull(index)
+                            val isDanger = depThresh != null && depThresh > CameraConfigurationManager.getDepthSensingThreshold()
+
+                            boxPaint.color = if (isDanger) android.graphics.Color.RED else android.graphics.Color.YELLOW
+                            textPaint.color = boxPaint.color
+
+                            // Draw the bounding box
+                            canvas.nativeCanvas.drawRect(left, top, right, bottom, boxPaint)
+
+                            // Draw the label text position dynamically
+                            val textY = if (top - textPaint.textSize - 4f < 0f) {
+                                // Not enough space above → draw inside the box
+                                top + textPaint.textSize + 4f
+                            } else {
+                                // Enough space above → draw above the box
+                                top - 8f
+                            }
+
+                            // Draw the label just above the top-left corner of the box
+                            canvas.nativeCanvas.drawText(label, left + 8f, textY, textPaint)
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- AI Region Mask (Compose Canvas) ---
+        // This mask is drawn as a Compose element so it respects z-ordering
+        // and appears below UI elements but above the video stream
+        val isAiEnabled = CameraConfigurationManager.isObjectDetectionEnabled()
+        if (isAiEnabled && viewSize.width > 0 && viewSize.height > 0) {
+            Canvas(
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = animatedScale.value
+                        scaleY = animatedScale.value
+                        translationX = animatedOffset.value.x
+                        translationY = animatedOffset.value.y
+                    }
+                    .fillMaxSize()
+            ) {
+                // Stream dimensions when AI is enabled: 1280x720
+                // AI processing region: 720x720 (centered horizontally)
+                val streamWidth = 1280f
+                val streamHeight = 720f
+                val aiRegionWidth = 720f
+                val aiRegionHeight = 720f
+                
+                // Calculate AI region bounds in stream coordinates
+                val aiLeftStream = (streamWidth - aiRegionWidth) / 2f  // 280
+                val aiRightStream = aiLeftStream + aiRegionWidth       // 1000
+                val aiTopStream = 0f
+                val aiBottomStream = aiRegionHeight                    // 720
+                
+                // Scale to view coordinates
+                val scaleX = size.width / streamWidth
+                val scaleY = size.height / streamHeight
+                
+                val aiLeftView = aiLeftStream * scaleX
+                val aiRightView = aiRightStream * scaleX
+                val aiTopView = aiTopStream * scaleY
+                val aiBottomView = aiBottomStream * scaleY
+                
+                // Draw mask with 90% transparency (10% opacity)
+                val maskColor = Color.Black.copy(alpha = 0.4f)
+                
+                // Draw left mask (region before AI processing area)
+                if (aiLeftView > 0) {
+                    drawRect(
+                        color = maskColor,
+                        topLeft = Offset(0f, 0f),
+                        size = androidx.compose.ui.geometry.Size(aiLeftView, size.height)
+                    )
+                }
+                
+                // Draw right mask (region after AI processing area)
+                if (aiRightView < size.width) {
+                    drawRect(
+                        color = maskColor,
+                        topLeft = Offset(aiRightView, 0f),
+                        size = androidx.compose.ui.geometry.Size(size.width - aiRightView, size.height)
+                    )
+                }
+                
+                // Draw top mask (if AI region doesn't start at top)
+                if (aiTopView > 0) {
+                    drawRect(
+                        color = maskColor,
+                        topLeft = Offset(aiLeftView, 0f),
+                        size = androidx.compose.ui.geometry.Size(aiRightView - aiLeftView, aiTopView)
+                    )
+                }
+                
+                // Draw bottom mask (if AI region doesn't extend to bottom)
+                if (aiBottomView < size.height) {
+                    drawRect(
+                        color = maskColor,
+                        topLeft = Offset(aiLeftView, aiBottomView),
+                        size = androidx.compose.ui.geometry.Size(aiRightView - aiLeftView, size.height - aiBottomView)
+                    )
+                }
             }
         }
     }
