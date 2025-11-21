@@ -26,6 +26,20 @@ class AiConfigurationViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(AiConfigurationUiState())
     val uiState: StateFlow<AiConfigurationUiState> = _uiState.asStateFlow()
     
+    // Store the original loaded state to compare against
+    private var originalState: AiConfigurationUiState? = null
+    
+    // Helper function to check if current state differs from original
+    private fun hasChanges(currentState: AiConfigurationUiState): Boolean {
+        val original = originalState ?: return false
+        return currentState.far != original.far ||
+               currentState.od != original.od ||
+               currentState.ds != original.ds ||
+               currentState.audio != original.audio ||
+               currentState.model != original.model ||
+               currentState.dsThreshold != original.dsThreshold
+    }
+    
     fun loadConfiguration(context: Context) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
@@ -33,7 +47,7 @@ class AiConfigurationViewModel : ViewModel() {
             val result = CameraConfigurationManager.loadConfigurationAsync(context)
             result.fold(
                 onSuccess = { config ->
-                    _uiState.value = AiConfigurationUiState(
+                    val loadedState = AiConfigurationUiState(
                         far = config.farDetectionEnabled,
                         od = config.objectDetectionEnabled,
                         ds = config.depthSensingEnabled,
@@ -43,6 +57,8 @@ class AiConfigurationViewModel : ViewModel() {
                         isLoading = false,
                         hasUnsavedChanges = false
                     )
+                    originalState = loadedState
+                    _uiState.value = loadedState
                 },
                 onFailure = { exception ->
                     _uiState.value = _uiState.value.copy(
@@ -56,50 +72,38 @@ class AiConfigurationViewModel : ViewModel() {
     
     fun updateOD(enabled: Boolean) {
         val currentState = _uiState.value
-        _uiState.value = currentState.copy(
-            od = enabled,
-            hasUnsavedChanges = true
-        )
+        val newState = currentState.copy(od = enabled)
+        _uiState.value = newState.copy(hasUnsavedChanges = hasChanges(newState))
     }
     
     fun updateFAR(enabled: Boolean) {
         val currentState = _uiState.value
-        _uiState.value = currentState.copy(
-            far = enabled,
-            hasUnsavedChanges = true
-        )
+        val newState = currentState.copy(far = enabled)
+        _uiState.value = newState.copy(hasUnsavedChanges = hasChanges(newState))
     }
     
     fun updateDS(enabled: Boolean) {
         val currentState = _uiState.value
-        _uiState.value = currentState.copy(
-            ds = enabled,
-            hasUnsavedChanges = true
-        )
+        val newState = currentState.copy(ds = enabled)
+        _uiState.value = newState.copy(hasUnsavedChanges = hasChanges(newState))
     }
     
     fun updateAudio(enabled: Boolean) {
         val currentState = _uiState.value
-        _uiState.value = currentState.copy(
-            audio = enabled,
-            hasUnsavedChanges = true
-        )
+        val newState = currentState.copy(audio = enabled)
+        _uiState.value = newState.copy(hasUnsavedChanges = hasChanges(newState))
     }
     
     fun updateModel(version: Int) {
         val currentState = _uiState.value
-        _uiState.value = currentState.copy(
-            model = version,
-            hasUnsavedChanges = true
-        )
+        val newState = currentState.copy(model = version)
+        _uiState.value = newState.copy(hasUnsavedChanges = hasChanges(newState))
     }
     
     fun updateDsThreshold(threshold: Float) {
         val currentState = _uiState.value
-        _uiState.value = currentState.copy(
-            dsThreshold = threshold,
-            hasUnsavedChanges = true
-        )
+        val newState = currentState.copy(dsThreshold = threshold)
+        _uiState.value = newState.copy(hasUnsavedChanges = hasChanges(newState))
     }
     
     fun saveConfiguration(context: Context, onSuccess: () -> Unit = {}) {
@@ -119,11 +123,13 @@ class AiConfigurationViewModel : ViewModel() {
             val result = CameraConfigurationManager.updateConfiguration(context, config)
             result.fold(
                 onSuccess = {
-                    _uiState.value = currentState.copy(
+                    val savedState = currentState.copy(
                         isLoading = false,
                         hasUnsavedChanges = false,
                         errorMessage = null
                     )
+                    originalState = savedState
+                    _uiState.value = savedState
                     onSuccess()
                 },
                 onFailure = { exception ->

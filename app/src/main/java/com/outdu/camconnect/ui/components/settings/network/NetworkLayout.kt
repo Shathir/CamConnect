@@ -47,7 +47,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.R
@@ -66,7 +65,8 @@ import com.outdu.camconnect.auth.SessionManager
 import android.content.Intent
 import android.app.Activity
 import com.outdu.camconnect.SetupActivity
-import kotlinx.coroutines.launch
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 import kotlinx.coroutines.delay
 
 
@@ -129,21 +129,23 @@ fun ModeButtonRow(
     onModeChange: (DeviceMode) -> Unit
 ) {
     val isDarkTheme = isSystemInDarkTheme()
-    
+    val deviceType = rememberDeviceType()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(78.dp),
+            .height(if(deviceType == DeviceType.TABLET) 78.dp else 48.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         ModeButton(
+            modifier = Modifier.weight(1f),
             text = "Hotspot Mode",
             isSelected = deviceMode == DeviceMode.HOTSPOT,
             onClick = { if (deviceMode != DeviceMode.HOTSPOT) onModeChange(DeviceMode.HOTSPOT) },
             isDarkTheme = isDarkTheme
         )
         ModeButton(
+            modifier = Modifier.weight(1f),
             text = "Device Mode",
             isSelected = deviceMode == DeviceMode.DEVICE,
             onClick = { if (deviceMode != DeviceMode.DEVICE) onModeChange(DeviceMode.DEVICE) },
@@ -154,6 +156,7 @@ fun ModeButtonRow(
 
 @Composable
 private fun ModeButton(
+    modifier : Modifier,
     text: String,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -162,10 +165,9 @@ private fun ModeButton(
     val backgroundColor = getModeButtonBackgroundColor(isSelected, isDarkTheme)
     val textColor = if (isSelected) Color.White else Color(0xFF1A1A1C)
     val borderColor = if (isSelected) StravionBlue else ButtonBorderColor
-    
+    val deviceType = rememberDeviceType()
     Box(
-        modifier = Modifier
-//            .weight(1f)
+        modifier = modifier
             .fillMaxHeight()
             .clip(RoundedCornerShape(16.dp))
             .border(
@@ -180,7 +182,7 @@ private fun ModeButton(
         Text(
             text = text,
             style = TextStyle(
-                fontSize = 24.sp,
+                fontSize = if(deviceType == DeviceType.TABLET) 24.sp else 14.sp,
                 fontWeight = FontWeight(500),
                 fontFamily = FontFamily(Font(R.font.arial_regular)),
                 color = textColor
@@ -381,6 +383,7 @@ private fun ActionButton(
     text: String,
     onClick: () -> Unit
 ) {
+    val deviceType = rememberDeviceType()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -393,7 +396,7 @@ private fun ActionButton(
         Text(
             text = text,
             style = TextStyle(
-                fontSize = 24.sp,
+                fontSize = if(deviceType == DeviceType.TABLET) 24.sp else 14.sp,
                 fontWeight = FontWeight.Normal,
                 fontFamily = FontFamily(Font(R.font.arial_regular)),
                 color = Color.White
@@ -534,7 +537,7 @@ fun DynamicIpToggleButton(
     val borderColor = if (isEnabled) StravionBlue else ButtonBorderColor
     val textColor = if (isEnabled) Color.White else Color(0xFF1A1A1C)
     val buttonText = if (isEnabled) "Dynamic IP Enabled" else "Dynamic IP Disabled"
-    
+    val deviceType = rememberDeviceType()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -552,7 +555,7 @@ fun DynamicIpToggleButton(
         Text(
             text = buttonText,
             style = TextStyle(
-                fontSize = 24.sp,
+                fontSize = if(deviceType == DeviceType.TABLET) 24.sp else 14.sp,
                 fontWeight = FontWeight(500),
                 fontFamily = FontFamily(Font(R.font.arial_regular)),
                 color = textColor
@@ -577,8 +580,9 @@ private fun getLabelColor(isDarkTheme: Boolean): Color {
 
 @Composable
 private fun getTitleTextStyle(labelColor: Color): TextStyle {
+    val deviceType = rememberDeviceType()
     return TextStyle(
-        fontSize = 24.sp,
+        fontSize = if(deviceType == DeviceType.TABLET) 24.sp else 14.sp,
         fontWeight = FontWeight.Bold,
         fontFamily = FontFamily(Font(R.font.arial_regular)),
         color = labelColor
@@ -587,8 +591,9 @@ private fun getTitleTextStyle(labelColor: Color): TextStyle {
 
 @Composable
 private fun getDescriptionTextStyle(labelColor: Color): TextStyle {
+    val deviceType = rememberDeviceType()
     return TextStyle(
-        fontSize = 16.sp,
+        fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 12.sp,
         fontWeight = FontWeight.Normal,
         fontFamily = FontFamily(Font(R.font.arial_regular)),
         color = labelColor

@@ -512,10 +512,11 @@ fun ZoomableVideoTextureView(
         )
 
 
+        val isAiEnabled = CameraConfigurationManager.isObjectDetectionEnabled()
         // --- Detection Overlay (Compose Canvas) ---
         // This overlay is drawn as a Compose element so it respects z-ordering
         // and appears below UI elements but above the video stream
-        if (viewSize.width > 0 && viewSize.height > 0) {
+        if (isAiEnabled && viewSize.width > 0 && viewSize.height > 0) {
             Canvas(
                 modifier = Modifier
                     .graphicsLayer {
@@ -546,7 +547,7 @@ fun ZoomableVideoTextureView(
 
                         for (index in 0 until labelSize) {
                             val labelIndex = pointState.value.labels[index]
-                            val label = BOAT_LABELS[labelIndex]
+                            val label = COCO_LABELS[labelIndex]
 
                             // Scale detection coordinates from model space to screen space
                             val x = pointState.value.pointXs[index] * size.width / 1920f
@@ -555,9 +556,9 @@ fun ZoomableVideoTextureView(
                             val h = pointState.value.pointHs[index] * size.height / 1080f
 
                             val left = x
-                            val top = y
+                            val top = y + 30
                             val right = x + w
-                            val bottom = y + h
+                            val bottom = y + h + 30
 
                             // Optional: color based on depth threshold
                             val depThresh = pointState.value.depThres.getOrNull(index)
@@ -589,7 +590,7 @@ fun ZoomableVideoTextureView(
         // --- AI Region Mask (Compose Canvas) ---
         // This mask is drawn as a Compose element so it respects z-ordering
         // and appears below UI elements but above the video stream
-        val isAiEnabled = CameraConfigurationManager.isObjectDetectionEnabled()
+
         if (isAiEnabled && viewSize.width > 0 && viewSize.height > 0) {
             Canvas(
                 modifier = Modifier

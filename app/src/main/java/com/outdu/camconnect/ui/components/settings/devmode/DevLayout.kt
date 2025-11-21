@@ -576,7 +576,7 @@ private fun DevSystemInfoCard() {
             )
             
             DevInfoRow("Build", "Release")
-            DevInfoRow("Version", "1.1.0")
+            DevInfoRow("Version", "2025.11.0")
             DevInfoRow("API Level", android.os.Build.VERSION.SDK_INT.toString())
             DevInfoRow("Device", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
         }

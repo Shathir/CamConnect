@@ -278,7 +278,7 @@ fun CameraLayout(
                             },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.git_commit_line,
-                            enabled = currentCameraMode != CameraMode.FOURK
+//                            enabled = currentCameraMode != CameraMode.FOURK
                         )
                         OptionButton(
                             text = if (currentVisionMode == VisionMode.BOTH) "Mono" else "HDR",
@@ -304,21 +304,21 @@ fun CameraLayout(
                             },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.hd_settings_line,
-                            enabled = currentCameraMode != CameraMode.FOURK
+//                            enabled = currentCameraMode != CameraMode.FOURK
                         )
                         // 4K button - only show in Visible and IR modes
-                        if (currentVisionMode == VisionMode.VISION || currentVisionMode == VisionMode.INFRARED) {
-                            OptionButton(
-                                text = "4K",
-                                isSelected = currentCameraMode == CameraMode.FOURK,
-                                onClick = {
-                                    viewModel.toggleCameraMode(CameraMode.FOURK)
-                                },
-                                modifier = Modifier.weight(1f),
-                                iconVal = R.drawable.hd_line,
-                                enabled = true
-                            )
-                        }
+//                        if (currentVisionMode == VisionMode.VISION || currentVisionMode == VisionMode.INFRARED) {
+//                            OptionButton(
+//                                text = "4K",
+//                                isSelected = currentCameraMode == CameraMode.FOURK,
+//                                onClick = {
+//                                    viewModel.toggleCameraMode(CameraMode.FOURK)
+//                                },
+//                                modifier = Modifier.weight(1f),
+//                                iconVal = R.drawable.hd_line,
+//                                enabled = true
+//                            )
+//                        }
                     }
                 }
             }

@@ -19,3 +19,29 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# OkHttp Platform Detection - Ignore missing optional dependencies
+# These are optional TLS providers that OkHttp checks for at runtime
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.bouncycastle.jsse.**
+-dontwarn org.conscrypt.**
+-dontwarn org.openjsse.**
+-dontwarn org.slf4j.impl.StaticLoggerBinder
+
+# Keep OkHttp platform classes
+-keep class okhttp3.internal.platform.** { *; }
+-keep class okhttp3.** { *; }
+
+# Keep OkHttp platform detection methods
+-keepclassmembers class okhttp3.internal.platform.Platform {
+    *;
+}
+
+# Keep OkHttp optional platform implementations
+-keep class okhttp3.internal.platform.BouncyCastlePlatform { *; }
+-keep class okhttp3.internal.platform.ConscryptPlatform { *; }
+-keep class okhttp3.internal.platform.OpenJSSEPlatform { *; }
+
+# Preserve line numbers for debugging
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
