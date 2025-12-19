@@ -68,6 +68,7 @@ data class OverlayPoints(
 class MainActivity : ComponentActivity() {
     private val permissionManager = MandatoryPermissionManager.getInstance()
 
+    @JvmField
     var nativeCustomData: Long = 0 // Native code will use this to keep private data
     external fun nativePlay(
         width: Int,

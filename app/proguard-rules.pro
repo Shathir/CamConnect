@@ -45,3 +45,80 @@
 # Preserve line numbers for debugging
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# ============================================
+# JNI Native Code Rules - Keep MainActivity fields and methods accessible from native code
+# ============================================
+
+# Keep MainActivity class and all its members that are accessed via JNI
+-keep class com.outdu.camconnect.MainActivity {
+    # Keep the field that native code accesses
+    long nativeCustomData;
+
+    # Keep all native methods (external functions)
+    native <methods>;
+
+    # Keep methods called from native code via JNI
+    public void setMessage(java.lang.String);
+    public void odCallback(int[], float[], int[], int[], int[], int[], float[]);
+    public void onGStreamerInitialized();
+    public void onStreamError(int);
+
+    # Keep the companion object's native method
+    public static native boolean nativeClassInit(long);
+}
+
+# Keep JNI-related attributes
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes Exceptions
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
+
+# Keep native method names (important for JNI)
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# ============================================
+# GStreamer Rules - Keep all GStreamer classes and native methods
+# ============================================
+
+# Keep all GStreamer classes (they are accessed from native code)
+-keep class org.freedesktop.gstreamer.** { *; }
+-keepclassmembers class org.freedesktop.gstreamer.** {
+    *;
+}
+
+# Specifically keep GStreamer Android media callback classes
+-keep class org.freedesktop.gstreamer.androidmedia.GstAhsCallback { *; }
+-keep class org.freedesktop.gstreamer.androidmedia.GstAhcCallback { *; }
+-keep class org.freedesktop.gstreamer.androidmedia.GstAmcOnFrameAvailableListener { *; }
+
+# Keep all native methods in GStreamer classes
+-keepclasseswithmembernames class org.freedesktop.gstreamer.** {
+    native <methods>;
+}
+
+# ============================================
+# Android Camera API Rules - Keep deprecated Camera API fields
+# ============================================
+
+# Keep Android Camera.Parameters class and its static fields
+# (GStreamer native code accesses deprecated Camera API constants)
+-keep class android.hardware.Camera$Parameters {
+    public static final java.lang.String *;
+}
+
+# Keep Camera class itself (needed for GstAhcCallback)
+-keep class android.hardware.Camera { *; }
+-keep class android.hardware.Camera$* { *; }
+
+# Keep Sensor classes (needed for GstAhsCallback)
+-keep class android.hardware.Sensor { *; }
+-keep class android.hardware.SensorEvent { *; }
+-keep interface android.hardware.SensorEventListener { *; }
+
+# Keep SurfaceTexture (needed for GstAmcOnFrameAvailableListener)
+-keep class android.graphics.SurfaceTexture { *; }
+-keep interface android.graphics.SurfaceTexture$OnFrameAvailableListener { *; }
