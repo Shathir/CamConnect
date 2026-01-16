@@ -38,7 +38,6 @@ import android.content.res.Configuration
 import androidx.compose.runtime.mutableStateOf
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import android.app.Activity
-import android.media.MediaCodecInfo
 import androidx.annotation.RequiresApi
 import com.outdu.camconnect.communication.CameraConfigurationManager
 import com.outdu.camconnect.utils.ConfigurationMigrationHelper
@@ -49,10 +48,6 @@ import android.os.Environment
 import android.provider.Settings
 import com.outdu.camconnect.security.MandatoryPermissionManager
 import com.outdu.camconnect.profiler.selectBestDecoder
-import android.app.ActivityManager
-import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import kotlin.system.exitProcess
 
 data class OverlayPoints(

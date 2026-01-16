@@ -8,14 +8,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.outdu.camconnect.ui.theme.CamConnectTheme
 import com.outdu.camconnect.viewmodels.SetupViewModel
-import com.outdu.camconnect.viewmodels.SetupState
 import com.outdu.camconnect.ui.setupflow.*
 import com.outdu.camconnect.auth.SessionManager
-import com.outdu.camconnect.auth.UserStateManager
 import com.outdu.camconnect.auth.SetupFlowDetector
 import com.outdu.camconnect.security.MandatoryPermissionManager
 import com.outdu.camconnect.security.MandatoryPermissionScreen
@@ -24,10 +21,6 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.ui.graphics.Color
-import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
-import kotlinx.coroutines.delay
-import java.lang.Thread.sleep
 
 class SetupActivity : ComponentActivity() {
     private val viewModel: SetupViewModel by viewModels()

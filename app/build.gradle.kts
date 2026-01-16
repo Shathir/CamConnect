@@ -14,8 +14,8 @@ sonar {
     properties {
         property("sonar.projectKey", "Stravion")
         property("sonar.projectName", "Stravion")
-        property("sonar.host.url", "http://192.168.1.172:9000")
-        property("sonar.token", "sqp_10bde5825ded07be9e2078a18ef297b227ee2719")
+        property("sonar.host.url", "http://192.168.1.137:9000")
+        property("sonar.token", "sqp_44956a43bb5c2b7efe61e299fb4474f787018114")
 
         property("sonar.sourceEncoding", "UTF-8")
         property("sonar.sources", "src/main/java")

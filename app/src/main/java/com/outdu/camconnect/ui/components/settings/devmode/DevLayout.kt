@@ -21,6 +21,10 @@ import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.os.Environment
+import android.os.StatFs
+import android.text.format.Formatter
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun DevLayout() {
@@ -439,20 +443,33 @@ private fun DevHealthStatusCard(status: HealthStatus) {
                 value = "${status.ispTemp}°C",
                 temperature = status.ispTemp
             )
-            
-//            DevTemperatureRow(
-//                label = "IR Temperature",
-//                value = "${status.irTemp}°C",
-//                temperature = status.irTemp
-//            )
-//
-//            if (status.sensorTemp != -1) {
-//                DevTemperatureRow(
-//                    label = "Sensor Temperature",
-//                    value = "${status.sensorTemp}°C",
-//                    temperature = status.sensorTemp
-//                )
-//            }
+
+            val statFs = StatFs(Environment.getDataDirectory().path)
+
+            val totalBytes = statFs.totalBytes
+            val freeBytes  = statFs.availableBytes
+            val usedBytes  = totalBytes - freeBytes
+
+            Text(
+                text = "Total Bytes : " + Formatter.formatFileSize(LocalContext.current, totalBytes),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black
+            )
+
+            Text(
+                text = "Free Bytes : " + Formatter.formatFileSize(LocalContext.current, freeBytes),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black
+            )
+
+            Text(
+                text = "Used Bytes : " + Formatter.formatFileSize(LocalContext.current, usedBytes),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black
+            )
         }
     }
 }

@@ -2,7 +2,6 @@ package com.outdu.camconnect.ui.layouts.streamer
 
 import android.content.Context
 import android.graphics.Paint
-import android.graphics.PixelFormat
 import android.graphics.PorterDuff
 import android.graphics.SurfaceTexture
 import android.util.Log
@@ -52,6 +51,157 @@ import com.outdu.camconnect.OverlayPoints
 import com.outdu.camconnect.ui.modelLabels.BOAT_LABELS
 import com.outdu.camconnect.ui.modelLabels.COCO_LABELS
 import com.outdu.camconnect.communication.CameraConfigurationManager
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.DrawScope
+
+/**
+ * Enum defining the type of overlay to display for the AI processing region
+ */
+enum class AiRegionOverlayType {
+    /** Draw a transparent mask over non-AI regions */
+    MASK,
+    /** Draw a box outline around the AI processing region */
+    BOX,
+    /** No overlay */
+    NONE
+}
+
+/**
+ * Configuration for AI region dimensions
+ */
+data class AiRegionConfig(
+    val streamWidth: Float = 1280f,
+    val streamHeight: Float = 720f,
+    val aiRegionWidth: Float = 720f,
+    val aiRegionHeight: Float = 720f
+) {
+    /**
+     * Calculates the AI region bounds in stream coordinates
+     */
+    fun calculateStreamBounds(): AiRegionBounds {
+        val aiLeftStream = (streamWidth - aiRegionWidth) / 2f
+        val aiRightStream = aiLeftStream + aiRegionWidth
+        val aiTopStream = 0f
+        val aiBottomStream = aiRegionHeight
+        return AiRegionBounds(
+            left = aiLeftStream,
+            right = aiRightStream,
+            top = aiTopStream,
+            bottom = aiBottomStream
+        )
+    }
+}
+
+/**
+ * Bounds of the AI region in stream coordinates
+ */
+data class AiRegionBounds(
+    val left: Float,
+    val right: Float,
+    val top: Float,
+    val bottom: Float
+) {
+    /**
+     * Scales bounds to view coordinates
+     */
+    fun scaleToView(viewWidth: Float, viewHeight: Float, streamWidth: Float, streamHeight: Float): AiRegionBounds {
+        val scaleX = viewWidth / streamWidth
+        val scaleY = viewHeight / streamHeight
+        return AiRegionBounds(
+            left = left * scaleX,
+            right = right * scaleX,
+            top = top * scaleY,
+            bottom = bottom * scaleY
+        )
+    }
+}
+
+/**
+ * Draws the AI region overlay based on the specified overlay type
+ */
+private fun DrawScope.drawAiRegionOverlay(
+    overlayType: AiRegionOverlayType,
+    viewSize: Size,
+    aiConfig: AiRegionConfig,
+    maskAlpha: Float = 0.4f,
+    boxStrokeWidth: Float = 4f,
+    boxColor: Color = Color.White
+) {
+    when (overlayType) {
+        AiRegionOverlayType.MASK -> drawMaskOverlay(viewSize, aiConfig, maskAlpha)
+        AiRegionOverlayType.BOX -> drawBoxOverlay(viewSize, aiConfig, boxStrokeWidth, boxColor)
+        AiRegionOverlayType.NONE -> { /* No overlay */ }
+    }
+}
+
+/**
+ * Draws a transparent mask over non-AI processing regions
+ */
+private fun DrawScope.drawMaskOverlay(
+    viewSize: Size,
+    aiConfig: AiRegionConfig,
+    maskAlpha: Float
+) {
+    val streamBounds = aiConfig.calculateStreamBounds()
+    val viewBounds = streamBounds.scaleToView(viewSize.width, viewSize.height, aiConfig.streamWidth, aiConfig.streamHeight)
+    val maskColor = Color.Black.copy(alpha = maskAlpha)
+    
+    // Draw left mask (region before AI processing area)
+    if (viewBounds.left > 0) {
+        drawRect(
+            color = maskColor,
+            topLeft = Offset(0f, 0f),
+            size = Size(viewBounds.left, viewSize.height)
+        )
+    }
+    
+    // Draw right mask (region after AI processing area)
+    if (viewBounds.right < viewSize.width) {
+        drawRect(
+            color = maskColor,
+            topLeft = Offset(viewBounds.right, 0f),
+            size = Size(viewSize.width - viewBounds.right, viewSize.height)
+        )
+    }
+    
+    // Draw top mask (if AI region doesn't start at top)
+    if (viewBounds.top > 0) {
+        drawRect(
+            color = maskColor,
+            topLeft = Offset(viewBounds.left, 0f),
+            size = Size(viewBounds.right - viewBounds.left, viewBounds.top)
+        )
+    }
+    
+    // Draw bottom mask (if AI region doesn't extend to bottom)
+    if (viewBounds.bottom < viewSize.height) {
+        drawRect(
+            color = maskColor,
+            topLeft = Offset(viewBounds.left, viewBounds.bottom),
+            size = Size(viewBounds.right - viewBounds.left, viewSize.height - viewBounds.bottom)
+        )
+    }
+}
+
+/**
+ * Draws a box outline around the AI processing region
+ */
+private fun DrawScope.drawBoxOverlay(
+    viewSize: Size,
+    aiConfig: AiRegionConfig,
+    strokeWidth: Float,
+    boxColor: Color
+) {
+    val streamBounds = aiConfig.calculateStreamBounds()
+    val viewBounds = streamBounds.scaleToView(viewSize.width, viewSize.height, aiConfig.streamWidth, aiConfig.streamHeight)
+    
+    drawRect(
+        color = boxColor,
+        topLeft = Offset(viewBounds.left, viewBounds.top),
+        size = Size(viewBounds.right - viewBounds.left, viewBounds.bottom - viewBounds.top),
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+    )
+}
 
 @Composable
 fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
@@ -587,11 +737,26 @@ fun ZoomableVideoTextureView(
             }
         }
 
-        // --- AI Region Mask (Compose Canvas) ---
-        // This mask is drawn as a Compose element so it respects z-ordering
+        // --- AI Region Overlay (Compose Canvas) ---
+        // This overlay is drawn as a Compose element so it respects z-ordering
         // and appears below UI elements but above the video stream
-
-        if (isAiEnabled && viewSize.width > 0 && viewSize.height > 0) {
+        // Load overlay type from SharedPreferences (reactive)
+        var overlayType by remember { 
+            mutableStateOf(AiRegionOverlayType.MASK)
+        }
+        
+        // Load overlay type from SharedPreferences and update when stream state changes
+        LaunchedEffect(viewModel.isPlaying.value) {
+            val prefs = currentContext.getSharedPreferences("ai_config_prefs", Context.MODE_PRIVATE)
+            val overlayTypeName = prefs.getString("overlay_type", AiRegionOverlayType.MASK.name)
+            overlayType = try {
+                AiRegionOverlayType.valueOf(overlayTypeName ?: AiRegionOverlayType.MASK.name)
+            } catch (e: IllegalArgumentException) {
+                AiRegionOverlayType.MASK
+            }
+        }
+        
+        if (isAiEnabled && viewSize.width > 0 && viewSize.height > 0 && overlayType != AiRegionOverlayType.NONE) {
             Canvas(
                 modifier = Modifier
                     .graphicsLayer {
@@ -602,66 +767,15 @@ fun ZoomableVideoTextureView(
                     }
                     .fillMaxSize()
             ) {
-                // Stream dimensions when AI is enabled: 1280x720
-                // AI processing region: 720x720 (centered horizontally)
-                val streamWidth = 1280f
-                val streamHeight = 720f
-                val aiRegionWidth = 720f
-                val aiRegionHeight = 720f
-                
-                // Calculate AI region bounds in stream coordinates
-                val aiLeftStream = (streamWidth - aiRegionWidth) / 2f  // 280
-                val aiRightStream = aiLeftStream + aiRegionWidth       // 1000
-                val aiTopStream = 0f
-                val aiBottomStream = aiRegionHeight                    // 720
-                
-                // Scale to view coordinates
-                val scaleX = size.width / streamWidth
-                val scaleY = size.height / streamHeight
-                
-                val aiLeftView = aiLeftStream * scaleX
-                val aiRightView = aiRightStream * scaleX
-                val aiTopView = aiTopStream * scaleY
-                val aiBottomView = aiBottomStream * scaleY
-                
-                // Draw mask with 90% transparency (10% opacity)
-                val maskColor = Color.Black.copy(alpha = 0.4f)
-                
-                // Draw left mask (region before AI processing area)
-                if (aiLeftView > 0) {
-                    drawRect(
-                        color = maskColor,
-                        topLeft = Offset(0f, 0f),
-                        size = androidx.compose.ui.geometry.Size(aiLeftView, size.height)
-                    )
-                }
-                
-                // Draw right mask (region after AI processing area)
-                if (aiRightView < size.width) {
-                    drawRect(
-                        color = maskColor,
-                        topLeft = Offset(aiRightView, 0f),
-                        size = androidx.compose.ui.geometry.Size(size.width - aiRightView, size.height)
-                    )
-                }
-                
-                // Draw top mask (if AI region doesn't start at top)
-                if (aiTopView > 0) {
-                    drawRect(
-                        color = maskColor,
-                        topLeft = Offset(aiLeftView, 0f),
-                        size = androidx.compose.ui.geometry.Size(aiRightView - aiLeftView, aiTopView)
-                    )
-                }
-                
-                // Draw bottom mask (if AI region doesn't extend to bottom)
-                if (aiBottomView < size.height) {
-                    drawRect(
-                        color = maskColor,
-                        topLeft = Offset(aiLeftView, aiBottomView),
-                        size = androidx.compose.ui.geometry.Size(aiRightView - aiLeftView, size.height - aiBottomView)
-                    )
-                }
+                val aiConfig = AiRegionConfig()
+                drawAiRegionOverlay(
+                    overlayType = overlayType,
+                    viewSize = size,
+                    aiConfig = aiConfig,
+                    maskAlpha = 0.4f,
+                    boxStrokeWidth = 4f,
+                    boxColor = Color.White
+                )
             }
         }
     }

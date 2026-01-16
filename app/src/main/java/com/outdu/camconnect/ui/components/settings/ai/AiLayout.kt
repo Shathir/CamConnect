@@ -30,6 +30,7 @@ import com.outdu.camconnect.ui.theme.AppColors.AIButtonTextColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.DarkBackground3
 import com.outdu.camconnect.ui.viewmodels.AiConfigurationViewModel
+import com.outdu.camconnect.ui.layouts.streamer.AiRegionOverlayType
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 import kotlinx.coroutines.launch
@@ -121,6 +122,108 @@ fun YesNoButtons(
                     )
                 )
             }
+        }
+    }
+}
+
+/**
+ * Data class representing an overlay type option
+ */
+private data class OverlayOption(
+    val type: AiRegionOverlayType,
+    val label: String
+)
+
+/**
+ * Helper function to get border width based on theme
+ */
+@Composable
+private fun getBorderWidth(isDarkTheme: Boolean) = if (isDarkTheme) 0.dp else 2.dp
+
+/**
+ * Helper function to get background color based on selection state
+ */
+@Composable
+private fun getBackgroundColor(isSelected: Boolean) = 
+    if (isSelected) Color(0xFF0C59E0) else DarkBackground3
+
+/**
+ * Helper function to get text color based on selection state
+ */
+@Composable
+private fun getTextColor(isSelected: Boolean) = 
+    if (isSelected) Color.White else AIButtonTextColor
+
+/**
+ * Helper function to get font size based on device type
+ */
+@Composable
+private fun getFontSize(deviceType: DeviceType) = 
+    if (deviceType == DeviceType.TABLET) 16.sp else 12.sp
+
+/**
+ * Single overlay option button component
+ */
+@Composable
+private fun RowScope.OverlayOptionButton(
+    option: OverlayOption,
+    isSelected: Boolean,
+    onSelected: () -> Unit,
+    deviceType: DeviceType,
+    isDarkTheme: Boolean
+) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(20.dp))
+            .border(
+                width = getBorderWidth(isDarkTheme),
+                color = ButtonBorderColor,
+                shape = RoundedCornerShape(20.dp)
+            )
+            .background(getBackgroundColor(isSelected))
+            .clickable(onClick = onSelected),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = option.label,
+            modifier = Modifier.padding(16.dp),
+            style = TextStyle(
+                color = getTextColor(isSelected),
+                fontWeight = FontWeight.Bold,
+                fontSize = getFontSize(deviceType)
+            )
+        )
+    }
+}
+
+@Composable
+fun OverlayTypeSelector(
+    selectedType: AiRegionOverlayType,
+    onTypeSelected: (AiRegionOverlayType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val deviceType = rememberDeviceType()
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    val options = listOf(
+        OverlayOption(AiRegionOverlayType.MASK, "Mask"),
+        OverlayOption(AiRegionOverlayType.BOX, "ROI"),
+        OverlayOption(AiRegionOverlayType.NONE, "None")
+    )
+    
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { option ->
+            OverlayOptionButton(
+                option = option,
+                isSelected = selectedType == option.type,
+                onSelected = { onTypeSelected(option.type) },
+                deviceType = deviceType,
+                isDarkTheme = isDarkTheme
+            )
         }
     }
 }
@@ -245,6 +348,28 @@ fun AiLayout(
                 if(deviceType == DeviceType.TABLET) {
                     Column(modifier = Modifier.weight(1f)){}
                 }
+            }
+            
+            // Overlay Type Selection
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Overlay Type",
+                    style = TextStyle(
+                        fontSize = if(deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                        lineHeight = 14.02.sp,
+                        fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                        fontWeight = FontWeight(500),
+                        color = if (isDarkTheme) Color.White else Color.Black
+                    )
+                )
+                OverlayTypeSelector(
+                    selectedType = uiState.overlayType,
+                    onTypeSelected = { aiConfigViewModel.updateOverlayType(it) }
+                )
             }
         }
     }

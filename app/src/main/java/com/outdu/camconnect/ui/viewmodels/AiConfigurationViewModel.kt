@@ -1,9 +1,11 @@
 package com.outdu.camconnect.ui.viewmodels
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.outdu.camconnect.communication.CameraConfigurationManager
+import com.outdu.camconnect.ui.layouts.streamer.AiRegionOverlayType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +18,7 @@ data class AiConfigurationUiState(
     val audio: Boolean = false,         // AUDIO in Data.java
     val model: Int = 1,                 // MODEL in Data.java
     val dsThreshold: Float = 0.5f,      // DS_THRESHOLD in Data.java (Depth Sensing Threshold)
+    val overlayType: AiRegionOverlayType = AiRegionOverlayType.MASK, // Overlay type for AI region
     val isLoading: Boolean = false,
     val hasUnsavedChanges: Boolean = false,
     val errorMessage: String? = null
@@ -29,6 +32,11 @@ class AiConfigurationViewModel : ViewModel() {
     // Store the original loaded state to compare against
     private var originalState: AiConfigurationUiState? = null
     
+    companion object {
+        private const val PREFS_NAME = "ai_config_prefs"
+        private const val KEY_OVERLAY_TYPE = "overlay_type"
+    }
+    
     // Helper function to check if current state differs from original
     private fun hasChanges(currentState: AiConfigurationUiState): Boolean {
         val original = originalState ?: return false
@@ -37,7 +45,27 @@ class AiConfigurationViewModel : ViewModel() {
                currentState.ds != original.ds ||
                currentState.audio != original.audio ||
                currentState.model != original.model ||
-               currentState.dsThreshold != original.dsThreshold
+               currentState.dsThreshold != original.dsThreshold ||
+               currentState.overlayType != original.overlayType
+    }
+    
+    private fun getSharedPreferences(context: Context): SharedPreferences {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+    
+    private fun loadOverlayType(context: Context): AiRegionOverlayType {
+        val prefs = getSharedPreferences(context)
+        val overlayTypeName = prefs.getString(KEY_OVERLAY_TYPE, AiRegionOverlayType.MASK.name)
+        return try {
+            AiRegionOverlayType.valueOf(overlayTypeName ?: AiRegionOverlayType.MASK.name)
+        } catch (e: IllegalArgumentException) {
+            AiRegionOverlayType.MASK
+        }
+    }
+    
+    private fun saveOverlayType(context: Context, overlayType: AiRegionOverlayType) {
+        val prefs = getSharedPreferences(context)
+        prefs.edit().putString(KEY_OVERLAY_TYPE, overlayType.name).apply()
     }
     
     fun loadConfiguration(context: Context) {
@@ -47,6 +75,7 @@ class AiConfigurationViewModel : ViewModel() {
             val result = CameraConfigurationManager.loadConfigurationAsync(context)
             result.fold(
                 onSuccess = { config ->
+                    val overlayType = loadOverlayType(context)
                     val loadedState = AiConfigurationUiState(
                         far = config.farDetectionEnabled,
                         od = config.objectDetectionEnabled,
@@ -54,6 +83,7 @@ class AiConfigurationViewModel : ViewModel() {
                         audio = config.audioEnabled,
                         model = config.modelVersion,
                         dsThreshold = config.depthSensingThreshold,
+                        overlayType = overlayType,
                         isLoading = false,
                         hasUnsavedChanges = false
                     )
@@ -106,6 +136,12 @@ class AiConfigurationViewModel : ViewModel() {
         _uiState.value = newState.copy(hasUnsavedChanges = hasChanges(newState))
     }
     
+    fun updateOverlayType(overlayType: AiRegionOverlayType) {
+        val currentState = _uiState.value
+        val newState = currentState.copy(overlayType = overlayType)
+        _uiState.value = newState.copy(hasUnsavedChanges = hasChanges(newState))
+    }
+    
     fun saveConfiguration(context: Context, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             val currentState = _uiState.value
@@ -123,6 +159,9 @@ class AiConfigurationViewModel : ViewModel() {
             val result = CameraConfigurationManager.updateConfiguration(context, config)
             result.fold(
                 onSuccess = {
+                    // Save overlay type to SharedPreferences
+                    saveOverlayType(context, currentState.overlayType)
+                    
                     val savedState = currentState.copy(
                         isLoading = false,
                         hasUnsavedChanges = false,

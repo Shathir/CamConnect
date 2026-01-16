@@ -3,7 +3,6 @@ package com.outdu.camconnect
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -18,7 +17,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.outdu.camconnect.ui.theme.CamConnectTheme
@@ -26,7 +24,6 @@ import com.outdu.camconnect.viewmodels.ViewerFlowViewModel
 import com.outdu.camconnect.ui.viewer.*
 import com.outdu.camconnect.auth.SessionManager
 import com.outdu.camconnect.services.OnvifDevice
-import kotlinx.coroutines.launch
 
 /**
  * Activity that handles the Viewer Flow for camera streaming application

@@ -7,7 +7,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,6 +57,8 @@ import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 import com.outdu.camconnect.OverlayPoints
+import kotlinx.coroutines.delay
+import androidx.compose.ui.input.pointer.pointerInput
 
 @Composable
 private fun LoadingOverlay(
@@ -161,9 +166,108 @@ fun AdaptiveStreamLayout(
     // Persistent button states for expanded control - survives layout mode changes
     val buttonStates = remember { mutableStateMapOf<String, Boolean>() }
 
+    // Observe stream reloading state (needed for timer logic)
+    val isStreamReloading = cameraLayoutViewModel.isStreamReloading.collectAsState()
+
+    // Auto-hide controls state
+    var isControlsHidden by remember { mutableStateOf(false) }
+    var lastActivityTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    
+    // Activity tracking callback - resets timer on any user interaction
+    val onUserActivity = {
+        val currentTime = System.currentTimeMillis()
+        val elapsed = currentTime - lastActivityTime
+        Log.d("AutoHide", "Activity detected - LayoutMode: $layoutMode, Elapsed since last: ${elapsed}ms, ControlsHidden: $isControlsHidden")
+        lastActivityTime = currentTime
+        if (isControlsHidden) {
+            Log.d("AutoHide", "Revealing controls due to activity")
+            isControlsHidden = false
+        }
+    }
+
     // Function to handle system status changes
     val onSystemStatusChange: (SystemStatus) -> Unit = { newStatus ->
         systemStatus = newStatus
+        onUserActivity() // Track activity when settings change
+    }
+    
+    // Timer logic: Hide controls after inactivity
+    // MINIMAL_CONTROL and EXPANDED_CONTROL: 10 seconds
+    // FULL_CONTROL: 20 seconds
+    val isStreamReloadingState = isStreamReloading.value
+    LaunchedEffect(lastActivityTime, layoutMode, isStreamReloadingState) {
+        Log.d("AutoHide", "Timer LaunchedEffect triggered - LayoutMode: $layoutMode, StreamReloading: $isStreamReloadingState")
+        
+        // Don't auto-hide during stream reloading
+        if (isStreamReloadingState) {
+            Log.d("AutoHide", "Stream reloading - disabling auto-hide")
+            isControlsHidden = false
+            return@LaunchedEffect
+        }
+        
+        // Only run timer for MINIMAL_CONTROL, EXPANDED_CONTROL, and FULL_CONTROL modes
+        val applicableModes = listOf(
+            LayoutMode.MINIMAL_CONTROL,
+            LayoutMode.EXPANDED_CONTROL,
+            LayoutMode.FULL_CONTROL
+        )
+        if (layoutMode !in applicableModes) {
+            Log.d("AutoHide", "Not in applicable mode ($layoutMode) - disabling auto-hide")
+            isControlsHidden = false
+            return@LaunchedEffect
+        }
+        
+        // Get timeout duration based on layout mode
+        val timeoutDuration = when (layoutMode) {
+            LayoutMode.MINIMAL_CONTROL -> 10000L // 10 seconds
+            LayoutMode.EXPANDED_CONTROL -> 10000L // 10 seconds
+            LayoutMode.FULL_CONTROL -> 20000L // 20 seconds
+            else -> 10000L // Default to 10 seconds
+        }
+        
+        Log.d("AutoHide", "Starting timer for mode: $layoutMode (timeout: ${timeoutDuration}ms)")
+        
+        while (true) {
+            delay(1000) // Check every second
+            // Re-check conditions in case they changed
+            val currentLayoutMode = layoutMode
+            val currentStreamReloading = isStreamReloading.value
+            
+            if (currentStreamReloading || currentLayoutMode !in applicableModes) {
+                Log.d("AutoHide", "Conditions changed - stopping timer. Mode: $currentLayoutMode, Reloading: $currentStreamReloading")
+                isControlsHidden = false
+                return@LaunchedEffect
+            }
+            
+            // Get timeout duration for current mode
+            val currentTimeoutDuration = when (currentLayoutMode) {
+                LayoutMode.MINIMAL_CONTROL -> 10000L // 10 seconds
+                LayoutMode.EXPANDED_CONTROL -> 10000L // 10 seconds
+                LayoutMode.FULL_CONTROL -> 20000L // 20 seconds
+                else -> 10000L // Default to 10 seconds
+            }
+            
+            val elapsed = System.currentTimeMillis() - lastActivityTime
+            if (elapsed >= currentTimeoutDuration) {
+                if (!isControlsHidden && currentLayoutMode in applicableModes) {
+                    Log.d("AutoHide", "${currentTimeoutDuration}ms elapsed - HIDING controls. Mode: $currentLayoutMode, Elapsed: ${elapsed}ms")
+                    isControlsHidden = true
+                }
+            } else {
+                // Log every 5 seconds for debugging
+                if (elapsed % 5000 < 1000) {
+                    Log.d("AutoHide", "Timer check - Mode: $currentLayoutMode, Elapsed: ${elapsed}ms/${currentTimeoutDuration}ms, ControlsHidden: $isControlsHidden")
+                }
+            }
+        }
+    }
+    
+    // Reset timer when layout mode changes
+    LaunchedEffect(layoutMode) {
+        Log.d("AutoHide", "Layout mode changed to: $layoutMode")
+        lastActivityTime = System.currentTimeMillis()
+        // Reset controls visibility when switching modes - timer will handle auto-hide
+        isControlsHidden = false
     }
 
     // Animated weights for the two panes
@@ -179,14 +283,21 @@ fun AdaptiveStreamLayout(
     )
 
     val rightPaneWeight by animateFloatAsState(
-        targetValue = when (layoutMode) {
-            LayoutMode.MINIMAL_CONTROL -> 0.1f
-            LayoutMode.EXPANDED_CONTROL -> 0.4f
-            LayoutMode.FULL_CONTROL -> 0.4f
-//            LayoutMode.FULL_CONTROL -> 0.7f
+        targetValue = when {
+            isControlsHidden -> 0f // Hide controls when auto-hidden
+            layoutMode == LayoutMode.MINIMAL_CONTROL -> 0.1f
+            layoutMode == LayoutMode.EXPANDED_CONTROL -> 0.4f
+            layoutMode == LayoutMode.FULL_CONTROL -> 0.4f
+            else -> 0.4f
         },
         animationSpec = tween(durationMillis = 300),
         label = "right_pane_weight"
+    )
+    
+    val leftPaneWeightWhenHidden by animateFloatAsState(
+        targetValue = if (isControlsHidden) 1f else leftPaneWeight,
+        animationSpec = tween(durationMillis = 300),
+        label = "left_pane_weight_hidden"
     )
 
     // Custom buttons configuration - Theme-aware colors applied outside remember
@@ -263,9 +374,6 @@ fun AdaptiveStreamLayout(
         }
     }
 
-    // Observe stream reloading state
-    val isStreamReloading = cameraLayoutViewModel.isStreamReloading.collectAsState()
-
     // Effect to handle stream lifecycle
     LaunchedEffect(isStreamReloading.value) {
         if (isStreamReloading.value) {
@@ -288,9 +396,52 @@ fun AdaptiveStreamLayout(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
             .background(VeryDarkBackground)
             .clip(RoundedCornerShape(20.dp))
+            .pointerInput(Unit) {
+                // Detect all touch interactions to track user activity
+                detectTapGestures(
+                    onTap = { 
+                        Log.d("AutoHide", "Tap gesture detected")
+                        onUserActivity() 
+                    },
+                    onDoubleTap = { 
+                        Log.d("AutoHide", "Double tap gesture detected")
+                        onUserActivity() 
+                    },
+                    onLongPress = { 
+                        Log.d("AutoHide", "Long press gesture detected")
+                        onUserActivity() 
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { 
+                        Log.d("AutoHide", "Drag start gesture detected")
+                        onUserActivity() 
+                    },
+                    onDrag = { _, _ -> 
+                        // Too verbose - only log occasionally
+                        // Log.d("AutoHide", "Drag gesture detected")
+                        onUserActivity() 
+                    },
+                    onDragEnd = { 
+                        Log.d("AutoHide", "Drag end gesture detected")
+                        onUserActivity() 
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectTransformGestures(
+                    onGesture = { _, _, _, _ -> 
+                        Log.d("AutoHide", "Transform gesture detected")
+                        onUserActivity() 
+                    }
+                )
+            }
     ) {
         // The TextureView will handle its own lifecycle based on appViewModel.isPlaying
         ZoomableVideoTextureView(viewModel = appViewModel, context, pointState = pointState)
@@ -315,7 +466,7 @@ fun AdaptiveStreamLayout(
             // Left Pane - Camera Stream (animated width)
             Box(
                 modifier = Modifier
-                    .weight(leftPaneWeight)
+                    .weight(leftPaneWeightWhenHidden)
                     .background(Color.Transparent)
                     .fillMaxHeight()
             ) {
@@ -338,15 +489,34 @@ fun AdaptiveStreamLayout(
 
             }
 
-            Box(
-                modifier = Modifier
-                    .width(8.dp)
-                    .fillMaxHeight()
-                    .background(VeryDarkBackground) // Your desired color
-            )
+            // Divider between panes - hide when controls are hidden
+            AnimatedVisibility(
+                visible = !isControlsHidden,
+                enter = fadeIn() + expandHorizontally(),
+                exit = fadeOut() + shrinkHorizontally(),
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(8.dp)
+                        .fillMaxHeight()
+                        .background(VeryDarkBackground)
+                )
+            }
 
             // Right Pane - Controls (animated width and content)
-            AnimatedRightPane(
+            AnimatedVisibility(
+                visible = !isControlsHidden,
+                enter = slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(durationMillis = 300)
+                ) + fadeIn(animationSpec = tween(durationMillis = 300)),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(durationMillis = 300)
+                ) + fadeOut(animationSpec = tween(durationMillis = 300))
+            ) {
+                AnimatedRightPane(
                 layoutMode = layoutMode,
                 paneWeight = rightPaneWeight,
                 cameraState = cameraState,
@@ -356,21 +526,32 @@ fun AdaptiveStreamLayout(
                 toggleableIcons = toggleableIcons,
                 selectedTab = selectedTab,
                 buttonStates = buttonStates,
-                onLayoutModeChange = { layoutMode = it },
+                onLayoutModeChange = { 
+                    Log.d("AutoHide", "Layout mode change requested: $it")
+                    layoutMode = it
+                    onUserActivity() // Track activity
+                },
                 onCameraSwitch = {
                     cameraState = cameraState.copy(
                         currentCamera = (cameraState.currentCamera + 1) % 3
                     )
+                    onUserActivity() // Track activity
                 },
                 onRecordingToggle = {
                     cameraState = cameraState.copy(
                         isRecording = !cameraState.isRecording
                     )
+                    onUserActivity() // Track activity
                 },
                 onZoomChange = { zoom ->
                     cameraState = cameraState.copy(zoomLevel = zoom)
+                    onUserActivity() // Track activity
                 },
-                onTabSelected = { selectedTab = it },
+                onTabSelected = { 
+                    Log.d("AutoHide", "Tab selected: $it")
+                    selectedTab = it
+                    onUserActivity() // Track activity
+                },
                 onIconToggle = { iconId ->
                     val index = toggleableIcons.indexOfFirst { it.id == iconId }
                     if (index != -1) {
@@ -378,10 +559,40 @@ fun AdaptiveStreamLayout(
                             isSelected = !toggleableIcons[index].isSelected
                         )
                     }
+                    onUserActivity() // Track activity
                 },
-                onSpeedUpdate = { speed -> currentSpeed = speed },
+                onSpeedUpdate = { speed -> 
+                    currentSpeed = speed
+                    onUserActivity() // Track activity on speed update
+                },
                 onSystemStatusChange = onSystemStatusChange,
-                onLogout = onLogout
+                onLogout = onLogout,
+                onUserActivity = onUserActivity
+            )
+            }
+            
+        }
+        
+        // Floating reveal button - shown when controls are hidden
+        // Positioned as overlay on top of everything
+        val applicableModes = listOf(
+            LayoutMode.MINIMAL_CONTROL,
+            LayoutMode.EXPANDED_CONTROL,
+            LayoutMode.FULL_CONTROL
+        )
+        if (isControlsHidden && layoutMode in applicableModes) {
+            Log.d("AutoHide", "Showing floating reveal button - Mode: $layoutMode")
+            FloatingRevealButton(
+                onReveal = {
+                    Log.d("AutoHide", "Reveal button clicked - revealing controls")
+                    isControlsHidden = false
+                    lastActivityTime = System.currentTimeMillis()
+                    // Optionally switch to minimal control when revealing from full control
+                    if (layoutMode == LayoutMode.FULL_CONTROL) {
+                        Log.d("AutoHide", "Switching from FULL_CONTROL to MINIMAL_CONTROL")
+                        layoutMode = LayoutMode.MINIMAL_CONTROL
+                    }
+                }
             )
         }
     }
@@ -410,7 +621,8 @@ private fun AnimatedRightPane(
     onIconToggle: (String) -> Unit,
     onSpeedUpdate: (Float) -> Unit,
     onSystemStatusChange: (SystemStatus) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onUserActivity: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier.fillMaxWidth(paneWeight)
@@ -463,13 +675,30 @@ private fun AnimatedRightPane(
                     }
 
                     LayoutMode.FULL_CONTROL -> {
+                        Log.d("AutoHide", "Rendering FULL_CONTROL layout")
                         SettingsControlLayout(
                             selectedTab = selectedTab,
-                            onTabSelected = onTabSelected,
+                            onTabSelected = { 
+                                Log.d("AutoHide", "Tab selected in FULL_CONTROL: $it")
+                                onTabSelected(it)
+                                onUserActivity() // Ensure activity is tracked
+                            },
                             systemStatus = systemStatus,
-                            onSystemStatusChange = onSystemStatusChange,
-                            onCollapseClick = { onLayoutModeChange(LayoutMode.EXPANDED_CONTROL) },
-                            onLogout = onLogout
+                            onSystemStatusChange = { newStatus ->
+                                Log.d("AutoHide", "System status changed in FULL_CONTROL")
+                                onSystemStatusChange(newStatus)
+                                // onSystemStatusChange already calls onUserActivity, but ensure it's called
+                            },
+                            onCollapseClick = { 
+                                Log.d("AutoHide", "Collapse clicked in FULL_CONTROL")
+                                onLayoutModeChange(LayoutMode.EXPANDED_CONTROL)
+                                onUserActivity() // Track activity
+                            },
+                            onLogout = {
+                                Log.d("AutoHide", "Logout clicked in FULL_CONTROL")
+                                onLogout()
+                                onUserActivity() // Track activity
+                            }
                         )
                     }
                 }
