@@ -4,48 +4,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 
-//class CameraSettingsViewModel : ViewModel() {
-//
-//    private val VisibleViewMode = mutableStateOf(false)
-//    private val InfraredViewMode = mutableStateOf(false)
-//    private val HdrCameraMode = mutableStateOf(false)
-//    private val StabilisationViewMode = mutableStateOf(false)
-//
-//
-//    //IRonMotion
-//    private val IROnMotionMode = mutableStateOf(false)
-//
-//    private val IRDayNightMode = mutableStateOf(false)
-//
-//    var visibleViewMode: State<Boolean> = VisibleViewMode
-//    var infraredViewMode: State<Boolean> = InfraredViewMode
-//    var hdrCameraMode: State<Boolean> = HdrCameraMode
-//    var stabilisationViewMode: State<Boolean> = StabilisationViewMode
-//    var irOnMotion: State<Boolean> = IROnMotionMode
-//    var irDayNightMode: State<Boolean> = IRDayNightMode
-//
-//
-//
-//    fun changeVisibleViewMode() {
-//        VisibleViewMode.value = !VisibleViewMode.value
-//    }
-//    fun changeInfraredViewMode() {
-//        InfraredViewMode.value = !InfraredViewMode.value
-//    }
-//    fun changeHdrCameraMode() {
-//        HdrCameraMode.value = !HdrCameraMode.value
-//    }
-//    fun changeStabilisationViewMode() {
-//        StabilisationViewMode.value = !StabilisationViewMode.value
-//    }
-//    fun changeIROnMotionMode() {
-//        IROnMotionMode.value = !IROnMotionMode.value
-//    }
-//    fun changeIRDayNightMode() {
-//        IRDayNightMode.value = !IRDayNightMode.value
-//    }
-//}
-
 class CameraSettingsViewModel : ViewModel() {
 
     private val VisibleViewMode = mutableStateOf(false)

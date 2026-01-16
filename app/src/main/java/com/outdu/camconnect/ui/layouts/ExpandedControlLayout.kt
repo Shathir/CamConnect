@@ -1,6 +1,5 @@
 package com.outdu.camconnect.ui.layouts
 
-import android.bluetooth.BluetoothClass.Device
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,7 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -20,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
-import com.outdu.camconnect.ui.components.camera.*
 import com.outdu.camconnect.ui.components.controls.*
 import com.outdu.camconnect.ui.components.indicators.*
 import com.outdu.camconnect.ui.models.CameraState
@@ -33,34 +30,14 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.outdu.camconnect.R
-import com.outdu.camconnect.communication.MotocamAPIAndroidHelper
-import com.outdu.camconnect.communication.MotocamAPIHelper
-import com.outdu.camconnect.communication.MotocamSocketClient
-import com.outdu.camconnect.network.HttpClientProvider
-import com.outdu.camconnect.ui.components.buttons.ScreenRecorderUI
 import com.outdu.camconnect.ui.components.buttons.ZoomSelector
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
-import io.ktor.client.request.get
-import io.ktor.client.request.headers
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.utils.EmptyContent.contentType
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
-import kotlinx.coroutines.launch
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.animation.*

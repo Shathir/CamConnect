@@ -28,7 +28,7 @@ fun FloatingRevealButton(
     modifier: Modifier = Modifier
 ) {
     var isPressed by remember { mutableStateOf(false) }
-    var dragOffset by remember { mutableStateOf(0f) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
     
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
@@ -59,7 +59,7 @@ fun FloatingRevealButton(
                             dragOffset = 0f
                             isPressed = false
                         },
-                        onDrag = { change, dragAmount ->
+                        onDrag = { _, dragAmount ->
                             dragOffset += dragAmount.x
                             if (dragOffset < -swipeThreshold / 2) {
                                 isPressed = true

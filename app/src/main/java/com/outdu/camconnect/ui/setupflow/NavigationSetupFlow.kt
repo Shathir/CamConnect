@@ -2,14 +2,12 @@ package com.outdu.camconnect.ui.setupflow
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.outdu.camconnect.auth.SetupFlowDetector
 import com.outdu.camconnect.auth.UserStateManager
 import com.outdu.camconnect.viewmodels.SetupState
-import com.outdu.camconnect.auth.SessionManager
 import com.outdu.camconnect.security.MandatoryPermissionScreen
 
 /**

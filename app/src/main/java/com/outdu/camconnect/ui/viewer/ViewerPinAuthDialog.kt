@@ -3,6 +3,7 @@ package com.outdu.camconnect.ui.viewer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,7 +16,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.outdu.camconnect.services.OnvifDevice
-import com.outdu.camconnect.ui.auth.PinAuthDialog
 import com.outdu.camconnect.ui.theme.*
 
 /**
@@ -263,7 +263,7 @@ fun ViewerPinAuthDialog(
                             Text("Connecting...")
                         } else {
                             Icon(
-                                imageVector = Icons.Default.Login,
+                                imageVector = Icons.AutoMirrored.Filled.Login,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )

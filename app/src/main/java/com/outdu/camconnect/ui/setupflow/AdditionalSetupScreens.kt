@@ -26,24 +26,19 @@ import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.R
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import com.outdu.camconnect.ui.theme.SpyBlue
-import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 import android.content.Intent
 import android.provider.Settings
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.ImeAction
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 

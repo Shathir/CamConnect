@@ -1,44 +1,28 @@
 package com.outdu.camconnect.ui.layouts
 
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothClass.Device
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
 import com.outdu.camconnect.R
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
-import com.outdu.camconnect.ui.components.camera.CameraStreamView
 import com.outdu.camconnect.ui.components.settings.*
 import com.outdu.camconnect.ui.components.settings.ai.AiLayout
 import com.outdu.camconnect.ui.components.settings.camera.CameraLayout
-import com.outdu.camconnect.ui.components.settings.license.CameraInfoCard
 import com.outdu.camconnect.ui.components.settings.license.LicenseLayout
 import com.outdu.camconnect.ui.models.*
 import com.outdu.camconnect.ui.theme.*
@@ -48,14 +32,10 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedBgColor
 import com.outdu.camconnect.ui.theme.AppColors.ButtonSelectedIconColor
 import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.outdu.camconnect.ui.components.recording.RecordingTimer
 import com.outdu.camconnect.ui.components.settings.devmode.DevLayout
 import com.outdu.camconnect.ui.components.settings.logout.LogoutLayout
 import com.outdu.camconnect.ui.components.settings.network.NetworkLayout
 import com.outdu.camconnect.ui.components.settings.ota.OtaLayout
-import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 
@@ -272,16 +252,6 @@ fun SettingRow(label: String, content: @Composable RowScope.() -> Unit) {
         Row(content = content)
     }
 }
-
-@Composable
-fun FullControlLayout(
-    onCollapseClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // Your existing full control layout content
-    // ... existing code ...
-}
-
 
 
 

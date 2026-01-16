@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.outdu.camconnect.auth.SessionManager
-import com.outdu.camconnect.auth.AuthenticationException
 import com.outdu.camconnect.auth.InvalidPinException
 import com.outdu.camconnect.auth.MaxAttemptsExceededException
 import com.outdu.camconnect.auth.AuthenticationNetworkException

@@ -158,7 +158,7 @@ fun AdaptiveStreamLayout(
     }
 
     // Detection settings
-    var detectionSettings by remember { mutableStateOf(DetectionSettings()) }
+    val detectionSettings by remember { mutableStateOf(DetectionSettings()) }
 
     // Settings tab state - persists across theme changes
     var selectedTab by rememberSaveable { mutableStateOf(ControlTab.CAMERA_CONTROL) }
@@ -222,7 +222,6 @@ fun AdaptiveStreamLayout(
             LayoutMode.MINIMAL_CONTROL -> 10000L // 10 seconds
             LayoutMode.EXPANDED_CONTROL -> 10000L // 10 seconds
             LayoutMode.FULL_CONTROL -> 20000L // 20 seconds
-            else -> 10000L // Default to 10 seconds
         }
         
         Log.d("AutoHide", "Starting timer for mode: $layoutMode (timeout: ${timeoutDuration}ms)")
@@ -244,7 +243,6 @@ fun AdaptiveStreamLayout(
                 LayoutMode.MINIMAL_CONTROL -> 10000L // 10 seconds
                 LayoutMode.EXPANDED_CONTROL -> 10000L // 10 seconds
                 LayoutMode.FULL_CONTROL -> 20000L // 20 seconds
-                else -> 10000L // Default to 10 seconds
             }
             
             val elapsed = System.currentTimeMillis() - lastActivityTime
@@ -423,9 +421,7 @@ fun AdaptiveStreamLayout(
                         Log.d("AutoHide", "Drag start gesture detected")
                         onUserActivity() 
                     },
-                    onDrag = { _, _ -> 
-                        // Too verbose - only log occasionally
-                        // Log.d("AutoHide", "Drag gesture detected")
+                    onDrag = { _, _ ->
                         onUserActivity() 
                     },
                     onDragEnd = { 
@@ -445,16 +441,6 @@ fun AdaptiveStreamLayout(
     ) {
         // The TextureView will handle its own lifecycle based on appViewModel.isPlaying
         ZoomableVideoTextureView(viewModel = appViewModel, context, pointState = pointState)
-
-        // Show loading overlay when stream is reloading
-//        AnimatedVisibility(
-//            visible = isStreamReloading.value,
-//            enter = fadeIn(),
-//            exit = fadeOut()
-//        ) {
-//            LoadingOverlay()
-//        }
-
         // Main consistent layout structure
         Row(
             modifier = modifier

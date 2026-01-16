@@ -19,7 +19,7 @@ enum class IrIntensityLevel(val brightness: Int, val displayName: String) {
 
     companion object {
         fun fromBrightness(brightness: Int): IrIntensityLevel {
-            val level = values().find { it.brightness == brightness } ?: OFF
+            val level = entries.find { it.brightness == brightness } ?: OFF
             Log.d("IrIntensityLevel", "fromBrightness($brightness) -> ${level.displayName}")
             return level
         }
@@ -93,11 +93,11 @@ class CameraControlViewModel : ViewModel() {
                     }
 
                     status?.let {
-                        Log.d(TAG, "HealthStatus → RTSPS=${it.rtsps}, " +
+                        Log.d(TAG, "HealthStatus → RTSP=${it.rtsps}, " +
                                 "CPU=${it.cpuUsage}%, " +
                                 "ISP Temp=${it.ispTemp}°C, " +
                                 "memory=${it.memoryUsage}%, " +
-                            "portablertc=${it.portableRtc}, " +
+                            "portable=${it.portableRtc}, " +
                             "irTemp=${it.irTemp}, " +
                         "sensorTemp=${it.sensorTemp} ")
                         // Update your ViewModel or UI state

@@ -87,7 +87,7 @@ class NetworkConfigurationViewModel: ViewModel() {
         }
 
         scope.launch {
-            com.outdu.camconnect.communication.MotocamAPIAndroidHelper.setWifiHotspotAsync(
+            MotocamAPIAndroidHelper.setWifiHotspotAsync(
                 scope = scope,
                 ssid = config.hotspot_ssid,
                 encryptionType = "WPA2", // Default encryption type

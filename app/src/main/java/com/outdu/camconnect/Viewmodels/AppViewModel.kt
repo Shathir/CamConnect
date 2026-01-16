@@ -3,7 +3,6 @@ package com.outdu.camconnect.Viewmodels
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-//import com.outdu.camconnect.OverlayPoints
 
 class AppViewModel : ViewModel() {
 

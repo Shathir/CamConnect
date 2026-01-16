@@ -3,14 +3,11 @@ package com.outdu.camconnect.ui.components.camera
 
 import android.content.Context
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,11 +21,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -39,20 +33,14 @@ import com.outdu.camconnect.R
 import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 import com.outdu.camconnect.ui.components.recording.RecordingTimer
-import com.outdu.camconnect.ui.layouts.maps.LiveTrackingMap
-import com.outdu.camconnect.ui.layouts.maps.MapLibreTrackingScreen
-import com.outdu.camconnect.ui.layouts.streamer.VideoSurfaceView
-import com.outdu.camconnect.ui.layouts.streamer.ZoomableVideoTextureView
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.animation.core.*
 import androidx.compose.runtime.LaunchedEffect
 import com.airbnb.lottie.compose.*
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.scale
 import com.outdu.camconnect.ui.components.notifications.NotificationCard
 import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel

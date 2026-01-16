@@ -1,5 +1,6 @@
 package com.outdu.camconnect.ui.viewmodels
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -67,6 +68,7 @@ class RecordingViewModel : ViewModel() {
         }
     }
 
+    @SuppressLint("DefaultLocale")
     private fun formatDuration(duration: Long): String {
         val minutes = TimeUnit.MILLISECONDS.toMinutes(duration)
         val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
