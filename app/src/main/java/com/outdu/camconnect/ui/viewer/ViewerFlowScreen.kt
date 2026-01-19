@@ -56,7 +56,8 @@ fun ViewerFlowScreen(
     onCameraSelected: (OnvifDevice) -> Unit,
     onGoToWifiSettings: () -> Unit,
     onAuthenticationSuccess: (OnvifDevice) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onScanQRCode: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedCamera by viewModel.selectedCamera.collectAsState()
@@ -85,13 +86,26 @@ fun ViewerFlowScreen(
         ) {
 
             when {
-                // Initial state - show start streaming button
-                !uiState.isDiscovering && uiState.discoveredCameras.isEmpty() && !uiState.showNoCamerasDialog -> {
+                // Initial state - show action buttons
+                !uiState.isDiscovering && uiState.discoveredCameras.isEmpty() && !uiState.showNoCamerasDialog && !uiState.isConnectingToWifi && !uiState.wifiConnectionSuccess -> {
                     StartStreamingSection(
                         onStartStreaming = onStartStreaming,
+                        onScanQRCode = onScanQRCode,
                         errorMessage = uiState.errorMessage,
-                        onClearError = viewModel::clearError
+                        wifiConnectionError = uiState.wifiConnectionError,
+                        onClearError = viewModel::clearError,
+                        onClearWifiError = viewModel::clearWifiConnectionError
                     )
+                }
+                
+                // WiFi connection successful
+                uiState.wifiConnectionSuccess -> {
+                    WifiConnectionSuccessSection()
+                }
+                
+                // Connecting to WiFi
+                uiState.isConnectingToWifi -> {
+                    ConnectingToWifiSection()
                 }
 
                 // Discovering cameras
@@ -167,8 +181,11 @@ private fun ViewerFlowHeader(onBack: () -> Unit) {
 @Composable
 private fun StartStreamingSection(
     onStartStreaming: () -> Unit,
+    onScanQRCode: () -> Unit,
     errorMessage: String?,
-    onClearError: () -> Unit
+    wifiConnectionError: String?,
+    onClearError: () -> Unit,
+    onClearWifiError: () -> Unit
 ) {
 
     val deviceType = rememberDeviceType()
@@ -235,47 +252,74 @@ private fun StartStreamingSection(
             }
         }
         
-        // Start Streaming button
-//        Button(
-//            onClick = onStartStreaming,
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .height(56.dp),
-//            colors = ButtonDefaults.buttonColors(
-//                containerColor = MaterialTheme.colorScheme.primary,
-//                contentColor = White
-//            )
-//        )
-        Box(
-            modifier = Modifier.fillMaxWidth(if(deviceType == DeviceType.TABLET) 0.5f else 0.6f)
-                .height(56.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(StravionBlue)
-                .clickable { onStartStreaming() },
-            contentAlignment = Alignment.Center
-        )
-        {
-            Row(
+        // Action buttons
+        Column(
+            modifier = Modifier.fillMaxWidth(if(deviceType == DeviceType.TABLET) 0.5f else 0.6f),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Discover Devices button
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            )
-            {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Start Streaming",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(StravionBlue)
+                    .clickable { onStartStreaming() },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = Color.White
                     )
-                )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Discover Devices",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                }
+            }
+            
+            // Scan QR Code button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White)
+                    .border(2.dp, StravionBlue, RoundedCornerShape(16.dp))
+                    .clickable { onScanQRCode() },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = StravionBlue
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Scan QR Code",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = StravionBlue
+                        )
+                    )
+                }
             }
         }
 
@@ -314,7 +358,7 @@ private fun StartStreamingSection(
         }
 
         
-        // Error message
+        // Error messages
         if (errorMessage != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -353,6 +397,123 @@ private fun StartStreamingSection(
                 }
             }
         }
+        
+        if (wifiConnectionError != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = RedVariant.copy(alpha = 0.2f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Error,
+                        contentDescription = "WiFi Error",
+                        tint = RedVariant
+                    )
+                    
+                    Text(
+                        text = wifiConnectionError,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = RedVariant
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    IconButton(onClick = onClearWifiError) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Clear WiFi error",
+                            tint = RedVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WifiConnectionSuccessSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = "Success",
+            modifier = Modifier.size(48.dp),
+            tint = Color(0xFF4CAF50)
+        )
+        
+        Text(
+            text = "WiFi Connected Successfully!",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = White
+            ),
+            textAlign = TextAlign.Center
+        )
+        
+        Text(
+            text = "Starting camera discovery...",
+            style = MaterialTheme.typography.bodyLarge.copy(
+                color = MediumLightGray
+            ),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun ConnectingToWifiSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(36.dp),
+            color = StravionBlue,
+            strokeWidth = 4.dp
+        )
+        
+        Text(
+            text = "Connecting to WiFi",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = White
+            ),
+            textAlign = TextAlign.Center
+        )
+        
+        Text(
+            text = "Connecting to the network... If this is your first time connecting, a system dialog may appear. After approval, Android will remember your choice and connect automatically.",
+            style = MaterialTheme.typography.bodyLarge.copy(
+                color = MediumLightGray
+            ),
+            textAlign = TextAlign.Center
+        )
+        
+        Text(
+            text = "Once connected, camera discovery will start automatically.",
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = MediumGray
+            ),
+            textAlign = TextAlign.Center
+        )
     }
 }
 

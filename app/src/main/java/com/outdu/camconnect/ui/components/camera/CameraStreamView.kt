@@ -44,6 +44,8 @@ import com.airbnb.lottie.compose.*
 import androidx.compose.ui.draw.scale
 import com.outdu.camconnect.ui.components.notifications.NotificationCard
 import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
+import com.outdu.camconnect.ui.components.camera.CameraInfoTooltip
+import com.outdu.camconnect.ui.components.camera.SystemWarningTooltip
 
 
 /**
@@ -116,7 +118,8 @@ fun CameraStreamView(
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         )
         {
             if (showTimer) {
@@ -128,6 +131,21 @@ fun CameraStreamView(
             if (showNotifications) {
                 NotificationCard(
                     cameraControlViewModel = cameraControlViewModel
+                )
+            }
+
+            // Warning and info tooltips in a row
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // System warning tooltip (shows only if there are warnings)
+                SystemWarningTooltip()
+                
+                // Camera info tooltip (always visible)
+                CameraInfoTooltip(
+                    cameraControlViewModel = cameraControlViewModel,
+                    cameraLayoutViewModel = cameraLayoutViewModel
                 )
             }
         }

@@ -166,6 +166,61 @@ class ViewerFlowViewModel : ViewModel() {
     fun clearAuthError() {
         _uiState.value = _uiState.value.copy(authError = null)
     }
+    
+    /**
+     * Show QR scanner
+     */
+    fun showQRScanner() {
+        _uiState.value = _uiState.value.copy(showQRScanner = true)
+    }
+    
+    /**
+     * Dismiss QR scanner
+     */
+    fun dismissQRScanner() {
+        _uiState.value = _uiState.value.copy(
+            showQRScanner = false,
+            wifiConnectionError = null
+        )
+    }
+    
+    /**
+     * Set WiFi connection state
+     */
+    fun setWifiConnecting(isConnecting: Boolean) {
+        _uiState.value = _uiState.value.copy(
+            isConnectingToWifi = isConnecting,
+            wifiConnectionSuccess = false
+        )
+    }
+    
+    /**
+     * Set WiFi connection success
+     */
+    fun setWifiConnectionSuccess(success: Boolean) {
+        _uiState.value = _uiState.value.copy(
+            wifiConnectionSuccess = success,
+            isConnectingToWifi = false
+        )
+    }
+    
+    /**
+     * Set WiFi connection error
+     */
+    fun setWifiConnectionError(error: String?) {
+        _uiState.value = _uiState.value.copy(
+            wifiConnectionError = error,
+            isConnectingToWifi = false,
+            wifiConnectionSuccess = false
+        )
+    }
+    
+    /**
+     * Clear WiFi connection error
+     */
+    fun clearWifiConnectionError() {
+        _uiState.value = _uiState.value.copy(wifiConnectionError = null)
+    }
 }
 
 /**
@@ -178,5 +233,9 @@ data class ViewerFlowState(
     val showPinDialog: Boolean = false,
     val isAuthenticating: Boolean = false,
     val errorMessage: String? = null,
-    val authError: String? = null
+    val authError: String? = null,
+    val showQRScanner: Boolean = false,
+    val isConnectingToWifi: Boolean = false,
+    val wifiConnectionError: String? = null,
+    val wifiConnectionSuccess: Boolean = false
 )
