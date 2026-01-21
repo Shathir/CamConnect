@@ -51,7 +51,11 @@ import com.outdu.camconnect.ui.models.VisionMode
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import com.outdu.camconnect.ui.theme.AppColors.immersiveButtonBorderColor
 import com.outdu.camconnect.ui.components.dialogs.FilenamePromptDialog
+import com.outdu.camconnect.ui.components.dialogs.SingleButtonAlertDialog
 import com.outdu.camconnect.ui.viewmodels.IrIntensityLevel
+import com.outdu.camconnect.ui.viewmodels.RecordingUiEvent
+import kotlinx.coroutines.flow.collectLatest
+import com.outdu.camconnect.utils.StorageUtils
 
 
 /**
@@ -85,6 +89,13 @@ fun ExpandedControlContent(
     val recordingState by recordingViewModel.recordingState.collectAsStateWithLifecycle()
     val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
 
+    var activeRecordingDialogEvent by remember { mutableStateOf<RecordingUiEvent?>(null) }
+    LaunchedEffect(recordingViewModel) {
+        recordingViewModel.uiEvents.collectLatest { event ->
+            activeRecordingDialogEvent = event
+        }
+    }
+
     DisposableEffect(Unit) {
         Log.d("ExpandedControlContent", "Component created")
         onDispose {
@@ -98,6 +109,24 @@ fun ExpandedControlContent(
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        if (activeRecordingDialogEvent != null) {
+            val minGb = StorageUtils.MIN_FREE_BYTES_FOR_RECORDING / 1_000_000_000
+            val message = when (activeRecordingDialogEvent) {
+                RecordingUiEvent.LowStorageCannotStart ->
+                    "Insufficient storage.\nYou need at least ${minGb}GB free space to start recording."
+                RecordingUiEvent.LowStorageStoppedRecording ->
+                    "Recording stopped automatically.\nAvailable storage dropped below ${minGb}GB."
+                null -> ""
+            }
+
+            SingleButtonAlertDialog(
+                title = "Storage Warning",
+                message = message,
+                buttonText = "OK",
+                onOk = { activeRecordingDialogEvent = null }
+            )
+        }
+
         val isTablet = maxWidth > 600.dp
         val padding = if (deviceType == DeviceType.TABLET) 32.dp else 12.dp
         val spacing = if (deviceType == DeviceType.TABLET) 18.dp else 12.dp

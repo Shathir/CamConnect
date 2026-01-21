@@ -1,8 +1,11 @@
 package com.outdu.camconnect
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -28,6 +31,7 @@ import com.outdu.camconnect.services.OnvifDevice
 import com.outdu.camconnect.utils.WifiConnectionManager
 import com.outdu.camconnect.utils.WifiCredentials
 import com.outdu.camconnect.utils.WifiConnectionResult
+import com.outdu.camconnect.utils.WifiPersistResult
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import android.app.Activity
@@ -63,7 +67,6 @@ class ViewerFlowActivity : ComponentActivity() {
         Log.d("ViewerFlow", "Result data: ${result.data}")
         
         // Clear credentials after processing
-        val creds = currentWifiCredentials
         currentWifiCredentials = null
         
         if (result.resultCode == Activity.RESULT_OK) {
@@ -73,7 +76,7 @@ class ViewerFlowActivity : ComponentActivity() {
             
             var discoveryScheduled = false
             
-            if (resultList != null && resultList.isNotEmpty()) {
+            if (!resultList.isNullOrEmpty()) {
                 resultList.forEachIndexed { index, code ->
                     Log.d("ViewerFlow", "Result[$index]: $code")
                     when (code) {
@@ -177,7 +180,7 @@ class ViewerFlowActivity : ComponentActivity() {
                     
                     if (uiState.showQRScanner) {
                         QRScannerScreen(
-                            onQRScanned = { qrData -> handleQRScanned(qrData) },
+                            onQRScanned = { result -> handleQRScanned(result.rawValue) },
                             onBack = { viewModel.dismissQRScanner() }
                         )
                     } else {
@@ -202,6 +205,11 @@ class ViewerFlowActivity : ComponentActivity() {
     private var wifiConnectionManager: WifiConnectionManager? = null
     private var isConnectingToWifi = false // Prevent duplicate connection attempts
     private var currentWifiCredentials: WifiCredentials? = null // Store credentials for save network
+    private var boundNetwork: Network? = null
+    private var keepWifiBindingAcrossNavigation: Boolean = false
+    private val connectivityManager by lazy {
+        getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
     
     /**
      * Handle Start Streaming button click
@@ -264,6 +272,30 @@ class ViewerFlowActivity : ComponentActivity() {
         
         // Store credentials for later use (save network)
         currentWifiCredentials = credentials
+
+        // Android 10 (API 29): Persist via WifiNetworkSuggestion (survives app restarts), then open WiFi panel/settings
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+            Log.i("ViewerFlow", "Android 10 detected; saving WiFi via WifiNetworkSuggestion for SSID=${credentials.ssid}")
+            viewModel.dismissQRScanner()
+            viewModel.setWifiConnecting(false)
+            viewModel.clearWifiConnectionError()
+
+            when (val res = wifiConnectionManager!!.addNetworkSuggestion(credentials)) {
+                is WifiPersistResult.Success,
+                is WifiPersistResult.AlreadyExists -> {
+                    try {
+                        wifiSettingsLauncher.launch(Intent(Settings.Panel.ACTION_WIFI))
+                    } catch (_: Exception) {
+                        wifiSettingsLauncher.launch(Intent(Settings.ACTION_WIFI_SETTINGS))
+                    }
+                }
+                is WifiPersistResult.Failed -> {
+                    viewModel.setWifiConnectionError(res.error)
+                    wifiSettingsLauncher.launch(Intent(Settings.ACTION_WIFI_SETTINGS))
+                }
+            }
+            return
+        }
         
         // Mark as connecting to prevent duplicates
         isConnectingToWifi = true
@@ -280,70 +312,25 @@ class ViewerFlowActivity : ComponentActivity() {
             Log.d("ViewerFlow", "Result details: $result")
             when (result) {
                 is WifiConnectionResult.Success -> {
-                    Log.i("ViewerFlow", "WiFi network request approved - Network: ${result.network}")
+                    Log.i("ViewerFlow", "WiFi network request approved - Network: ${result.network} (binding process to this Network for discovery)")
                     isConnectingToWifi = false
                     
-                    // Get stored credentials
-                    val creds = currentWifiCredentials ?: credentials
-                    
-                    // WifiNetworkSpecifier creates ephemeral networks that don't become the active connection
-                    // We ALWAYS need to save the network using ACTION_WIFI_ADD_NETWORKS to actually connect
-                    Log.i("ViewerFlow", "Ephemeral connection approved. Now saving network to make it the active connection.")
-                    
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        Log.i("ViewerFlow", "Android 11+ detected (SDK ${Build.VERSION.SDK_INT}), creating save network intent for SSID: ${creds.ssid}")
-                        val saveIntent = wifiConnectionManager?.createSaveNetworkIntent(creds)
-                        if (saveIntent != null) {
-                            Log.i("ViewerFlow", "Save network intent created successfully")
-                            Log.d("ViewerFlow", "Intent action: ${saveIntent.action}")
-                            Log.d("ViewerFlow", "Intent has extras: ${saveIntent.extras != null}")
-                            
-                            viewModel.setWifiConnecting(false) // Stop showing connecting state
-                            
-                            // Launch the save network dialog
-                            try {
-                                Log.i("ViewerFlow", "Launching save network dialog...")
-                                Log.d("ViewerFlow", "Intent details before launch:")
-                                Log.d("ViewerFlow", "  Action: ${saveIntent.action}")
-                                Log.d("ViewerFlow", "  Component: ${saveIntent.component}")
-                                Log.d("ViewerFlow", "  Package: ${saveIntent.`package`}")
-                                Log.d("ViewerFlow", "  Has extras: ${saveIntent.extras != null}")
-                                
-                                // Verify intent can be resolved before launching
-                                val resolveInfo = packageManager.resolveActivity(saveIntent, 0)
-                                if (resolveInfo == null) {
-                                    Log.e("ViewerFlow", "Intent cannot be resolved! Opening WiFi settings instead.")
-                                    viewModel.setWifiConnectionError("Save network dialog not available. Opening WiFi settings - please connect to '${creds.ssid}' manually.")
-                                    val wifiSettingsIntent = Intent(Settings.ACTION_WIFI_SETTINGS)
-                                    startActivity(wifiSettingsIntent)
-                                    currentWifiCredentials = null
-                                } else {
-                                    Log.d("ViewerFlow", "Intent resolved by: ${resolveInfo.activityInfo.packageName}/${resolveInfo.activityInfo.name}")
-                                    saveWifiNetworkLauncher.launch(saveIntent)
-                                    Log.i("ViewerFlow", "Save network launcher launched - system dialog should appear now")
-                                }
-                            } catch (e: Exception) {
-                                Log.e("ViewerFlow", "Exception launching save network dialog", e)
-                                e.printStackTrace()
-                                viewModel.setWifiConnectionError("Failed to show save network dialog: ${e.message}. Opening WiFi settings - please connect to '${creds.ssid}' manually.")
-                                try {
-                                    val wifiSettingsIntent = Intent(Settings.ACTION_WIFI_SETTINGS)
-                                    startActivity(wifiSettingsIntent)
-                                } catch (e2: Exception) {
-                                    Log.e("ViewerFlow", "Failed to open WiFi settings", e2)
-                                }
-                                currentWifiCredentials = null
-                            }
-                        } else {
-                            Log.e("ViewerFlow", "Failed to create save network intent - intent is null")
-                            viewModel.setWifiConnectionError("Network approved but failed to create save dialog. Please connect to '${creds.ssid}' manually via WiFi settings.")
-                            currentWifiCredentials = null
-                        }
-                    } else {
-                        Log.w("ViewerFlow", "Android version ${Build.VERSION.SDK_INT} - Android 11+ (API 30) required for save network feature")
-                        viewModel.setWifiConnectionError("Network approved but Android 11+ required to save. Please connect to '${creds.ssid}' manually via WiFi settings.")
-                        currentWifiCredentials = null
+                    // Bind process to the WiFi Network returned by WifiNetworkSpecifier so that ONVIF UDP discovery
+                    // uses this network even if it doesn't become the "active/default" WiFi on the device.
+                    try {
+                        val bound = connectivityManager.bindProcessToNetwork(result.network)
+                        boundNetwork = if (bound) result.network else null
+                        Log.i("ViewerFlow", "bindProcessToNetwork result=$bound, boundNetwork=$boundNetwork")
+                    } catch (e: Exception) {
+                        Log.e("ViewerFlow", "Failed to bind process to WiFi network", e)
                     }
+                    
+                    viewModel.setWifiConnecting(false)
+                    viewModel.setWifiConnectionSuccess(true)
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        viewModel.setWifiConnectionSuccess(false)
+                        verifyAndStartDiscovery()
+                    }, 1500)
                 }
                 is WifiConnectionResult.Failed -> {
                     Log.e("ViewerFlow", "WiFi connection failed: ${result.error}")
@@ -363,6 +350,8 @@ class ViewerFlowActivity : ComponentActivity() {
             }
         }
     }
+
+    // (onDestroy override is defined once at the bottom of the file)
     
     /**
      * Handle camera selection from the list
@@ -423,11 +412,21 @@ class ViewerFlowActivity : ComponentActivity() {
      */
     private fun handleAuthenticationSuccess(camera: OnvifDevice) {
         Log.i("ViewerFlow", "Authentication successful for camera: ${camera.ipAddress}")
+
+        // Persist last connected camera for auto-reconnect on next launch
+        try {
+            SessionManager.setLastConnectedCameraIp(camera.ipAddress)
+        } catch (e: Exception) {
+            Log.w("ViewerFlow", "Failed to persist last connected camera IP", e)
+        }
         
         // Generate RTSP URL for the camera
         val rtspUrl = generateRtspUrl(camera)
         
         // Navigate to MainActivity for stream consumption
+        // Keep the app-scoped WiFi binding alive across the Activity transition. Otherwise, onDestroy()
+        // will unbind + cleanup and Android will drop the ephemeral WifiNetworkSpecifier connection.
+        keepWifiBindingAcrossNavigation = true
         val intent = Intent(this, MainActivity::class.java).apply {
             // Pass camera information to MainActivity
             putExtra("CAMERA_IP", camera.ipAddress)
@@ -502,10 +501,25 @@ class ViewerFlowActivity : ComponentActivity() {
     }
     
     override fun onDestroy() {
+        if (!keepWifiBindingAcrossNavigation) {
+            // Release app-scoped WiFi request and network binding when leaving the viewer flow.
+            try {
+                connectivityManager.bindProcessToNetwork(null)
+                boundNetwork = null
+            } catch (_: Exception) {
+            }
+
+            // Cleanup WiFi connection manager (releases WifiNetworkSpecifier request)
+            try {
+                wifiConnectionManager?.cleanup()
+            } catch (_: Exception) {
+            }
+            wifiConnectionManager = null
+        } else {
+            Log.i("ViewerFlow", "Skipping WiFi cleanup/unbind because we're navigating to MainActivity")
+        }
+
         super.onDestroy()
-        // Cleanup WiFi connection manager
-        wifiConnectionManager?.cleanup()
-        wifiConnectionManager = null
         Log.d("ViewerFlow", "ViewerFlowActivity destroyed")
     }
 }

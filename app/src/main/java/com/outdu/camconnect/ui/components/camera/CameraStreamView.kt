@@ -44,8 +44,6 @@ import com.airbnb.lottie.compose.*
 import androidx.compose.ui.draw.scale
 import com.outdu.camconnect.ui.components.notifications.NotificationCard
 import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
-import com.outdu.camconnect.ui.components.camera.CameraInfoTooltip
-import com.outdu.camconnect.ui.components.camera.SystemWarningTooltip
 
 
 /**

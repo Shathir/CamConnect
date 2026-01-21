@@ -21,6 +21,18 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
+import com.outdu.camconnect.communication.MotocamAPIHelperWrapper
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class SetupActivity : ComponentActivity() {
     private val viewModel: SetupViewModel by viewModels()
@@ -40,7 +52,57 @@ class SetupActivity : ComponentActivity() {
             return
         }
         
-        // Check if user should skip setup entirely
+        // Auto-reconnect (viewer flow for now): if we have a stored session + last connected camera IP,
+        // try a health check; if successful, go straight to MainActivity. If not, clear session and
+        // proceed with normal setup/discovery.
+        val lastCameraIp = SessionManager.getLastConnectedCameraIp()
+        val shouldAttemptReconnect = SessionManager.isAuthenticated() && !lastCameraIp.isNullOrBlank()
+        if (shouldAttemptReconnect) {
+            enableEdgeToEdge()
+            setContent {
+                CamConnectTheme {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        AutoReconnectScreen()
+                    }
+                }
+            }
+
+            lifecycleScope.launch {
+                Log.i("SetupActivity",
+                    "Attempting auto-reconnect via health check to camera: $lastCameraIp")
+
+                val isHealthy = withTimeoutOrNull(5_000L) {
+                    try {
+                        if (lastCameraIp != null) {
+                            MotocamAPIHelperWrapper.getHealthStatus(lastCameraIp)
+                        }
+                        true
+                    } catch (e: Exception) {
+                        Log.w("SetupActivity", "Health check failed during auto-reconnect: ${e.message}")
+                        false
+                    }
+                } ?: false
+
+                if (isHealthy) {
+                    Log.i("SetupActivity", "Auto-reconnect succeeded. Launching MainActivity.")
+                    val intent = Intent(this@SetupActivity, MainActivity::class.java).apply {
+                        putExtra("CAMERA_IP", lastCameraIp)
+                        putExtra("USER_TYPE", "VIEWER")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    startActivity(intent)
+                    finish()
+                } else {
+                    Log.w("SetupActivity", "Auto-reconnect failed. Clearing session and returning to setup flow.")
+                    SessionManager.clearSession()
+                    SessionManager.clearLastConnectedCamera()
+                    recreate()
+                }
+            }
+            return
+        }
+
+        // Existing skip logic (owner flow) remains unchanged for now
         if (setupFlowDetector.shouldSkipSetup()) {
             Log.i("SetupActivity", "Skipping setup - user already configured and authenticated")
             startActivity(Intent(this, MainActivity::class.java))
@@ -111,3 +173,18 @@ class SetupActivity : ComponentActivity() {
         Log.d("SetupActivity", "SetupActivity destroyed")
     }
 } 
+
+@Composable
+private fun AutoReconnectScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        CircularProgressIndicator()
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "Reconnecting to your last camera…")
+    }
+}

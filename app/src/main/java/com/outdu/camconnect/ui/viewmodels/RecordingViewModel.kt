@@ -13,10 +13,14 @@ import androidx.lifecycle.viewModelScope
 import com.outdu.camconnect.MainActivity
 import com.outdu.camconnect.services.RecordConfig
 import com.outdu.camconnect.services.ScreenRecorderService
+import com.outdu.camconnect.services.ServiceEvent
 import com.outdu.camconnect.ui.models.RecordingState
+import com.outdu.camconnect.utils.StorageUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -28,6 +32,9 @@ class RecordingViewModel : ViewModel() {
 
     private val _recordingState = MutableStateFlow<RecordingState>(RecordingState.NotRecording)
     val recordingState = _recordingState.asStateFlow()
+
+    private val _uiEvents = MutableSharedFlow<RecordingUiEvent>(extraBufferCapacity = 1)
+    val uiEvents = _uiEvents.asSharedFlow()
 
     private var recordingStartTime = 0L
     private var durationUpdateJob: Job? = null
@@ -49,6 +56,20 @@ class RecordingViewModel : ViewModel() {
                         _recordingState.value !is RecordingState.StoppingRecording &&
                         _recordingState.value !is RecordingState.SavedToGallery) {
                         _recordingState.value = RecordingState.NotRecording
+                    }
+                }
+            }
+        }
+
+        // Listen for service-side events (e.g., auto-stopped due to low storage) and surface them to UI.
+        viewModelScope.launch {
+            ScreenRecorderService.events.collectLatest { event ->
+                when (event) {
+                    ServiceEvent.CannotStartLowStorage -> {
+                        _uiEvents.tryEmit(RecordingUiEvent.LowStorageCannotStart)
+                    }
+                    ServiceEvent.StoppedLowStorage -> {
+                        _uiEvents.tryEmit(RecordingUiEvent.LowStorageStoppedRecording)
                     }
                 }
             }
@@ -136,6 +157,11 @@ class RecordingViewModel : ViewModel() {
 
     private fun startRecording(context: Context) {
         try {
+            if (!StorageUtils.hasSufficientSpaceForRecording()) {
+                _uiEvents.tryEmit(RecordingUiEvent.LowStorageCannotStart)
+                return
+            }
+
             val mediaProjectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             if (context is Activity) {
                 context.startActivityForResult(
@@ -171,6 +197,11 @@ class RecordingViewModel : ViewModel() {
     fun handleActivityResult(context: Context, resultCode: Int, data: Intent?) {
         if (resultCode == Activity.RESULT_OK && data != null) {
             try {
+                if (!StorageUtils.hasSufficientSpaceForRecording()) {
+                    _uiEvents.tryEmit(RecordingUiEvent.LowStorageCannotStart)
+                    return
+                }
+
                 val config = RecordConfig(resultCode, data)
                 val serviceIntent = Intent(context, ScreenRecorderService::class.java).apply {
                     action = ScreenRecorderService.ACTION_START
@@ -184,3 +215,15 @@ class RecordingViewModel : ViewModel() {
         }
     }
 } 
+
+sealed interface RecordingUiEvent {
+    /**
+     * User attempted to start recording with less than the minimum required free storage.
+     */
+    object LowStorageCannotStart : RecordingUiEvent
+
+    /**
+     * Recording was auto-stopped due to storage dropping below the minimum required free storage.
+     */
+    object LowStorageStoppedRecording : RecordingUiEvent
+}

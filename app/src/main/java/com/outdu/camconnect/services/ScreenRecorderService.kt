@@ -18,14 +18,19 @@ import android.widget.Toast
 import androidx.window.layout.WindowMetricsCalculator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 import java.io.File
 import java.io.FileInputStream
+import com.outdu.camconnect.utils.StorageUtils
 
 @Parcelize
 data class RecordConfig(
@@ -46,6 +51,7 @@ class ScreenRecorderService : Service() {
     }
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var currentRecordConfig: RecordConfig? = null
+    private var storageMonitorJob: Job? = null
 
     private val outputFile by lazy {
         File(cacheDir, "tmp.mp4").also {
@@ -124,10 +130,19 @@ class ScreenRecorderService : Service() {
                     )
                 }
 
+                // Safety-net: if started from any other code path, still block recordings on low storage.
+                if (!StorageUtils.hasSufficientSpaceForRecording()) {
+                    _events.tryEmit(ServiceEvent.CannotStartLowStorage)
+                    stopService()
+                    return START_NOT_STICKY
+                }
+
                 _isServiceRunning.value = true
                 startRecording(intent)
             }
             ACTION_STOP -> {
+                storageMonitorJob?.cancel()
+                storageMonitorJob = null
                 stopRecording()
             }
             ACTION_UPDATE_FILENAME -> {
@@ -158,6 +173,12 @@ class ScreenRecorderService : Service() {
                 return
             }
             
+            if (!StorageUtils.hasSufficientSpaceForRecording()) {
+                _events.tryEmit(ServiceEvent.CannotStartLowStorage)
+                stopService()
+                return
+            }
+
             currentRecordConfig = config
 
             mediaProjection = mediaProjectionManager.getMediaProjection(
@@ -176,21 +197,59 @@ class ScreenRecorderService : Service() {
             mediaRecorder.start()
             virtualDisplay = createVirtualDisplay()
             Log.d(TAG, "Recording started successfully")
+
+            startStorageMonitor()
         } catch (e: Exception) {
             Log.e(TAG, "Error starting recording", e)
             stopSelf()
         }
     }
 
+    private fun startStorageMonitor() {
+        storageMonitorJob?.cancel()
+        storageMonitorJob = serviceScope.launch {
+            while (true) {
+                val available = StorageUtils.getAvailableBytes()
+                Log.i(TAG, "Available memory is ${available/ 1_000_000_000}GB")
+                if (available < StorageUtils.MIN_FREE_BYTES_FOR_RECORDING) {
+                    Log.w(
+                        TAG,
+                        "Low storage detected (< ${StorageUtils.MIN_FREE_BYTES_FOR_RECORDING / 1_000_000_000}GB). Stopping recording."
+                    )
+                    _events.tryEmit(ServiceEvent.StoppedLowStorage)
+                    stopRecording()
+                    break
+                }
+                delay(5_000)
+            }
+        }
+    }
+
     private fun stopRecording() {
+        storageMonitorJob?.cancel()
+        storageMonitorJob = null
+
+        // Be defensive: MediaRecorder.stop() can throw IllegalStateException in edge cases.
+        // We still want to stop MediaProjection so the service callback can run cleanup/save.
         try {
             mediaRecorder.stop()
-            mediaProjection?.stop()
-            mediaRecorder.reset()
-            Log.d(TAG, "Recording stopped successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Error stopping recording", e)
+            Log.e(TAG, "Error stopping MediaRecorder", e)
+        } finally {
+            try {
+                mediaProjection?.stop()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping MediaProjection", e)
+            }
         }
+
+        try {
+            mediaRecorder.reset()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error resetting MediaRecorder", e)
+        }
+
+        Log.d(TAG, "Recording stop requested")
     }
 
     private fun stopService() {
@@ -265,6 +324,8 @@ class ScreenRecorderService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         _isServiceRunning.value = false
+        storageMonitorJob?.cancel()
+        storageMonitorJob = null
         serviceScope.coroutineContext.cancelChildren()
         Log.d(TAG, "Service destroyed")
     }
@@ -286,6 +347,9 @@ class ScreenRecorderService : Service() {
         private val _isServiceRunning = MutableStateFlow(false)
         val isServiceRunning = _isServiceRunning.asStateFlow()
 
+        private val _events = MutableSharedFlow<ServiceEvent>(extraBufferCapacity = 1)
+        val events = _events.asSharedFlow()
+
         private const val VIDEO_FRAME_RATE = 30
         private const val VIDEO_BIT_RATE_KILOBITS = 8192 // Increased for better quality
         private const val NOTIFICATION_ID = 1001
@@ -297,4 +361,16 @@ class ScreenRecorderService : Service() {
         const val RECORD_CONFIG = "RECORD_CONFIG"
         const val CUSTOM_FILENAME = "CUSTOM_FILENAME"
     }
+}
+
+sealed interface ServiceEvent {
+    /**
+     * Recording could not start because the device has less than the minimum required free space.
+     */
+    object CannotStartLowStorage : ServiceEvent
+
+    /**
+     * Recording was stopped automatically because the device dropped below the minimum required free space.
+     */
+    object StoppedLowStorage : ServiceEvent
 }

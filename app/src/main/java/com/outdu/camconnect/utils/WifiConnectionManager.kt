@@ -1,6 +1,5 @@
 package com.outdu.camconnect.utils
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -45,6 +44,12 @@ sealed class WifiConnectionResult {
     object Timeout : WifiConnectionResult()
 }
 
+sealed class WifiPersistResult {
+    object Success : WifiPersistResult()
+    object AlreadyExists : WifiPersistResult()
+    data class Failed(val error: String) : WifiPersistResult()
+}
+
 /**
  * Manager for WiFi network connection using WifiNetworkSpecifier API (Android 10+)
  */
@@ -57,6 +62,7 @@ class WifiConnectionManager(private val context: Context) {
     }
     
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var connectionTimeoutJob: kotlinx.coroutines.Job? = null
     private var unavailableHandler: Handler? = null
@@ -209,10 +215,29 @@ class WifiConnectionManager(private val context: Context) {
                             isActuallyConnected = hasWifi
                             verificationMethod = "Fallback (capabilities check)"
                         }
+
+                        // IMPORTANT (Android 10+ / SDK 29+):
+                        // WifiNetworkSpecifier often provides an *ephemeral* app-scoped WiFi network that:
+                        // - does NOT become the device's active WiFi (activeNetwork may be null)
+                        // - reports SSID as "<unknown ssid>"
+                        // - has networkId = -1
+                        // Even then, the returned Network is valid and can be used by binding the process
+                        // or using the Network's socketFactory. Treat this as a successful connection.
+                        if (!isActuallyConnected && hasWifi) {
+                            Log.w(TAG, "Ephemeral WiFi network detected (SSID may be <unknown ssid>). Treating as success for app-scoped networking.")
+                            isActuallyConnected = true
+                            verificationMethod = "Ephemeral network (capabilities)"
+                        }
                         
                         if (!isConnectionResolved) {
                             isConnectionResolved = true
-                            cleanup()
+                            // IMPORTANT:
+                            // Do NOT call cleanup() on success. WifiNetworkSpecifier connections are ephemeral and
+                            // will be torn down when the request is released (unregisterNetworkCallback).
+                            // Caller should explicitly call cleanup() when it's done using the network, or after
+                            // transitioning to a persistent connection method (e.g. ACTION_WIFI_ADD_NETWORKS).
+                            connectionTimeoutJob?.cancel()
+                            connectionTimeoutJob = null
                             
                             if (isActuallyConnected) {
                                 Log.i(TAG, "WiFi connection verified via $verificationMethod! Device is connected to SSID: $connectedSSID")
@@ -367,15 +392,69 @@ class WifiConnectionManager(private val context: Context) {
     fun parseQRData(qrData: String): WifiCredentials? {
         return try {
             val jsonObject = org.json.JSONObject(qrData)
+            val macValue = jsonObject.optString("mac", "")
+                .ifBlank { jsonObject.optString("macaddress", "") }
+                .ifBlank { jsonObject.optString("macAddress", "") }
+                .takeIf { it.isNotBlank() }
             WifiCredentials(
                 ssid = jsonObject.getString("ssid"),
                 password = jsonObject.getString("password"),
-                ip = jsonObject.optString("ip", null).takeIf { it.isNotEmpty() },
-                macAddress = jsonObject.optString("macaddress", null).takeIf { it.isNotEmpty() }
+                ip = jsonObject.optString("ip", "").takeIf { it.isNotBlank() },
+                macAddress = macValue
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing QR data", e)
             null
+        }
+    }
+
+    /**
+     * Android 10 (API 29)+: Persist a WiFi network using WifiNetworkSuggestion.
+     *
+     * Notes:
+     * - User approval is still required by Android (system UI/notification).
+     * - Suggestions persist while the app is installed (OS-managed), so they survive app restarts.
+     * - Connection is OS-controlled; we can encourage the user by opening the WiFi panel.
+     */
+    fun addNetworkSuggestion(credentials: WifiCredentials): WifiPersistResult {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return WifiPersistResult.Failed("WifiNetworkSuggestion requires Android 10+")
+        }
+        if (!wifiManager.isWifiEnabled) {
+            return WifiPersistResult.Failed("WiFi is not enabled")
+        }
+
+        return try {
+            val builder = WifiNetworkSuggestion.Builder()
+                .setSsid(credentials.ssid)
+                // Encourage a user-facing approval/connect flow
+                .setIsAppInteractionRequired(true)
+
+            if (credentials.password.isNotEmpty()) {
+                builder.setWpa2Passphrase(credentials.password)
+            }
+
+            val suggestion = builder.build()
+            val status = wifiManager.addNetworkSuggestions(listOf(suggestion))
+            Log.i(TAG, "addNetworkSuggestions status=$status for SSID='${credentials.ssid}'")
+
+            when (status) {
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS ->
+                    WifiPersistResult.Success
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_DUPLICATE ->
+                    WifiPersistResult.AlreadyExists
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_APP_DISALLOWED ->
+                    WifiPersistResult.Failed("App is disallowed from adding network suggestions. Enable it in WiFi settings and try again.")
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_EXCEEDS_MAX_PER_APP ->
+                    WifiPersistResult.Failed("Too many saved suggestions for this app. Remove some and try again.")
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL ->
+                    WifiPersistResult.Failed("Internal error while saving WiFi suggestion")
+                else ->
+                    WifiPersistResult.Failed("Failed to save WiFi suggestion (status=$status)")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error adding network suggestion", e)
+            WifiPersistResult.Failed(e.message ?: "Unknown error")
         }
     }
     
@@ -413,7 +492,6 @@ class WifiConnectionManager(private val context: Context) {
             
             val intent = Intent(Settings.ACTION_WIFI_ADD_NETWORKS).apply {
                 putExtras(bundle)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             
             Log.i(TAG, "Save network intent created successfully")

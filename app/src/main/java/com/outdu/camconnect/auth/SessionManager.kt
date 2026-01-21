@@ -26,6 +26,7 @@ object SessionManager {
     private const val PREFS_NAME = "cam_connect_session"
     private const val SESSION_TOKEN_KEY = "session_token"
     private const val LAST_AUTH_TIME_KEY = "last_auth_time"
+    private const val LAST_CONNECTED_CAMERA_IP_KEY = "last_connected_camera_ip"
     private const val PIN_ATTEMPTS_KEY = "pin_attempts"
     private const val LOCKOUT_START_TIME_KEY = "lockout_start_time"
     private const val LOCKOUT_SEQUENCE_COUNT_KEY = "lockout_sequence_count"
@@ -368,13 +369,15 @@ object SessionManager {
     /**
      * Check if stored session is still valid (not expired)
      */
-    private fun isSessionValid(): Boolean {
-        if (currentSessionToken == null) return false
-        
+    private fun isSessionValid(token: String? = currentSessionToken): Boolean {
+        if (token.isNullOrBlank()) return false
+
         val lastAuthTime = sharedPreferences?.getLong(LAST_AUTH_TIME_KEY, 0) ?: 0
+        if (lastAuthTime <= 0) return false
+
         val currentTime = System.currentTimeMillis()
         val sessionExpiryTime = lastAuthTime + (SESSION_TIMEOUT_HOURS * 60 * 60 * 1000)
-        
+
         return currentTime < sessionExpiryTime
     }
     
@@ -396,13 +399,14 @@ object SessionManager {
      */
     private fun loadStoredSession() {
         val storedToken = sharedPreferences?.getString(SESSION_TOKEN_KEY, null)
-        if (storedToken != null && isSessionValid()) {
+        if (storedToken != null && isSessionValid(storedToken)) {
             currentSessionToken = storedToken
             Log.d(TAG, "Valid session loaded from storage")
-        } else {
-            // Clear invalid/expired session
-            clearSession()
+            return
         }
+
+        // Clear invalid/expired session
+        clearSession()
     }
     
     /**
@@ -416,6 +420,33 @@ object SessionManager {
             ?.apply()
         
         Log.i(TAG, "Session cleared")
+    }
+
+    /**
+     * Persist the last connected camera IP for auto-reconnect on next app launch.
+     */
+    fun setLastConnectedCameraIp(ipAddress: String) {
+        sharedPreferences?.edit()
+            ?.putString(LAST_CONNECTED_CAMERA_IP_KEY, ipAddress)
+            ?.apply()
+        Log.d(TAG, "Last connected camera IP stored: $ipAddress")
+    }
+
+    /**
+     * Get the last connected camera IP (if any).
+     */
+    fun getLastConnectedCameraIp(): String? {
+        return sharedPreferences?.getString(LAST_CONNECTED_CAMERA_IP_KEY, null)
+    }
+
+    /**
+     * Clear stored last connected camera IP.
+     */
+    fun clearLastConnectedCamera() {
+        sharedPreferences?.edit()
+            ?.remove(LAST_CONNECTED_CAMERA_IP_KEY)
+            ?.apply()
+        Log.d(TAG, "Last connected camera IP cleared")
     }
     
     /**

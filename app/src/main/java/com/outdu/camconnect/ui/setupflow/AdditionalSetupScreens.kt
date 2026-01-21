@@ -1,6 +1,5 @@
 package com.outdu.camconnect.ui.setupflow
 
-import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,6 +28,12 @@ import com.outdu.camconnect.ui.theme.SpyBlue
 import com.outdu.camconnect.utils.rememberDeviceType
 import android.content.Intent
 import android.provider.Settings
+import android.os.Build
+import android.util.Log
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.provider.Settings.Panel
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.TextField
@@ -41,6 +46,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.ImeAction
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
+import com.outdu.camconnect.utils.WifiConnectionManager
+import com.outdu.camconnect.utils.WifiConnectionResult
+import com.outdu.camconnect.utils.WifiCredentials
+import com.outdu.camconnect.utils.WifiPersistResult
 
 @Composable
 fun PermissionScreen(
@@ -491,10 +500,14 @@ fun WifiConnectionScreen(
     macId: String?,
     serialNumber: String?,
     manufacturedDate: String?,
+    wifiCredentials: WifiCredentials? = null,
     onWifiConnected: () -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val tag = "WifiConnectionScreen"
+    var wifiConnectError by remember { mutableStateOf<String?>(null) }
+    var isAutoConnecting by remember { mutableStateOf(false) }
 
     // Activity result launcher for WiFi settings
     val wifiSettingsLauncher = rememberLauncherForActivityResult(
@@ -502,6 +515,92 @@ fun WifiConnectionScreen(
     ) { result ->
         // When user returns from WiFi settings, proceed to PIN entry
         onWifiConnected()
+    }
+
+    // Activity result launcher for "Add/save WiFi network" dialog (Android 11+)
+    val saveNetworkLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        // After the system dialog, user may be connected; proceed and let next steps validate as needed.
+        onWifiConnected()
+    }
+
+    // Location permission launcher (required for WiFi connect APIs / SSID visibility on Android 10+)
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        Log.d(tag, "Location permission result: $granted")
+        if (!granted) {
+            wifiConnectError = "Location permission is required to connect via QR. Please grant it and try again."
+            isAutoConnecting = false
+        }
+    }
+
+    // Auto-connect if WiFi credentials were provided via QR (this mirrors native camera behavior,
+    // but Android still shows a system confirmation dialog).
+    LaunchedEffect(wifiCredentials) {
+        val creds = wifiCredentials ?: return@LaunchedEffect
+        val manager = WifiConnectionManager(context)
+
+        // Ensure location permission (required by Android for WiFi scanning/connection APIs)
+        val hasLocation = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!hasLocation) {
+            Log.w(tag, "Missing ACCESS_FINE_LOCATION; requesting before attempting auto-connect")
+            wifiConnectError = "Grant location permission to connect to WiFi automatically."
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            return@LaunchedEffect
+        }
+
+        // Best-effort "native camera" behavior depends on Android version:
+        // - Android 11+ (API 30+): use the system "Add/Save network" dialog (persists + can become active)
+        // - Android 10 (API 29): use WifiNetworkSuggestion to persist, then open WiFi panel for user to connect/approve
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            isAutoConnecting = true
+            wifiConnectError = null
+            Log.i(tag, "Launching save-network system dialog for SSID='${creds.ssid}'")
+            val saveIntent = manager.createSaveNetworkIntent(creds)
+            if (saveIntent != null) {
+                isAutoConnecting = false
+                saveNetworkLauncher.launch(saveIntent)
+            } else {
+                isAutoConnecting = false
+                wifiConnectError = "Save network dialog not available. Please connect to '${creds.ssid}' in WiFi settings."
+                wifiSettingsLauncher.launch(Intent(Settings.ACTION_WIFI_SETTINGS))
+            }
+            return@LaunchedEffect
+        }
+
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+            isAutoConnecting = true
+            wifiConnectError = null
+            Log.i(tag, "Android 10 detected; adding WifiNetworkSuggestion for SSID='${creds.ssid}'")
+            when (val res = manager.addNetworkSuggestion(creds)) {
+                is WifiPersistResult.Success,
+                is WifiPersistResult.AlreadyExists -> {
+                    isAutoConnecting = false
+                    // Encourage user approval/connect via WiFi panel (quick settings-style)
+                    try {
+                        wifiSettingsLauncher.launch(Intent(Panel.ACTION_WIFI))
+                    } catch (_: Exception) {
+                        wifiSettingsLauncher.launch(Intent(Settings.ACTION_WIFI_SETTINGS))
+                    }
+                }
+                is WifiPersistResult.Failed -> {
+                    isAutoConnecting = false
+                    wifiConnectError = res.error
+                    wifiSettingsLauncher.launch(Intent(Settings.ACTION_WIFI_SETTINGS))
+                }
+            }
+            return@LaunchedEffect
+        }
+
+        // Android 9 and below (or any other fallback)
+        isAutoConnecting = false
+        wifiConnectError = "Please connect to '${creds.ssid}' in WiFi settings to continue."
+        wifiSettingsLauncher.launch(Intent(Settings.ACTION_WIFI_SETTINGS))
     }
 
     Box(
@@ -637,6 +736,42 @@ fun WifiConnectionScreen(
                             )
                             .padding(12.dp)
                     )
+
+                    if (isAutoConnecting) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = StravionBlue,
+                                strokeWidth = 2.dp
+                            )
+                            Text(
+                                text = "Waiting for WiFi connection confirmation…",
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    fontFamily = FontFamily(Font(R.font.arial_regular)),
+                                    fontWeight = FontWeight(400),
+                                    color = Color(0xFF1A1A1C)
+                                )
+                            )
+                        }
+                    }
+
+                    if (wifiConnectError != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = wifiConnectError!!,
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                fontFamily = FontFamily(Font(R.font.arial_regular)),
+                                fontWeight = FontWeight(400),
+                                color = Color(0xFFFF3B30)
+                            )
+                        )
+                    }
                 }
             }
 

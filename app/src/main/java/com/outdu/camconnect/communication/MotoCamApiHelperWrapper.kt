@@ -247,6 +247,15 @@ object MotocamAPIHelperWrapper {
         MotocamAPIHelper::parseHealthCheckResponse
     )
 
+    /**
+     * Health check on a specific camera IP (used by auto-reconnect flow).
+     */
+    suspend fun getHealthStatus(cameraIp: String): HealthStatus = sendCommand(
+        MotocamAPIHelper.getHealthCheckCmd(),
+        MotocamAPIHelper::parseHealthCheckResponse,
+        cameraIp
+    )
+
     suspend fun getStreamConfiguration(): StreamConfiguration = sendCommand(
         MotocamAPIHelper.getStreamConfigurationCmd(),
         MotocamAPIHelper::parseStreamConfigurationResponse

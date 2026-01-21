@@ -1,5 +1,7 @@
 package com.outdu.camconnect.ui.setupflow
 
+import android.util.Log
+import android.net.Uri
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
@@ -9,6 +11,7 @@ import com.outdu.camconnect.auth.SetupFlowDetector
 import com.outdu.camconnect.auth.UserStateManager
 import com.outdu.camconnect.viewmodels.SetupState
 import com.outdu.camconnect.security.MandatoryPermissionScreen
+import com.outdu.camconnect.utils.WifiCredentials
 
 /**
  * Navigation-based setup flow that determines the starting point
@@ -21,6 +24,7 @@ fun NavigationSetupFlow(
     val context = LocalContext.current
     val navController = rememberNavController()
     val setupFlowDetector = remember { SetupFlowDetector(context) }
+    val tag = "NavigationSetupFlow"
     
     // Get the starting destination based on user state
     val startDestination = remember { setupFlowDetector.getStartingDestination() }
@@ -115,7 +119,9 @@ fun NavigationSetupFlow(
         composable("qr_scanner") {
             if (flowConfig.showQRScanner) {
                 QRScannerScreen(
-                    onQRScanned = { qrData ->
+                    onQRScanned = { result ->
+                        val qrData = result.rawValue
+                        Log.i(tag, "onQRScanned called (len=${qrData.length}) -> navigating to wifi_connection")
                         // Process QR data and add camera to repository
                         UserStateManager.getCameraRepository()?.let { repo ->
                             // Parse QR data to extract camera info
@@ -125,7 +131,8 @@ fun NavigationSetupFlow(
                         }
                         
                         // Navigate to WiFi connection with camera details
-                        navController.navigate("wifi_connection/$qrData") {
+                        val encoded = Uri.encode(qrData)
+                        navController.navigate("wifi_connection/$encoded") {
                             popUpTo("qr_scanner") { inclusive = true }
                         }
                     },
@@ -138,17 +145,19 @@ fun NavigationSetupFlow(
         
         // WiFi connection screen with QR data parameter
         composable("wifi_connection/{qrData}") { backStackEntry ->
-            val qrData = backStackEntry.arguments?.getString("qrData") ?: ""
+            val qrData = Uri.decode(backStackEntry.arguments?.getString("qrData") ?: "")
             // Parse QR data to extract camera details
             val cameraDetails = parseQRData(qrData)
+            val wifiCredentials = parseWifiCredentials(qrData)
             
             WifiConnectionScreen(
                 cameraHostname = cameraDetails.hostname,
                 macId = cameraDetails.macId,
                 serialNumber = cameraDetails.serialNumber,
                 manufacturedDate = cameraDetails.manufacturedDate,
+                wifiCredentials = wifiCredentials,
                 onWifiConnected = {
-                    navController.navigate("camera_pin_entry/$qrData")
+                    navController.navigate("camera_pin_entry/${Uri.encode(qrData)}")
                 },
                 onBack = {
                     navController.popBackStack()
@@ -158,7 +167,7 @@ fun NavigationSetupFlow(
         
         // Camera PIN entry with QR data parameter
         composable("camera_pin_entry/{qrData}") { backStackEntry ->
-            val qrData = backStackEntry.arguments?.getString("qrData") ?: ""
+            val qrData = Uri.decode(backStackEntry.arguments?.getString("qrData") ?: "")
             val cameraDetails = parseQRData(qrData)
             
             CameraPinEntryScreen(
@@ -287,6 +296,16 @@ data class CameraWithOnlineStatus(
 
 // Helper function to parse QR code data
 fun parseQRData(qrData: String): CameraDetails {
+    // Also support WiFi JSON payloads: {"ssid":"...","password":"...","ip":"...","mac":"..."}
+    parseWifiCredentials(qrData)?.let { creds ->
+        return CameraDetails(
+            hostname = creds.ssid.ifBlank { "CameraWiFi_Unknown" },
+            macId = creds.macAddress,
+            serialNumber = null,
+            manufacturedDate = null
+        )
+    }
+
     // Parse QR data format: "hostname:CameraWiFi_12345;mac:AA:BB:CC:DD:EE:FF;serial:SN123456789;date:2024-01-15"
     val parts = qrData.split(";")
     val dataMap = parts.associate { part ->
@@ -300,6 +319,25 @@ fun parseQRData(qrData: String): CameraDetails {
         serialNumber = dataMap["serial"],
         manufacturedDate = dataMap["date"]
     )
+}
+
+private fun parseWifiCredentials(qrData: String): WifiCredentials? {
+    return try {
+        val jsonObject = org.json.JSONObject(qrData)
+        val macValue = jsonObject.optString("mac", "")
+            .ifBlank { jsonObject.optString("macaddress", "") }
+            .ifBlank { jsonObject.optString("macAddress", "") }
+            .takeIf { it.isNotBlank() }
+        if (!jsonObject.has("ssid") || !jsonObject.has("password")) return null
+        WifiCredentials(
+            ssid = jsonObject.getString("ssid"),
+            password = jsonObject.getString("password"),
+            ip = jsonObject.optString("ip", "").takeIf { it.isNotBlank() },
+            macAddress = macValue
+        )
+    } catch (_: Exception) {
+        null
+    }
 }
 
 // Viewer-specific screens (these would need to be implemented)

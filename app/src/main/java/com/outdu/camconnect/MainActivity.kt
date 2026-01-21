@@ -49,6 +49,7 @@ import android.provider.Settings
 import com.outdu.camconnect.security.MandatoryPermissionManager
 import com.outdu.camconnect.profiler.selectBestDecoder
 import kotlin.system.exitProcess
+import com.outdu.camconnect.auth.SessionManager
 
 data class OverlayPoints(
     var labels: IntArray,
@@ -458,6 +459,14 @@ class MainActivity : ComponentActivity() {
         
         lifecycleScope.launch {
             try {
+                // Clear local session + last connected camera to prevent auto-reconnect
+                try {
+                    SessionManager.clearSession()
+                    SessionManager.clearLastConnectedCamera()
+                } catch (e: Exception) {
+                    Log.w("MainActivity", "Failed to clear session during logout", e)
+                }
+
                 // Stop streaming and cleanup native resources
                 try {
                     nativePause()
