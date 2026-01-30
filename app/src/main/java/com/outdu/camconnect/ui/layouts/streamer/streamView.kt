@@ -11,6 +11,7 @@ import android.view.SurfaceView
 import android.view.TextureView
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
@@ -125,11 +126,14 @@ private fun DrawScope.drawAiRegionOverlay(
     aiConfig: AiRegionConfig,
     maskAlpha: Float = 0.4f,
     boxStrokeWidth: Float = 4f,
-    boxColor: Color = Color.White
+    boxColor: Color = Color.Red
 ) {
     when (overlayType) {
         AiRegionOverlayType.MASK -> drawMaskOverlay(viewSize, aiConfig, maskAlpha)
-        AiRegionOverlayType.BOX -> drawBoxOverlay(viewSize, aiConfig, boxStrokeWidth, boxColor)
+        // QR-scanner style: dim outside region + draw corner brackets.
+        AiRegionOverlayType.BOX -> {
+            drawBoxOverlay(viewSize, aiConfig, boxStrokeWidth, boxColor)
+        }
         AiRegionOverlayType.NONE -> { /* No overlay */ }
     }
 }
@@ -194,12 +198,94 @@ private fun DrawScope.drawBoxOverlay(
 ) {
     val streamBounds = aiConfig.calculateStreamBounds()
     val viewBounds = streamBounds.scaleToView(viewSize.width, viewSize.height, aiConfig.streamWidth, aiConfig.streamHeight)
-    
-    drawRect(
+
+    // Draw "scanner" style corner brackets (like a QR code scanner) instead of a full box.
+    val left = viewBounds.left
+    val top = viewBounds.top
+    val right = viewBounds.right
+    val bottom = viewBounds.bottom
+
+    val w = (right - left).coerceAtLeast(0f)
+    val h = (bottom - top).coerceAtLeast(0f)
+    if (w <= 0f || h <= 0f) return
+
+    // Make corners bolder than the default "box" stroke.
+    val effectiveStroke = strokeWidth * 3.0f
+    val inset = effectiveStroke / 2f
+
+    // Inset bounds so strokes aren't clipped at the edges (top/bottom lines were invisible before).
+    val l = (left + inset).coerceAtMost(right - inset)
+    val r = (right - inset).coerceAtLeast(left + inset)
+    val t = (top + inset).coerceAtMost(bottom - inset)
+    val b = (bottom - inset).coerceAtLeast(top + inset)
+
+    // Corner segment length (QR-scanner style brackets).
+    val cornerLen = minOf(w, h) * 0.22f
+    val xLen = cornerLen.coerceIn(effectiveStroke * 3f, w / 2f)
+    val yLen = cornerLen.coerceIn(effectiveStroke * 3f, h / 2f)
+
+    // Top-left corner
+    drawLine(
         color = boxColor,
-        topLeft = Offset(viewBounds.left, viewBounds.top),
-        size = Size(viewBounds.right - viewBounds.left, viewBounds.bottom - viewBounds.top),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+        start = Offset(l, t),
+        end = Offset(l + xLen, t),
+        strokeWidth = effectiveStroke,
+        cap = androidx.compose.ui.graphics.StrokeCap.Square
+    )
+    drawLine(
+        color = boxColor,
+        start = Offset(l, t),
+        end = Offset(l, t + yLen),
+        strokeWidth = effectiveStroke,
+        cap = androidx.compose.ui.graphics.StrokeCap.Square
+    )
+
+    // Top-right corner
+    drawLine(
+        color = boxColor,
+        start = Offset(r - xLen, t),
+        end = Offset(r, t),
+        strokeWidth = effectiveStroke,
+        cap = androidx.compose.ui.graphics.StrokeCap.Square
+    )
+    drawLine(
+        color = boxColor,
+        start = Offset(r, t),
+        end = Offset(r, t + yLen),
+        strokeWidth = effectiveStroke,
+        cap = androidx.compose.ui.graphics.StrokeCap.Square
+    )
+
+    // Bottom-left corner
+    drawLine(
+        color = boxColor,
+        start = Offset(l, b),
+        end = Offset(l + xLen, b),
+        strokeWidth = effectiveStroke,
+        cap = androidx.compose.ui.graphics.StrokeCap.Square
+    )
+    drawLine(
+        color = boxColor,
+        start = Offset(l, b - yLen),
+        end = Offset(l, b),
+        strokeWidth = effectiveStroke,
+        cap = androidx.compose.ui.graphics.StrokeCap.Square
+    )
+
+    // Bottom-right corner
+    drawLine(
+        color = boxColor,
+        start = Offset(r - xLen, b),
+        end = Offset(r, b),
+        strokeWidth = effectiveStroke,
+        cap = androidx.compose.ui.graphics.StrokeCap.Square
+    )
+    drawLine(
+        color = boxColor,
+        start = Offset(r, b - yLen),
+        end = Offset(r, b),
+        strokeWidth = effectiveStroke,
+        cap = androidx.compose.ui.graphics.StrokeCap.Square
     )
 }
 
@@ -261,6 +347,7 @@ fun VideoSurfaceView(viewModel: AppViewModel, currentContext: Context) {
                                     MemoryManager.registerSurface(holder.surface)
                                     MainActivitySingleton.nativeSurfaceInit(holder.surface)
                                     Log.i("Gstreamer MainActivity", "Playing Stream")
+                                    Log.i("Gstreamer MainActivity", "nativePlay() called at t=${SystemClock.elapsedRealtime()}ms")
                                     MainActivitySingleton.nativePlay(
                                         width = width, 
                                         height = height, 
@@ -501,7 +588,8 @@ fun ZoomableVideoTextureView1(viewModel: AppViewModel, currentContext: Context, 
 fun ZoomableVideoTextureView(
     viewModel: AppViewModel,
     currentContext: Context,
-    pointState: MutableState<OverlayPoints>
+    pointState: MutableState<OverlayPoints>,
+    onUserActivity: () -> Unit = {}
 ) {
     if (!viewModel.isPlaying.value) return
 
@@ -578,6 +666,7 @@ fun ZoomableVideoTextureView(
             .onGloballyPositioned { viewSize = it.size }
             .pointerInput(Unit) {
                 detectTransformGestures { centroid, pan, zoom, _ ->
+                    onUserActivity()
                     val newScale = (scale * zoom).coerceIn(scaleRange)
                     val viewCenter = Offset(viewSize.width / 2f, viewSize.height / 2f)
                     val focalPoint = centroid - viewCenter
@@ -595,7 +684,14 @@ fun ZoomableVideoTextureView(
                 }
             }
             .pointerInput(Unit) {
-                detectTapGestures(onDoubleTap = { doubleTapGesture.value() })
+                detectTapGestures(
+                    onTap = { onUserActivity() },
+                    onDoubleTap = {
+                        onUserActivity()
+                        doubleTapGesture.value()
+                    },
+                    onLongPress = { onUserActivity() }
+                )
             }
     ) {
         // --- Video Stream (TextureView) ---
@@ -774,7 +870,7 @@ fun ZoomableVideoTextureView(
                     aiConfig = aiConfig,
                     maskAlpha = 0.4f,
                     boxStrokeWidth = 4f,
-                    boxColor = Color.White
+                    boxColor = Color.Red
                 )
             }
         }

@@ -26,7 +26,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -74,7 +74,7 @@ fun CustomizableButton(
     }
 
     // Check if we're in dark theme
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
 
 
     // Outer box to ensure square shape

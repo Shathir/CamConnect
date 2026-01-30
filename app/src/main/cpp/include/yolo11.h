@@ -21,6 +21,7 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 
 #include <net.h>
 
@@ -86,6 +87,15 @@ protected:
     std::atomic<int> instance_selector;  // Round-robin selector (0 or 1)
     std::atomic<bool> i1_busy;  // True if instance 1 is processing
     std::atomic<bool> i2_busy;  // True if instance 2 is processing
+
+    // Track detached inference threads so the model object cannot be destroyed while they run.
+    // This prevents use-after-free crashes when reloading the model.
+    std::atomic<int> active_inference_threads{0};
+    std::mutex active_threads_mtx;
+    std::condition_variable active_threads_cv;
+
+    void on_inference_thread_started();
+    void on_inference_thread_finished();
 };
 
 class YOLO11_det : public YOLO11

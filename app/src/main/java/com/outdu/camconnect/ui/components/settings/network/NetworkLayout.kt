@@ -3,7 +3,7 @@ package com.outdu.camconnect.ui.components.settings.network
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -128,7 +128,7 @@ fun ModeButtonRow(
     deviceMode: DeviceMode,
     onModeChange: (DeviceMode) -> Unit
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     val deviceType = rememberDeviceType()
     Row(
         modifier = Modifier
@@ -208,7 +208,7 @@ fun HotspotLayout(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     var errorMessage by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
@@ -413,7 +413,7 @@ fun DeviceLayout(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     var errorMessage by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
@@ -662,7 +662,7 @@ private fun StaticIpConfigurationFields(
 private fun LogoutProgressDialog(
     onComplete: () -> Unit
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     val labelColor = getLabelColor(isDarkTheme)
     
     // Wait 5 seconds then call onComplete
@@ -730,7 +730,7 @@ private fun NetworkConfigurationConfirmationDialog(
     onDismiss: () -> Unit,
     isLoggingOut: Boolean
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     val labelColor = getLabelColor(isDarkTheme)
     val textStyle = getDescriptionTextStyle(labelColor)
     

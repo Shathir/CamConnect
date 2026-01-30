@@ -4,7 +4,7 @@ import android.graphics.Paint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,7 +48,7 @@ fun LogoutLayout(
 )
 {
     val deviceType = rememberDeviceType()
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     val coroutineScope = rememberCoroutineScope()
     
     var isLoggingOut by remember { mutableStateOf(false) }

@@ -33,11 +33,15 @@ object NetworkConfigManager {
     private const val DEFAULT_SUBNET_MASK = "255.255.255.0"
     private const val DEFAULT_HOTSPOT_IP = "192.168.2.1"
     private const val DEFAULT_WIFI_IP = "192.168.1.100"
+    private const val DEFAULT_CAMERA_WS_PORT = 80
+    private const val DEFAULT_CAMERA_WS_PATH = "/ws"
     
     // Cached configuration
     @Volatile private var subnetMask: String = DEFAULT_SUBNET_MASK
     @Volatile private var hotspotIp: String = DEFAULT_HOTSPOT_IP
     @Volatile private var wifiIp: String = DEFAULT_WIFI_IP
+    @Volatile private var cameraWsPort: Int = DEFAULT_CAMERA_WS_PORT
+    @Volatile private var cameraWsPath: String = DEFAULT_CAMERA_WS_PATH
     
     // Thread-safe read-write lock
     private val configLock = ReentrantReadWriteLock()
@@ -48,7 +52,9 @@ object NetworkConfigManager {
     data class NetworkConfig(
         val subnetMask: String,
         val hotspotIp: String,
-        val wifiIp: String
+        val wifiIp: String,
+        val cameraWsPort: Int,
+        val cameraWsPath: String
     )
     
     /**
@@ -126,7 +132,9 @@ object NetworkConfigManager {
         NetworkConfig(
             subnetMask = subnetMask,
             hotspotIp = hotspotIp,
-            wifiIp = wifiIp
+            wifiIp = wifiIp,
+            cameraWsPort = cameraWsPort,
+            cameraWsPath = cameraWsPath
         )
     }
     
@@ -144,6 +152,10 @@ object NetworkConfigManager {
      * Gets default WiFi IP
      */
     fun getWifiIp(): String = configLock.read { wifiIp }
+
+    fun getCameraWsPort(): Int = configLock.read { cameraWsPort }
+
+    fun getCameraWsPath(): String = configLock.read { cameraWsPath }
     
     /**
      * Updates subnet mask
@@ -180,6 +192,8 @@ object NetworkConfigManager {
             subnetMask = DEFAULT_SUBNET_MASK
             hotspotIp = DEFAULT_HOTSPOT_IP
             wifiIp = DEFAULT_WIFI_IP
+            cameraWsPort = DEFAULT_CAMERA_WS_PORT
+            cameraWsPath = DEFAULT_CAMERA_WS_PATH
         }
     }
     
@@ -196,6 +210,9 @@ object NetworkConfigManager {
             subnetMask = properties.getProperty("subnet_mask", DEFAULT_SUBNET_MASK)
             hotspotIp = properties.getProperty("hotspot_ip", DEFAULT_HOTSPOT_IP)
             wifiIp = properties.getProperty("wifi_ip", DEFAULT_WIFI_IP)
+            cameraWsPort = properties.getProperty("camera_ws_port", DEFAULT_CAMERA_WS_PORT.toString()).toIntOrNull()
+                ?: DEFAULT_CAMERA_WS_PORT
+            cameraWsPath = properties.getProperty("camera_ws_path", DEFAULT_CAMERA_WS_PATH)
         }
     }
     

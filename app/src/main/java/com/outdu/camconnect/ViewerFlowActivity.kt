@@ -28,6 +28,7 @@ import com.outdu.camconnect.ui.viewer.*
 import com.outdu.camconnect.ui.setupflow.QRScannerScreen
 import com.outdu.camconnect.auth.SessionManager
 import com.outdu.camconnect.services.OnvifDevice
+import com.outdu.camconnect.communication.CameraWebSocketManager
 import com.outdu.camconnect.utils.WifiConnectionManager
 import com.outdu.camconnect.utils.WifiCredentials
 import com.outdu.camconnect.utils.WifiConnectionResult
@@ -427,6 +428,17 @@ class ViewerFlowActivity : ComponentActivity() {
         // Keep the app-scoped WiFi binding alive across the Activity transition. Otherwise, onDestroy()
         // will unbind + cleanup and Android will drop the ephemeral WifiNetworkSpecifier connection.
         keepWifiBindingAcrossNavigation = true
+
+        // Configure and start the camera WebSocket manager (foreground-scoped, app-wide)
+        // Uses defaults from network_config.properties unless overridden by extras.
+        try {
+            val wsPort = com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPort()
+            val wsPath = com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPath()
+            CameraWebSocketManager.setTarget(cameraIp = camera.ipAddress, port = wsPort, path = wsPath)
+            Log.i("ViewerFlow", "Camera WebSocket target set: ws://${camera.ipAddress}:$wsPort$wsPath")
+        } catch (e: Exception) {
+            Log.w("ViewerFlow", "Failed to start CameraWebSocketManager", e)
+        }
         val intent = Intent(this, MainActivity::class.java).apply {
             // Pass camera information to MainActivity
             putExtra("CAMERA_IP", camera.ipAddress)
@@ -434,6 +446,8 @@ class ViewerFlowActivity : ComponentActivity() {
             putExtra("CAMERA_TYPE", camera.deviceType)
             putExtra("CAMERA_RTSP_URL", rtspUrl)
             putExtra("USER_TYPE", "VIEWER")
+            putExtra(MainActivity.EXTRA_CAMERA_WS_PORT, com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPort())
+            putExtra(MainActivity.EXTRA_CAMERA_WS_PATH, com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPath())
             
             // Clear the task stack so user can't go back
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

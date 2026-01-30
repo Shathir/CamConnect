@@ -138,10 +138,12 @@ dependencies {
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio) // or ktor-client-android
     implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.client.websockets)
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation(libs.androidx.material3.window.size.class1)
     implementation(libs.androidx.activity.compose)

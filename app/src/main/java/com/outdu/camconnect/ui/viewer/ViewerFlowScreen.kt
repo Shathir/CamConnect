@@ -710,7 +710,7 @@ private fun NoCamerasFoundScreen(
                     )
                 )
                 Text(
-                    text = "NVE_Stravion",
+                    text = "Stravion",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold

@@ -4,7 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -41,7 +41,7 @@ fun OptionButton(
     enabled: Boolean = true
 ) {
 
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     val deviceType = rememberDeviceType()
     Box(
         modifier = modifier
@@ -113,7 +113,7 @@ fun CameraLayout(
     modifier: Modifier = Modifier,
     viewModel: CameraLayoutViewModel = viewModel()
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     val deviceType = rememberDeviceType()
 
     // Observe states from ViewModel using collectAsState
@@ -153,6 +153,41 @@ fun CameraLayout(
         Column(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // Auto / Manual toggle
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Control Mode",
+                    style = TextStyle(
+                        fontSize = if (deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                        lineHeight = 14.02.sp,
+                        fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                        fontWeight = FontWeight(500),
+                        color = if (isDarkTheme) Color.White else Color.Black
+                    )
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OptionButton(
+                        text = "Auto",
+                        isSelected = autoDayNightEnabled,
+                        onClick = { viewModel.setAutoDayNight(true) },
+                        modifier = Modifier.weight(1f),
+                        iconVal = R.drawable.low_light
+                    )
+                    OptionButton(
+                        text = "Manual",
+                        isSelected = !autoDayNightEnabled,
+                        onClick = { viewModel.setAutoDayNight(false) },
+                        modifier = Modifier.weight(1f),
+                        iconVal = R.drawable.settings_line
+                    )
+                }
+            }
+
+            // If Auto is enabled, hide all other controls
+            if (!autoDayNightEnabled) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
@@ -246,7 +281,7 @@ fun CameraLayout(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Camera Capture",
+                        text = "Camera Modes",
                         style = TextStyle(
                             fontSize = if (deviceType == DeviceType.TABLET) 16.sp else 14.sp,
                             lineHeight = 14.02.sp,
@@ -374,6 +409,7 @@ fun CameraLayout(
                     color = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF777777)
                 )
             )
+            }
         }
     }
 

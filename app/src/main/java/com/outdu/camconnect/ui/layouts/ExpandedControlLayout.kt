@@ -42,7 +42,7 @@ import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
 import androidx.compose.ui.draw.scale
 import com.outdu.camconnect.ui.models.RecordingState
 import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
@@ -79,7 +79,7 @@ fun ExpandedControlContent(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val deviceType = rememberDeviceType()
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     val context = LocalContext.current
     val recordingViewModel: RecordingViewModel = viewModel()
     val cameraControlViewModel: CameraControlViewModel = viewModel()
@@ -393,7 +393,7 @@ fun ButtonRow(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val deviceType = rememberDeviceType()
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     val cameraControlViewModel: CameraControlViewModel = viewModel()
     val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
     val cameraLayoutViewModel: CameraLayoutViewModel = viewModel()

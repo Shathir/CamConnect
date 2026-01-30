@@ -17,15 +17,39 @@ data class HealthStatus(
     val sensorTemp: Int = -1
 )
 
+enum class EncoderType(val code: Int, val displayName: String) {
+    H264(0, "H264"),
+    H265(1, "H265"),
+    UNKNOWN(-1, "Unknown");
+
+    companion object {
+        @JvmStatic
+        fun fromCode(code: Int): EncoderType = entries.firstOrNull { it.code == code } ?: UNKNOWN
+    }
+}
+
+enum class ImageResolution(val code: Int, val displayName: String) {
+    R640x360(1, "640x360"),
+    R1280x720(2, "1280x720"),
+    R1920x1080(3, "1920x1080"),
+    R3840x2160(4, "3840x2160"),
+    UNKNOWN(-1, "Unknown");
+
+    companion object {
+        @JvmStatic
+        fun fromCode(code: Int): ImageResolution = entries.firstOrNull { it.code == code } ?: UNKNOWN
+    }
+}
+
+data class StreamInfo(
+    val resolution: ImageResolution,
+    val fps: Int,
+    val bitrate: Int,
+    val encoder: EncoderType
+)
+
 data class StreamConfiguration(
-    val stream1Resolution: String,
-    val stream1Fps: Int,
-    val stream1Bitrate: Int,
-    val stream1Encoder: String,
-    val stream2Resolution: String,
-    val stream2Fps: Int,
-    val stream2Bitrate: Int,
-    val stream2Encoder: String
+    val streams: List<StreamInfo>
 )
 
 //data class HealthStatus(
@@ -441,6 +465,46 @@ object MotocamAPIAndroidHelper {
         }
     }
 
+    /**
+     * Convenience API for Dev UI:
+     * - Reads WiFi state (hotspot vs client)
+     * - Fetches the corresponding camera IP from the matching config
+     */
+    fun getActiveWifiIpAsync(
+        scope: CoroutineScope,
+        callback: (MotocamAPIHelper.WifiState?, String?, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val state = MotocamAPIHelperWrapper.getWifiState()
+                val config = when (state) {
+                    MotocamAPIHelper.WifiState.WifiHotspot -> MotocamAPIHelperWrapper.getWifiHotspotConfig().toMap()
+                    MotocamAPIHelper.WifiState.WifiClient -> MotocamAPIHelperWrapper.getWifiClientConfig().toMap()
+                }
+                val ip = config["ipaddress"]?.toString()
+                callback(state, ip, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "getActiveWifiIpAsync failed", e)
+                callback(null, null, e.message)
+            }
+        }
+    }
+
+    fun getEthernetConfigAsync(
+        scope: CoroutineScope,
+        callback: (Map<String, Any>?, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = MotocamAPIHelperWrapper.getEthernetConfig().toMap()
+                callback(result, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "getEthernetConfigAsync failed", e)
+                callback(null, e.message)
+            }
+        }
+    }
+
     fun getDeviceNameAsync(
         scope: CoroutineScope,
         ip: String,
@@ -482,6 +546,38 @@ object MotocamAPIAndroidHelper {
                 callback(result, null)
             } catch (e: Exception) {
                 Log.e(TAG, "rebootAsync failed", e)
+                callback(false, e.message)
+            }
+        }
+    }
+
+    fun configResetAsync(
+        scope: CoroutineScope,
+        date: String,
+        callback: (Boolean, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = MotocamAPIHelperWrapper.configReset(date)
+                callback(result, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "configResetAsync failed", e)
+                callback(false, e.message)
+            }
+        }
+    }
+
+    fun setUserDobAsync(
+        scope: CoroutineScope,
+        dob: String,
+        callback: (Boolean, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = MotocamAPIHelperWrapper.setUserDob(dob)
+                callback(result, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "setUserDobAsync failed", e)
                 callback(false, e.message)
             }
         }

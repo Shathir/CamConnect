@@ -3,6 +3,7 @@ package com.outdu.camconnect.network
 import io.ktor.client.*
 import io.ktor.client.engine.cio.* // Or Android engine if preferred
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.websocket.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 
@@ -16,6 +17,8 @@ object HttpClientProvider {
                     isLenient = true
                 })
             }
+
+            install(WebSockets)
 
             // Optional: Set timeouts, logging, etc.
         }

@@ -99,7 +99,7 @@ fun SystemWarningTooltip(
     val fiveGBInBytes =
         2L * 1000 * 1000 * 1000  // SI units (matches Formatter.formatFileSize on Android O+)
     val isLowStorage = freeBytes < fiveGBInBytes
-    val isLowBattery = batteryLevel < 100
+    val isLowBattery = batteryLevel < 30
     val hasWarning = isLowStorage || isLowBattery
 
     // Auto-hide tooltip after 5 seconds

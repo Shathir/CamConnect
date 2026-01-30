@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -79,6 +80,72 @@ fun FloatingRevealButton(
             Icon(
                 imageVector = Icons.Default.ChevronLeft,
                 contentDescription = "Reveal Controls",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Floating button that appears when controls are visible
+ * Can be clicked or swiped right to hide controls (fade/slide out via parent AnimatedVisibility)
+ */
+@Composable
+fun FloatingHideButton(
+    onHide: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        animationSpec = tween(durationMillis = 150),
+        label = "button_scale_hide"
+    )
+
+    // Detect swipe right gesture (drag threshold)
+    val swipeThreshold = 100f
+
+    Box(
+        modifier = modifier
+            .fillMaxSize(),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(48.dp)
+                .scale(scale)
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragEnd = {
+                            if (dragOffset > swipeThreshold) {
+                                // Swipe right detected - hide controls
+                                onHide()
+                            }
+                            dragOffset = 0f
+                            isPressed = false
+                        },
+                        onDrag = { _, dragAmount ->
+                            dragOffset += dragAmount.x
+                            if (dragOffset > swipeThreshold / 2) {
+                                isPressed = true
+                            }
+                        }
+                    )
+                }
+                .background(
+                    color = Color.White.copy(alpha = 0.3f),
+                    shape = CircleShape
+                )
+                .clickable(onClick = { onHide() }),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Hide Controls",
                 tint = Color.White,
                 modifier = Modifier.size(24.dp)
             )

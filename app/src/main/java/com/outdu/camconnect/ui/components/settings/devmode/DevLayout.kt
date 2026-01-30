@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.outdu.camconnect.communication.HealthStatus
 import com.outdu.camconnect.communication.MotocamAPIAndroidHelper
+import com.outdu.camconnect.communication.MotocamAPIHelper
 import com.outdu.camconnect.communication.StreamConfiguration
 import com.outdu.camconnect.ui.theme.AppColors
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
@@ -25,19 +26,24 @@ import android.os.Environment
 import android.os.StatFs
 import android.text.format.Formatter
 import androidx.compose.ui.platform.LocalContext
+import com.outdu.camconnect.utils.DeviceType
+import com.outdu.camconnect.utils.rememberDeviceType
 
 @Composable
 fun DevLayout() {
     val scope = rememberCoroutineScope()
     var healthStatus by remember { mutableStateOf<HealthStatus?>(null) }
     var streamConfiguration by remember { mutableStateOf<StreamConfiguration?>(null) }
+    var wifiState by remember { mutableStateOf<MotocamAPIHelper.WifiState?>(null) }
+    var wifiIp by remember { mutableStateOf<String?>(null) }
+    var ethernetIp by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var autoRefresh by remember { mutableStateOf(false) }
     var lastUpdateTime by remember { mutableStateOf<String?>(null) }
     
 //    val scrollState = rememberScrollState()
-    
+    var deviceType = rememberDeviceType()
     // Auto-refresh effect
     LaunchedEffect(autoRefresh) {
         while (autoRefresh) {
@@ -81,13 +87,24 @@ fun DevLayout() {
             },
             onError = { errorMessage = it }
         )
+
+        loadRtspNetworkInfo(
+            scope = scope,
+            onLoading = { isLoading = it },
+            onSuccess = { state, wip, eip ->
+                wifiState = state
+                wifiIp = wip
+                ethernetIp = eip
+            },
+            onError = { errorMessage = it }
+        )
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(if(deviceType == DeviceType.TABLET)16.dp else 8.dp)
     ) {
         // Header
         DevSectionHeader(
@@ -130,7 +147,12 @@ fun DevLayout() {
 
         // Stream Configuration Display
         streamConfiguration?.let { config ->
-            DevStreamConfigurationCard(config = config)
+            DevStreamConfigurationCard(
+                config = config,
+                wifiState = wifiState,
+                wifiIp = wifiIp,
+                ethernetIp = ethernetIp
+            )
         }
 
 
@@ -141,46 +163,81 @@ fun DevLayout() {
 
 
 @Composable
-private fun DevStreamConfigurationCard(config: StreamConfiguration) {
+private fun DevStreamConfigurationCard(
+    config: StreamConfiguration,
+    wifiState: MotocamAPIHelper.WifiState?,
+    wifiIp: String?,
+    ethernetIp: String?
+) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Text(
-            text = "System Stream Configurations",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.Black
-        )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "System Stream Configurations",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black
+            )
 
-        streamresolutionRow(
-            label = "Stream 1 Resolution",
-            value = config.stream1Resolution,
-            fps = config.stream1Fps,
-            bitrate = config.stream1Bitrate,
-            encoder = config.stream1Encoder
-        )
-//        streamresolutionRow(
-//            label = "Stream 2 Resolution",
-//            value = config.stream2Resolution,
-//            fps = config.stream2Fps,
-//            bitrate = config.stream2Bitrate,
-//            encoder = config.stream2Encoder
-//        )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (wifiIp != null || ethernetIp != null) {
+                val wifiLabel = when (wifiState) {
+                    MotocamAPIHelper.WifiState.WifiHotspot -> "Hotspot"
+                    MotocamAPIHelper.WifiState.WifiClient -> "Client"
+                    null -> "Unknown"
+                }
+                Text(
+                    text = buildString {
+                        if (wifiIp != null) append("WiFi ($wifiLabel): $wifiIp")
+                        if (wifiIp != null && ethernetIp != null) append("  •  ")
+                        if (ethernetIp != null) append("Ethernet: $ethernetIp")
+                    },
+                    fontSize = 12.sp,
+                    color = Color.Black
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            if (config.streams.isEmpty()) {
+                Text(
+                    text = "No streams returned by API",
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
+                return@Column
+            }
+
+            config.streams.forEachIndexed { index, stream ->
+                if (index > 0) {
+                    HorizontalDivider(color = AppColors.BorderColor)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                streamConfigSection(
+                    label = "Stream ${index + 1}",
+                    stream = stream,
+                    streamNumber = index + 1,
+                    wifiIp = wifiIp,
+                    ethernetIp = ethernetIp
+                )
+            }
+        }
     }
 
 
 }
 
 @Composable
-private fun streamresolutionRow(
+private fun streamConfigSection(
     label: String,
-    value: String,
-    fps: Int,
-    bitrate: Int,
-    encoder: String
+    stream: com.outdu.camconnect.communication.StreamInfo,
+    streamNumber: Int,
+    wifiIp: String?,
+    ethernetIp: String?
 )
 {
     Row(
@@ -195,7 +252,7 @@ private fun streamresolutionRow(
         )
 
         Text(
-            text = value,
+            text = stream.resolution.displayName,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = StravionBlue
@@ -216,7 +273,7 @@ private fun streamresolutionRow(
         )
 
         Text(
-            text = fps.toString() + "fps",
+            text = stream.fps.toString() + "fps",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = StravionBlue
@@ -237,7 +294,7 @@ private fun streamresolutionRow(
         )
 
         Text(
-            text = bitrate.toString() + "Mb/s",
+            text = stream.bitrate.toString() + "Mb/s",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = StravionBlue
@@ -258,11 +315,54 @@ private fun streamresolutionRow(
         )
 
         Text(
-            text = encoder,
+            text = stream.encoder.displayName,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = StravionBlue
         )
+    }
+
+    val path = "/live${streamNumber}.sdp"
+    if (wifiIp != null) {
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Text(
+                text = "RTSP (WiFi)",
+                fontSize = 12.sp,
+                color = Color.Black
+            )
+            Text(
+                text = "rtsp://$wifiIp$path",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = StravionBlue
+            )
+        }
+    }
+
+    if (ethernetIp != null) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Text(
+                text = "RTSP (Ethernet)",
+                fontSize = 12.sp,
+                color = Color.Black
+            )
+            Text(
+                text = "rtsp://$ethernetIp$path",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = StravionBlue
+            )
+        }
     }
 
 }
@@ -317,23 +417,25 @@ private fun DevControlPanel(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = onRefreshClick,
-                    enabled = !isLoading,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White
+//                Button(
+//                    onClick = onRefreshClick,
+//                    enabled = !isLoading,
+//                    colors = ButtonDefaults.buttonColors(
+//                        containerColor = Color.White
+//                    )
+//                ) {
+
+                Text("Refresh")
+
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.Black,
+                        strokeWidth = 2.dp
                     )
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = Color.Black,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text("Refresh")
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
+//                }
                 
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -348,7 +450,7 @@ private fun DevControlPanel(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Auto Refresh",
+                        text = "Auto",
                         color = Color.Black
                     )
                 }
@@ -443,33 +545,7 @@ private fun DevHealthStatusCard(status: HealthStatus) {
                 value = "${status.ispTemp}°C",
                 temperature = status.ispTemp
             )
-
-            val statFs = StatFs(Environment.getDataDirectory().path)
-
-            val totalBytes = statFs.totalBytes
-            val freeBytes  = statFs.availableBytes
-            val usedBytes  = totalBytes - freeBytes
-
-            Text(
-                text = "Total Bytes : " + Formatter.formatFileSize(LocalContext.current, totalBytes),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black
-            )
-
-            Text(
-                text = "Free Bytes : " + Formatter.formatFileSize(LocalContext.current, freeBytes),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black
-            )
-
-            Text(
-                text = "Used Bytes : " + Formatter.formatFileSize(LocalContext.current, usedBytes),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black
-            )
+            
         }
     }
 }
@@ -672,5 +748,51 @@ private fun loadStreamConfigurations(
         status?.let {
             onSuccess(it)
         } ?: onError("No health status received")
+    }
+}
+
+private fun loadRtspNetworkInfo(
+    scope: kotlinx.coroutines.CoroutineScope,
+    onLoading: (Boolean) -> Unit,
+    onSuccess: (MotocamAPIHelper.WifiState?, String?, String?) -> Unit,
+    onError: (String) -> Unit
+) {
+    onLoading(true)
+
+    var wifiDone = false
+    var ethDone = false
+
+    var wifiState: MotocamAPIHelper.WifiState? = null
+    var wifiIp: String? = null
+    var ethIp: String? = null
+
+    var wifiErr: String? = null
+    var ethErr: String? = null
+
+    fun maybeFinish() {
+        if (!wifiDone || !ethDone) return
+        onLoading(false)
+
+        // Only surface error if we couldn't fetch any usable IP.
+        if (wifiIp.isNullOrBlank() && ethIp.isNullOrBlank()) {
+            onError(wifiErr ?: ethErr ?: "Unable to fetch RTSP network info")
+            return
+        }
+        onSuccess(wifiState, wifiIp, ethIp)
+    }
+
+    MotocamAPIAndroidHelper.getActiveWifiIpAsync(scope) { state, ip, error ->
+        wifiState = state
+        wifiIp = ip
+        wifiErr = error
+        wifiDone = true
+        maybeFinish()
+    }
+
+    MotocamAPIAndroidHelper.getEthernetConfigAsync(scope) { config, error ->
+        ethIp = config?.get("ipaddress")?.toString()
+        ethErr = error
+        ethDone = true
+        maybeFinish()
     }
 }

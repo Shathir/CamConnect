@@ -2,8 +2,13 @@ package com.outdu.camconnect
 
 import android.app.Application
 import android.util.Log
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.outdu.camconnect.auth.SessionManager
 import com.outdu.camconnect.communication.CameraConfigurationManager
+import com.outdu.camconnect.communication.CameraWebSocketManager
+import com.outdu.camconnect.streaming.StreamLifecycleManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,5 +44,18 @@ class CamConnectApplication : Application() {
                 Log.e("CamConnectApplication", "Failed to load network configuration", error)
             }
         }
+
+        // Keep the camera WebSocket alive across UI changes while app is in foreground.
+        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                CameraWebSocketManager.onAppForegrounded()
+                StreamLifecycleManager.onAppForegrounded()
+            }
+
+            override fun onStop(owner: LifecycleOwner) {
+                CameraWebSocketManager.onAppBackgrounded()
+                StreamLifecycleManager.onAppBackgrounded()
+            }
+        })
     }
 } 

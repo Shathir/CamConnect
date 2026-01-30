@@ -46,9 +46,9 @@ fun CameraInfoTooltip(
     var isTooltipVisible by remember { mutableStateOf(false) }
     val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
     
-    // Access State objects using by delegation - Compose will track them for recomposition
-    val currentVisionMode by cameraLayoutViewModel.currentVisionMode
-    val currentCameraMode by cameraLayoutViewModel.currentCameraMode
+    // Use applied values (what the camera is actually running), not pending UI selections
+    val currentVisionMode by cameraLayoutViewModel.appliedVisionMode
+    val currentCameraMode by cameraLayoutViewModel.appliedCameraMode
 
     // Format the mode string
     val modeString = remember(currentVisionMode, currentCameraMode) {

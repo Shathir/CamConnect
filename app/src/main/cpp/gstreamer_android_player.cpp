@@ -7,6 +7,7 @@
 #include <gst/video/video.h>
 #include <gst/video/videooverlay.h>
 #include <string>
+#include <mutex>
 #include <android/asset_manager_jni.h>
 #include <opencv2/core/core.hpp>
 #include <gst/app/gstappsink.h>
@@ -53,7 +54,7 @@ typedef struct _CustomData {
 
 static YOLO11* g_yolo11 = nullptr;
 //static YoloV8TFLite* g_yolo = nullptr;
-static ncnn::Mutex lock;
+static std::mutex g_yolo_mutex;
 
 //std::shared_ptr<AsyncInferenceContext> ctx;
 std::vector<std::shared_ptr<AsyncInferenceContext>> ctx;
@@ -249,6 +250,9 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
         // nanodet
         {
             if (data->od && g_yolo11) {
+                // Guard access to the global model pointer + async context queue.
+                // Model can be reloaded from Java while this callback is running.
+                std::lock_guard<std::mutex> guard(g_yolo_mutex);
                 std::vector<float> depthThreshold;
 
                 std::vector<Object> objects;
@@ -531,22 +535,21 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
     bool use_gpu = (int)cpugpu == 1;
 
     // reload
+    // Build the new model first (outside lock), then swap it in under lock.
+    YOLO11* new_model = new YOLO11_det;
+    new_model->load(mgr, paramPath.c_str(), modelPath.c_str(), use_gpu);
+    new_model->set_det_target_size(640);
+
     {
-        if(g_yolo11 != nullptr)
-        {
+        std::lock_guard<std::mutex> guard(g_yolo_mutex);
+        // Any in-flight async contexts belong to the old model; drop them.
+        ctx.clear();
+
+        if (g_yolo11 != nullptr) {
             delete g_yolo11;
             g_yolo11 = nullptr;
         }
-        g_yolo11 = new YOLO11_det;
-        g_yolo11->load(mgr, paramPath.c_str(), modelPath.c_str(), true);
-        g_yolo11->set_det_target_size(640);
-//        if(g_yolo != nullptr)
-//        {
-//            delete g_yolo;
-//            g_yolo = nullptr;
-//        }
-//        g_yolo = new YoloV8TFLite(modelPath="yolov8n_float16.tflite");
-//        g_yolo->load(mgr);
+        g_yolo11 = new_model;
     }
 
     return JNI_TRUE;

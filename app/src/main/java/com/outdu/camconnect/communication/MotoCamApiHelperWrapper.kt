@@ -79,9 +79,74 @@ object MotocamAPIHelperWrapper {
         parse: (IntArray, Int) -> T,
         cameraIp: String? = null
     ): T = withSocketClient(cameraIp) { client ->
+        val reqWithCrcForLog = reqCmd.withCalculatedCrc()
+        Log.d(
+            TAG,
+            "SEND ip=${client.getCameraIp()} ${describePacket(reqCmd, reqCmd.size)} hex=${reqWithCrcForLog.toHexString()}"
+        )
         val res = IntArray(MAX_BYTES)
         val len = client.sendCmd(reqCmd, res)
-        parse(res, len)
+
+        Log.d(
+            TAG,
+            "RECV ip=${client.getCameraIp()} ${describePacket(res, len)} hex=${res.toHexString(len)}"
+        )
+        try {
+            parse(res, len)
+        } catch (e: Exception) {
+            Log.e(
+                TAG,
+                "PARSE_FAIL ip=${client.getCameraIp()} ${describePacket(res, len)} hex=${res.toHexString(len)}",
+                e
+            )
+            throw e
+        }
+    }
+
+    private fun IntArray.toHexString(len: Int = this.size): String {
+        val safeLen = len.coerceIn(0, this.size)
+        return (0 until safeLen).joinToString(" ") { idx ->
+            "0x" + (this[idx] and 0xFF).toString(16).padStart(2, '0').uppercase()
+        }
+    }
+
+    private fun IntArray.withCalculatedCrc(): IntArray {
+        if (this.isEmpty()) return this
+        val out = this.copyOf()
+        val sum = out.dropLast(1).sumOf { it and 0xFF } and 0xFF
+        val crc = ((sum xor 0xFF) + 1) and 0xFF
+        out[out.size - 1] = crc
+        return out
+    }
+
+    private fun describePacket(packet: IntArray, len: Int): String {
+        if (len < 4) return "len=$len <too short>"
+        val headerVal = packet[0]
+        val cmdVal = packet[1]
+        val subVal = packet[2]
+        val dataLen = packet[3]
+
+        val headerName = MotocamAPIHelper.Header.values()
+            .firstOrNull { it.getVal() == headerVal }
+            ?.name ?: "H?$headerVal"
+
+        val cmdName = MotocamAPIHelper.Commands.values()
+            .firstOrNull { it.getVal() == cmdVal }
+            ?.name ?: "C?$cmdVal"
+
+        val subName = when (cmdVal) {
+            MotocamAPIHelper.Commands.SYSTEM.getVal() -> MotocamAPIHelper.SystemSubCommands.values()
+                .firstOrNull { it.getVal() == subVal }
+                ?.name ?: "S?$subVal"
+            MotocamAPIHelper.Commands.CONFIG.getVal() -> "SUB=$subVal"
+            MotocamAPIHelper.Commands.NETWORK.getVal() -> "SUB=$subVal"
+            MotocamAPIHelper.Commands.IMAGE.getVal() -> "SUB=$subVal"
+            MotocamAPIHelper.Commands.AUDIO.getVal() -> "SUB=$subVal"
+            MotocamAPIHelper.Commands.STREAMING.getVal() -> "SUB=$subVal"
+            else -> "SUB=$subVal"
+        }
+
+        return "hdr=$headerName cmd=$cmdName sub=$subName dataLen=$dataLen"
     }
 
     suspend fun getFactoryConfig() = sendCommand(
@@ -198,6 +263,11 @@ object MotocamAPIHelperWrapper {
         MotocamAPIHelper::getWifiClientCmdResponseParse
     )
 
+    suspend fun getEthernetConfig() = sendCommand(
+        MotocamAPIHelper.getEthernetCmd(),
+        MotocamAPIHelper::getEthernetCmdResponseParse
+    )
+
     suspend fun setDefaultToFactory() = sendCommand(
         MotocamAPIHelper.setDefaultToFactoryCmd(),
         MotocamAPIHelper::setDefaultToFactoryCmdResponseParse
@@ -221,6 +291,16 @@ object MotocamAPIHelperWrapper {
     suspend fun shutdownCamera() = sendCommand(
         MotocamAPIHelper.shutdownCmd(),
         MotocamAPIHelper::shutdownCmdResponseParse
+    )
+
+    suspend fun configReset(date: String) = sendCommand(
+        MotocamAPIHelper.configResetCmd(date),
+        MotocamAPIHelper::configResetCmdResponseParse
+    )
+
+    suspend fun setUserDob(dob: String) = sendCommand(
+        MotocamAPIHelper.setUserDobCmd(dob),
+        MotocamAPIHelper::setUserDobCmdResponseParse
     )
 
     suspend fun startStream() = sendCommand(

@@ -10,7 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -309,7 +309,7 @@ fun ControlTabSwitcher(
     onTabSelected: (ControlTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     val deviceType = rememberDeviceType()
 
     Row(
@@ -403,6 +403,7 @@ fun ControlTabSwitcher(
                                 ControlTab.DEV_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                                 ControlTab.OTA_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                                 ControlTab.NETWORK_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
+                                ControlTab.SETTINGS_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                             },
                             contentDescription = tab.displayName,
                             tint = if (selectedTab == tab) if(isDarkTheme) Color.White else Color.Black
@@ -455,6 +456,7 @@ fun ControlTabSwitcher(
                                 ControlTab.DEV_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                                 ControlTab.OTA_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                                 ControlTab.NETWORK_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
+                                ControlTab.SETTINGS_LAYOUT -> painterResource(id = com.outdu.camconnect.R.drawable.usercircle)
                             },
                             contentDescription = tab.displayName,
                             tint = if (tab == ControlTab.LICENSE_CONTROL) {
@@ -565,5 +567,6 @@ enum class ControlTab(val displayName: String) {
     LICENSE_CONTROL("Manage"),
     DEV_LAYOUT("Dev Mode"),
     OTA_LAYOUT("OTA"),
-    NETWORK_LAYOUT("Network")
+    NETWORK_LAYOUT("Network"),
+    SETTINGS_LAYOUT("Settings")
 }

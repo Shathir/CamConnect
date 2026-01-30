@@ -31,7 +31,7 @@ import com.outdu.camconnect.ui.components.indicators.WifiIndicator
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.utils.MemoryManager
 import android.util.Log
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import com.outdu.camconnect.utils.rememberDeviceType
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
@@ -71,7 +71,7 @@ fun MinimalControlContent(
     val isRecording by recordingViewModel.isRecording.collectAsStateWithLifecycle()
     val recordingState by recordingViewModel.recordingState.collectAsStateWithLifecycle()
     val cameraControlState by cameraControlViewModel.cameraControlState.collectAsStateWithLifecycle()
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
 
     var activeRecordingDialogEvent by remember { mutableStateOf<RecordingUiEvent?>(null) }
     LaunchedEffect(recordingViewModel) {

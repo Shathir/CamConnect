@@ -470,7 +470,7 @@ int YOLO11_det::draw(cv::Mat& rgb, const std::vector<Object>& objects)
         "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
         "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
         "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
-        "hair drier", "toothbrush"
+        "hair drier", "toothbrush","80","81","82","83","84","85","86","87","88","89","90","91","92"
     };
 
     static cv::Scalar colors[] = {
@@ -623,6 +623,7 @@ std::shared_ptr<AsyncInferenceContext> YOLO11_det::detect_async(const cv::Mat& r
 
     // Step 3: Launch inference in a separate thread (truly async!)
     // Use std::thread instead of std::async for better Android compatibility
+    on_inference_thread_started();
     std::thread inference_thread([this, ctx, use_i1]() {
         int ret = -1;
 
@@ -656,6 +657,9 @@ std::shared_ptr<AsyncInferenceContext> YOLO11_det::detect_async(const cv::Mat& r
             // Mark instance available
             i2_busy.store(false, std::memory_order_release);
         }
+
+        (void)ret;
+        on_inference_thread_finished();
     });
 
     // Detach thread so it runs independently

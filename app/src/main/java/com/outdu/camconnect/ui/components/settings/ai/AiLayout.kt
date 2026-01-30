@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -42,7 +42,7 @@ fun YesNoButtons(
     modifier: Modifier = Modifier
 ) {
     val deviceType = rememberDeviceType()
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -204,7 +204,7 @@ fun OverlayTypeSelector(
     modifier: Modifier = Modifier
 ) {
     val deviceType = rememberDeviceType()
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     
     val options = listOf(
         OverlayOption(AiRegionOverlayType.MASK, "Mask"),
@@ -235,7 +235,7 @@ fun AiLayout(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = camConnectIsDarkTheme()
     val deviceType = rememberDeviceType()
     val appViewModel: AppViewModel = viewModel()
     val aiConfigViewModel: AiConfigurationViewModel = viewModel()

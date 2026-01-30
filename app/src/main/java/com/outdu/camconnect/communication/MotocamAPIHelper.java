@@ -1,9 +1,12 @@
 package com.outdu.camconnect.communication;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by sr on 21/8/19.
@@ -66,7 +69,7 @@ public class MotocamAPIHelper {
     }
 
     public enum NetworkSubCommands {
-        WifiHotspot(1), WifiClient(2), WifiState(3);
+        WifiHotspot(1), WifiClient(2), WifiState(3), Ethernet(4), Onvif(5), Ethernet_dhcp(6);
         private final int val;
         NetworkSubCommands(int i) {
             this.val = i;
@@ -135,7 +138,9 @@ public class MotocamAPIHelper {
         SET_LOGIN_PIN(2),
         FACTORY_RESET(3),
         SHUTDOWN(4),
-        OTA_UPDATE(5);
+        OTA_UPDATE(5),
+        USER_DOB(7),
+        CONFIG_RESET(8);
 
         private final int val;
 
@@ -975,6 +980,116 @@ public class MotocamAPIHelper {
         }
     }
 
+    private static String extractFirstIpv4(String s) {
+        if (s == null) return null;
+        Pattern p = Pattern.compile("(\\d{1,3}(?:\\.\\d{1,3}){3})");
+        Matcher m = p.matcher(s);
+        if (m.find()) return m.group(1);
+        return null;
+    }
+
+    /**
+     * Ethernet config (IP/Subnet) GET command.
+     * Protocol payload can vary by firmware; parsing is defensive.
+     */
+    public static int[] getEthernetCmd() throws Exception {
+        return getCmd(Commands.NETWORK.getVal(), NetworkSubCommands.Ethernet.getVal());
+    }
+
+    /**
+     * Parses Ethernet config response and returns a map containing:
+     * - ipaddress (String)
+     * - subnetmask (String?) when available
+     */
+    public static Map<String, Object> getEthernetCmdResponseParse(int response[], int length) throws Exception {
+        int minDataLength = 7; // header + command + subcommand + datalength + success/error flag + success/error val + crc
+        if (length < minDataLength) throw new Exception("Invalid response length");
+        int header = response[0];
+        int command = response[1];
+        int subCommand = response[2];
+        int dataLength = response[3];
+        int s_or_e = response[4];
+
+        if (header != Header.RESPONSE.getVal()) {
+            throw new Exception("Invalid header in response");
+        }
+        if (command != Commands.NETWORK.getVal()) {
+            throw new Exception("Invalid command in response");
+        }
+        if (subCommand != NetworkSubCommands.Ethernet.getVal()) {
+            throw new Exception("Invalid sub command in response");
+        }
+        if ((s_or_e == 0 && dataLength < 2) || (s_or_e == 1 && dataLength != 2)) {
+            throw new Exception("Invalid data/data length in response");
+        }
+
+        if (s_or_e == 0) { // success
+            int payloadLen = dataLength - 1; // excluding status byte
+            int payloadStartIdx = 5;
+            int payloadEndExclusive = payloadStartIdx + payloadLen;
+            if (length < payloadEndExclusive + 1) { // +1 CRC
+                throw new Exception("Incomplete ethernet response");
+            }
+
+            String ipAddress = null;
+            String subnetMask = null;
+
+            // Format 1: [ipLen][ipBytes...][subnetLen][subnetBytes...]
+            if (payloadLen >= 2) {
+                int ipLen = response[payloadStartIdx];
+                if (ipLen > 0 && (payloadStartIdx + 1 + ipLen) <= payloadEndExclusive) {
+                    int ipIdx = payloadStartIdx + 1;
+                    byte[] ipBytes = new byte[ipLen];
+                    for (int i = 0; i < ipLen; i++) ipBytes[i] = (byte) response[ipIdx + i];
+                    ipAddress = new String(ipBytes, StandardCharsets.US_ASCII).trim();
+
+                    int nextIdx = ipIdx + ipLen;
+                    if (nextIdx < payloadEndExclusive) {
+                        int subnetLen = response[nextIdx];
+                        int subnetIdx = nextIdx + 1;
+                        if (subnetLen > 0 && (subnetIdx + subnetLen) <= payloadEndExclusive) {
+                            byte[] subnetBytes = new byte[subnetLen];
+                            for (int i = 0; i < subnetLen; i++) subnetBytes[i] = (byte) response[subnetIdx + i];
+                            subnetMask = new String(subnetBytes, StandardCharsets.US_ASCII).trim();
+                        }
+                    }
+                }
+            }
+
+            // Format 2: 8 bytes numeric [ip0 ip1 ip2 ip3 subnet0 subnet1 subnet2 subnet3]
+            if (ipAddress == null && payloadLen == 8) {
+                ipAddress = response[payloadStartIdx] + "." + response[payloadStartIdx + 1] + "." +
+                        response[payloadStartIdx + 2] + "." + response[payloadStartIdx + 3];
+                subnetMask = response[payloadStartIdx + 4] + "." + response[payloadStartIdx + 5] + "." +
+                        response[payloadStartIdx + 6] + "." + response[payloadStartIdx + 7];
+            }
+
+            // Format 3: ASCII blob (best-effort extract first IPv4)
+            if (ipAddress == null) {
+                byte[] payloadBytes = new byte[payloadLen];
+                for (int i = 0; i < payloadLen; i++) payloadBytes[i] = (byte) response[payloadStartIdx + i];
+                String payloadStr = new String(payloadBytes, StandardCharsets.US_ASCII);
+                ipAddress = extractFirstIpv4(payloadStr);
+            }
+
+            if (ipAddress == null || ipAddress.isEmpty()) {
+                throw new Exception("Unable to parse ethernet IP address");
+            }
+
+            Map<String, Object> config = new HashMap<>(2);
+            config.put("ipaddress", ipAddress);
+            if (subnetMask != null && !subnetMask.isEmpty()) {
+                config.put("subnetmask", subnetMask);
+            }
+            return config;
+        } else if (s_or_e == 1) { // failed
+            int e_val = response[5];
+            throw new Exception("error response val=" + e_val);
+        } else {
+            throw new Exception("Invalid data in response");
+        }
+    }
+
     public static int[] startStreamCmd() {
         int cmd[] = new int[5];
         cmd[0] = Header.SET.getVal();
@@ -1549,6 +1664,83 @@ public class MotocamAPIHelper {
         return setCmdResponseParse(response, length, Commands.SYSTEM.getVal(), SystemSubCommands.SHUTDOWN.getVal());
     }
 
+    /**
+     * Set user DOB (DD-MM-YYYY) via SYSTEM/USER_DOB.
+     *
+     * Payload format (per device protocol):
+     * [dobBytes...]
+     *
+     * i.e. dataLength == dobBytes.length and there is NO leading length byte.
+     */
+    public static int[] setUserDobCmd(String dob) throws Exception {
+        if (dob == null) throw new Exception("DOB is null");
+        dob = dob.trim();
+        if (!dob.matches("\\d{2}-\\d{2}-\\d{4}")) {
+            throw new Exception("Invalid DOB format. Expected DD-MM-YYYY");
+        }
+
+        byte[] dobBytes = dob.getBytes(StandardCharsets.US_ASCII);
+        if (dobBytes.length <= 0 || dobBytes.length > 100) {
+            throw new Exception("Invalid DOB length");
+        }
+
+        int dataLength = dobBytes.length;     // bytes only (no leading length byte)
+        int packetLength = 5 + dataLength;    // header+cmd+subcmd+datalen + data + crc
+        int[] cmd = new int[packetLength];
+
+        int idx = 0;
+        cmd[idx] = Header.SET.getVal();
+        cmd[++idx] = Commands.SYSTEM.getVal();
+        cmd[++idx] = SystemSubCommands.USER_DOB.getVal();
+        cmd[++idx] = dataLength;
+
+        for (byte b : dobBytes) cmd[++idx] = b;
+
+        cmd[packetLength - 1] = 0; // crc calculated before sending
+        return cmd;
+    }
+
+    public static boolean setUserDobCmdResponseParse(int response[], int length) throws Exception {
+        return setCmdResponseParse(response, length, Commands.SYSTEM.getVal(), SystemSubCommands.USER_DOB.getVal());
+    }
+
+    /**
+     * Reset config via SYSTEM/CONFIG_RESET.
+     * Payload format (per device protocol):
+     * [dateBytes...] where date is DD-MM-YYYY (10 bytes)
+     */
+    public static int[] configResetCmd(String date) throws Exception {
+        if (date == null) throw new Exception("date is null");
+        date = date.trim();
+        if (!date.matches("\\d{2}-\\d{2}-\\d{4}")) {
+            throw new Exception("Invalid date format. Expected DD-MM-YYYY");
+        }
+
+        byte[] dateBytes = date.getBytes(StandardCharsets.US_ASCII);
+        if (dateBytes.length != 10) {
+            throw new Exception("Invalid date length. Expected 10 bytes");
+        }
+
+        int dataLength = dateBytes.length;  // bytes only
+        int packetLength = 5 + dataLength;  // header+cmd+subcmd+datalen + data + crc
+        int[] cmd = new int[packetLength];
+
+        int idx = 0;
+        cmd[idx] = Header.SET.getVal();
+        cmd[++idx] = Commands.SYSTEM.getVal();
+        cmd[++idx] = SystemSubCommands.CONFIG_RESET.getVal();
+        cmd[++idx] = dataLength;
+
+        for (byte b : dateBytes) cmd[++idx] = b;
+
+        cmd[packetLength - 1] = 0; // crc calculated before sending
+        return cmd;
+    }
+
+    public static boolean configResetCmdResponseParse(int response[], int length) throws Exception {
+        return setCmdResponseParse(response, length, Commands.SYSTEM.getVal(), SystemSubCommands.CONFIG_RESET.getVal());
+    }
+
     /*public static void uploadPatchFile(String ipAddress, String username, String pwd, String filePath, String storeFilePath) {
         System.out.println("filePath="+filePath);
         FTPClient con = null;
@@ -1626,9 +1818,13 @@ public class MotocamAPIHelper {
     }
 
     public static StreamConfiguration parseStreamConfigurationResponse(int[] response, int length) throws Exception {
-        // Validate packet length
-        if (length < 14)
-            throw new Exception("Incomplete health check response. Expected 13, got " + length);
+        // Packet format (consistent with other parsers in this file):
+        // [0]=header, [1]=command, [2]=subCommand, [3]=dataLength,
+        // then dataLength bytes starting at [4] (includes success/error flag),
+        // then [4 + dataLength] = crc
+        if (length < 6) {
+            throw new Exception("Invalid stream configuration response length: " + length);
+        }
 
         // Validate header
         if (response[0] != Header.RESPONSE.getVal())
@@ -1638,47 +1834,42 @@ public class MotocamAPIHelper {
         if (response[1] != Commands.CONFIG.getVal() || response[2] != ConfigGetSubCommands.StreamingConfig.getVal())
             throw new Exception("Command mismatch");
 
-        // Check success flag
-        if (response[4] != 0)
-            throw new Exception("Health check failed");
+        int dataLength = response[3];
+        int expectedMinLen = 4 + dataLength + 1; // +1 CRC byte
+        if (length < expectedMinLen) {
+            throw new Exception("Incomplete stream configuration response. Expected at least " + expectedMinLen + ", got " + length);
+        }
 
-        String resolution = "";
-        if(response[5] == 1)
-            resolution = "960X540";
-        else
-            resolution = "1920X1080";
+        int s_or_e = response[4];
+        if (s_or_e != 0) {
+            int errVal = (dataLength >= 2) ? response[5] : -1;
+            throw new Exception("Stream configuration failed, error=" + errVal);
+        }
 
-        String resolution2 = "";
-        if(response[9] == 1)
-            resolution2 = "960X540";
-        else
-            resolution2 = "190X1080";
+        int payloadLenExcludingStatus = dataLength - 1;
+        if (payloadLenExcludingStatus < 4) {
+            throw new Exception("Stream configuration payload too short: " + payloadLenExcludingStatus);
+        }
+        if (payloadLenExcludingStatus % 4 != 0) {
+            throw new Exception("Unexpected stream configuration payload length: " + payloadLenExcludingStatus);
+        }
 
+        int streamCount = payloadLenExcludingStatus / 4;
+        ArrayList<StreamInfo> streams = new ArrayList<>(streamCount);
 
+        for (int i = 0; i < streamCount; i++) {
+            int base = 5 + (i * 4);
+            int resCode = response[base];
+            int fps = response[base + 1];
+            int bitrate = response[base + 2];
+            int encCode = response[base + 3];
 
-        String encoding = "";
-        if(response[8] == 0)
-            encoding = "H264";
-        else
-            encoding = "H265";
+            ImageResolution resolution = ImageResolution.fromCode(resCode);
+            EncoderType encoder = EncoderType.fromCode(encCode);
+            streams.add(new StreamInfo(resolution, fps, bitrate, encoder));
+        }
 
-        String encoding2 = "";
-        if(response[12] == 0)
-            encoding2 = "H264";
-        else
-            encoding2 = "H265";
-
-        // Parse data
-        return new StreamConfiguration(
-                resolution,    // rtsps
-                response[6],    // fps
-                response[7],         // Bitrate
-                encoding,         // Memory %
-                resolution2,         // ISP Temp
-                response[10],        // IR Temp
-                response[11],
-                encoding2
-        );
+        return new StreamConfiguration(streams);
     }
 
     public static int[] getFirmwareCmd() {

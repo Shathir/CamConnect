@@ -9,8 +9,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,14 +53,16 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.outdu.camconnect.communication.CameraWebSocketManager
 import com.outdu.camconnect.ui.viewmodels.CameraControlViewModel
 import com.outdu.camconnect.singleton.MainActivitySingleton
 import android.util.Log
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
 import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 import com.outdu.camconnect.OverlayPoints
 import kotlinx.coroutines.delay
 import androidx.compose.ui.input.pointer.pointerInput
+import org.json.JSONObject
 
 @Composable
 private fun LoadingOverlay(
@@ -100,6 +104,70 @@ private fun LoadingOverlay(
     }
 }
 
+@Composable
+private fun WebSocketMessagesOverlay(
+    modifier: Modifier = Modifier,
+    maxLines: Int = 50
+) {
+    val wsState by CameraWebSocketManager.state.collectAsState()
+    val lines = remember { mutableStateListOf<String>() }
+
+    LaunchedEffect(Unit) {
+        CameraWebSocketManager.messages.collect { msg ->
+            lines.add(msg)
+            if (lines.size > maxLines) {
+                // drop oldest
+                val overflow = lines.size - maxLines
+                repeat(overflow) { if (lines.isNotEmpty()) lines.removeAt(0) }
+            }
+        }
+    }
+
+    // Simple overlay on the stream pane (top-left)
+    Box(
+        modifier = modifier
+            .padding(12.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(10.dp)
+            .widthIn(max = 420.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = when (val s = wsState) {
+                    is CameraWebSocketManager.ConnectionState.Connected -> "WS: connected"
+                    is CameraWebSocketManager.ConnectionState.Connecting -> "WS: connecting (attempt ${s.attempt})"
+                    is CameraWebSocketManager.ConnectionState.Disconnected -> "WS: disconnected"
+                    is CameraWebSocketManager.ConnectionState.Error -> "WS: error"
+                    CameraWebSocketManager.ConnectionState.Idle -> "WS: idle"
+                },
+                color = Color.White,
+            )
+
+            if (lines.isEmpty()) {
+                Text(
+                    text = "No messages yet",
+                    color = Color.White.copy(alpha = 0.75f),
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 180.dp),
+                    reverseLayout = true
+                ) {
+                    // show newest at bottom (reverseLayout = true)
+                    itemsIndexed(lines) { _, item ->
+                        Text(
+                            text = item,
+                            color = Color.White,
+                            maxLines = 2
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 /**
  * Main adaptive layout container with animated individual components
  * Maintains consistent structure while animating individual elements
@@ -119,7 +187,7 @@ fun AdaptiveStreamLayout(
     val appViewModel: AppViewModel = viewModel()
     val cameraControlViewModel: CameraControlViewModel = viewModel()
     val cameraLayoutViewModel: CameraLayoutViewModel = viewModel()
-    val darkTheme = isSystemInDarkTheme()
+    val darkTheme = camConnectIsDarkTheme()
     // Add LaunchedEffect to refresh settings when layout mode changes
     LaunchedEffect(layoutMode) {
         when (layoutMode) {
@@ -171,7 +239,16 @@ fun AdaptiveStreamLayout(
 
     // Auto-hide controls state
     var isControlsHidden by remember { mutableStateOf(false) }
+    // When true, controls were hidden intentionally by the user (hide FAB) and should not auto-reveal on activity.
+    var isControlsManuallyHidden by remember { mutableStateOf(false) }
     var lastActivityTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    val applicableModes = remember {
+        setOf(
+            LayoutMode.MINIMAL_CONTROL,
+            LayoutMode.EXPANDED_CONTROL,
+            LayoutMode.FULL_CONTROL
+        )
+    }
     
     // Activity tracking callback - resets timer on any user interaction
     val onUserActivity = {
@@ -179,7 +256,9 @@ fun AdaptiveStreamLayout(
         val elapsed = currentTime - lastActivityTime
         Log.d("AutoHide", "Activity detected - LayoutMode: $layoutMode, Elapsed since last: ${elapsed}ms, ControlsHidden: $isControlsHidden")
         lastActivityTime = currentTime
-        if (isControlsHidden) {
+        // Only auto-reveal controls if they were auto-hidden due to inactivity.
+        // If the user explicitly hid them via the hide FAB, keep them hidden until explicit reveal.
+        if (isControlsHidden && !isControlsManuallyHidden) {
             Log.d("AutoHide", "Revealing controls due to activity")
             isControlsHidden = false
         }
@@ -202,18 +281,14 @@ fun AdaptiveStreamLayout(
         if (isStreamReloadingState) {
             Log.d("AutoHide", "Stream reloading - disabling auto-hide")
             isControlsHidden = false
+            isControlsManuallyHidden = false
             return@LaunchedEffect
         }
         
-        // Only run timer for MINIMAL_CONTROL, EXPANDED_CONTROL, and FULL_CONTROL modes
-        val applicableModes = listOf(
-            LayoutMode.MINIMAL_CONTROL,
-            LayoutMode.EXPANDED_CONTROL,
-            LayoutMode.FULL_CONTROL
-        )
         if (layoutMode !in applicableModes) {
             Log.d("AutoHide", "Not in applicable mode ($layoutMode) - disabling auto-hide")
             isControlsHidden = false
+            isControlsManuallyHidden = false
             return@LaunchedEffect
         }
         
@@ -235,6 +310,7 @@ fun AdaptiveStreamLayout(
             if (currentStreamReloading || currentLayoutMode !in applicableModes) {
                 Log.d("AutoHide", "Conditions changed - stopping timer. Mode: $currentLayoutMode, Reloading: $currentStreamReloading")
                 isControlsHidden = false
+                isControlsManuallyHidden = false
                 return@LaunchedEffect
             }
             
@@ -250,6 +326,8 @@ fun AdaptiveStreamLayout(
                 if (!isControlsHidden && currentLayoutMode in applicableModes) {
                     Log.d("AutoHide", "${currentTimeoutDuration}ms elapsed - HIDING controls. Mode: $currentLayoutMode, Elapsed: ${elapsed}ms")
                     isControlsHidden = true
+                    // Auto-hide (inactivity) should be auto-revealable.
+                    isControlsManuallyHidden = false
                 }
             } else {
                 // Log every 5 seconds for debugging
@@ -266,6 +344,7 @@ fun AdaptiveStreamLayout(
         lastActivityTime = System.currentTimeMillis()
         // Reset controls visibility when switching modes - timer will handle auto-hide
         isControlsHidden = false
+        isControlsManuallyHidden = false
     }
 
     // Animated weights for the two panes
@@ -393,54 +472,72 @@ fun AdaptiveStreamLayout(
         }
     }
 
+    // WebSocket-triggered reload: event-driven.
+    LaunchedEffect(Unit) {
+        CameraWebSocketManager.messages.collect { msg ->
+            try {
+                val obj = JSONObject(msg)
+                val rawType = obj.optString("event_type", "")
+                val eventType = rawType
+                    .trim()
+                    .lowercase()
+                    .replace(' ', '_')
+
+                when (eventType) {
+                    "changing_misc" -> {
+                        Log.i("AdaptiveStreamLayout", "WS event changing_misc -> start loading + stop stream")
+                        cameraLayoutViewModel.beginStreamReload(reason = "ws:changing_misc")
+                    }
+                    "started_streaming" -> {
+                        // In practice the camera may emit this slightly before the stream is actually ready.
+                        // Delay clearing loading a bit to avoid resuming into a "hung" pipeline.
+                        if (isStreamReloading.value) {
+                            Log.i("AdaptiveStreamLayout", "WS event started_streaming -> stop loading + start stream (delayed)")
+                            cameraLayoutViewModel.endStreamReload(delayMs = 1_000L, reason = "ws:started_streaming")
+                        } else {
+                            // If we didn't see a preceding changing_misc (or state got out of sync),
+                            // pulse a short reload to force a clean restart.
+                            Log.i("AdaptiveStreamLayout", "WS event started_streaming (no active reload) -> pulse restart")
+                            cameraLayoutViewModel.triggerStreamReload(durationMs = 1_000L, reason = "ws:started_streaming_pulse")
+                        }
+                    }
+                    else -> {
+                        // Ignore unrelated events; keep log at debug to avoid noise.
+                        Log.d("AdaptiveStreamLayout", "WS event ignored (event_type=$rawType): $msg")
+                    }
+                }
+            } catch (e: Exception) {
+                // Non-JSON or unexpected payload; ignore to avoid breaking stream.
+                Log.d("AdaptiveStreamLayout", "WS message not JSON or missing event_type; ignored: $msg", e)
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(VeryDarkBackground)
             .clip(RoundedCornerShape(20.dp))
-            .pointerInput(Unit) {
-                // Detect all touch interactions to track user activity
-                detectTapGestures(
-                    onTap = { 
-                        Log.d("AutoHide", "Tap gesture detected")
-                        onUserActivity() 
-                    },
-                    onDoubleTap = { 
-                        Log.d("AutoHide", "Double tap gesture detected")
-                        onUserActivity() 
-                    },
-                    onLongPress = { 
-                        Log.d("AutoHide", "Long press gesture detected")
-                        onUserActivity() 
+            // Track *any* pointer interaction, even if child composables consume it (scroll, click, etc.)
+            // Using Final pass makes this much harder to miss than gesture detectors on the parent.
+            .pointerInput(onUserActivity) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(pass = PointerEventPass.Final)
+                        if (event.changes.any { it.pressed || it.previousPressed || it.positionChanged() }) {
+                            onUserActivity()
+                        }
                     }
-                )
-            }
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { 
-                        Log.d("AutoHide", "Drag start gesture detected")
-                        onUserActivity() 
-                    },
-                    onDrag = { _, _ ->
-                        onUserActivity() 
-                    },
-                    onDragEnd = { 
-                        Log.d("AutoHide", "Drag end gesture detected")
-                        onUserActivity() 
-                    }
-                )
-            }
-            .pointerInput(Unit) {
-                detectTransformGestures(
-                    onGesture = { _, _, _, _ -> 
-                        Log.d("AutoHide", "Transform gesture detected")
-                        onUserActivity() 
-                    }
-                )
+                }
             }
     ) {
         // The TextureView will handle its own lifecycle based on appViewModel.isPlaying
-        ZoomableVideoTextureView(viewModel = appViewModel, context, pointState = pointState)
+        ZoomableVideoTextureView(
+            viewModel = appViewModel,
+            currentContext = context,
+            pointState = pointState,
+            onUserActivity = onUserActivity
+        )
         // Main consistent layout structure
         Row(
             modifier = modifier
@@ -467,11 +564,30 @@ fun AdaptiveStreamLayout(
                     onSpeedUpdate = { speed -> currentSpeed = speed }
                 )
 
+                // WebSocket live data overlay (left stream pane)
+//                WebSocketMessagesOverlay(
+//                    modifier = Modifier.align(Alignment.TopStart)
+//                )
+
                 // Add the corner mask overlay
                 RoundedCornerMaskOverlay(
                     cornerRadius = 20.dp,
                     color = VeryDarkBackground // Match the border color
                 )
+
+                // Floating hide button - shown when controls are visible.
+                // Placed inside the left stream pane so it doesn't overlay the controls pane.
+                if (!isControlsHidden && layoutMode in applicableModes) {
+                    FloatingHideButton(
+                        onHide = {
+                            Log.d("AutoHide", "Hide button clicked - hiding controls")
+                            // Don't call onUserActivity() here, because that would immediately un-hide.
+                            isControlsHidden = true
+                            isControlsManuallyHidden = true
+                            lastActivityTime = System.currentTimeMillis()
+                        }
+                    )
+                }
 
             }
 
@@ -561,17 +677,13 @@ fun AdaptiveStreamLayout(
         
         // Floating reveal button - shown when controls are hidden
         // Positioned as overlay on top of everything
-        val applicableModes = listOf(
-            LayoutMode.MINIMAL_CONTROL,
-            LayoutMode.EXPANDED_CONTROL,
-            LayoutMode.FULL_CONTROL
-        )
         if (isControlsHidden && layoutMode in applicableModes) {
             Log.d("AutoHide", "Showing floating reveal button - Mode: $layoutMode")
             FloatingRevealButton(
                 onReveal = {
                     Log.d("AutoHide", "Reveal button clicked - revealing controls")
                     isControlsHidden = false
+                    isControlsManuallyHidden = false
                     lastActivityTime = System.currentTimeMillis()
                     // Optionally switch to minimal control when revealing from full control
                     if (layoutMode == LayoutMode.FULL_CONTROL) {
@@ -684,7 +796,8 @@ private fun AnimatedRightPane(
                                 Log.d("AutoHide", "Logout clicked in FULL_CONTROL")
                                 onLogout()
                                 onUserActivity() // Track activity
-                            }
+                            },
+                            onUserActivity = onUserActivity
                         )
                     }
                 }

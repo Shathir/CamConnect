@@ -33,6 +33,17 @@ class CameraLayoutViewModel : ViewModel() {
     private val _currentCameraMode = mutableStateOf(CameraMode.OFF)
     val currentCameraMode: State<CameraMode> = _currentCameraMode
 
+    /**
+     * Last successfully applied values (i.e., what we believe the camera is currently running).
+     * UI controls can modify [currentVisionMode]/[currentCameraMode] as pending selections,
+     * but these applied values should only change after a successful Apply (or initial fetch).
+     */
+    private val _appliedVisionMode = mutableStateOf(VisionMode.VISION)
+    val appliedVisionMode: State<VisionMode> = _appliedVisionMode
+
+    private val _appliedCameraMode = mutableStateOf(CameraMode.OFF)
+    val appliedCameraMode: State<CameraMode> = _appliedCameraMode
+
     // Orientation (maps to FLIP and MIRROR)
     private val _currentOrientationMode = mutableStateOf(OrientationMode.NORMAL)
     val currentOrientationMode: State<OrientationMode> = _currentOrientationMode
@@ -60,8 +71,73 @@ class CameraLayoutViewModel : ViewModel() {
     // Add callback for stream control
     private var onStreamReload: (() -> Unit)? = null
 
+    // Reload control for external triggers (e.g., WebSocket events)
+    private var streamReloadJob: kotlinx.coroutines.Job? = null
+
     fun setStreamReloadCallback(callback: () -> Unit) {
         onStreamReload = callback
+    }
+
+    /**
+     * Trigger a stream reload animation for [durationMs], then resume the stream.
+     * If called repeatedly, the timer is reset so the reload lasts [durationMs] from the latest trigger.
+     */
+    fun triggerStreamReload(durationMs: Long = 10_000L, reason: String? = null) {
+        viewModelScope.launch {
+            try {
+                streamReloadJob?.cancel()
+                _isStreamReloading.value = true
+                reason?.let { Log.i(TAG, "triggerStreamReload: $it") }
+
+                // Optional callback hook if stream restart needs explicit action elsewhere.
+                onStreamReload?.invoke()
+
+                streamReloadJob = launch {
+                    delay(durationMs)
+                    _isStreamReloading.value = false
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error triggering stream reload", e)
+                _isStreamReloading.value = false
+            }
+        }
+    }
+
+    /**
+     * Event-driven stream reload start (e.g., camera reports it is switching modes).
+     * Includes a watchdog to avoid getting stuck if the "started streaming" event never arrives.
+     */
+    fun beginStreamReload(reason: String? = null, watchdogMs: Long = 30_000L) {
+        viewModelScope.launch {
+            streamReloadJob?.cancel()
+            _isStreamReloading.value = true
+            reason?.let { Log.i(TAG, "beginStreamReload: $it") }
+
+            streamReloadJob = launch {
+                delay(watchdogMs)
+                if (_isStreamReloading.value) {
+                    Log.w(TAG, "beginStreamReload watchdog fired after ${watchdogMs}ms; clearing reloading state")
+                    _isStreamReloading.value = false
+                }
+            }
+        }
+    }
+
+    /**
+     * Event-driven stream reload end (e.g., camera reports streaming is back).
+     * Optionally delays clearing the loading state to allow the camera pipeline to settle.
+     */
+    fun endStreamReload(delayMs: Long = 0L, reason: String? = null) {
+        viewModelScope.launch {
+            streamReloadJob?.cancel()
+            streamReloadJob = launch {
+                if (delayMs > 0) delay(delayMs)
+                if (_isStreamReloading.value) {
+                    reason?.let { Log.i(TAG, "endStreamReload: $it (delayMs=$delayMs)") }
+                }
+                _isStreamReloading.value = false
+            }
+        }
     }
 
     init {
@@ -476,6 +552,12 @@ class CameraLayoutViewModel : ViewModel() {
         initialVisionMode = _currentVisionMode.value
         initialCameraMode = _currentCameraMode.value
         initialOrientationMode = _currentOrientationMode.value
+
+        // Commit "applied" values only when we reach a known-success point
+        // (successful initial fetch or successful Apply).
+        _appliedVisionMode.value = _currentVisionMode.value
+        _appliedCameraMode.value = _currentCameraMode.value
+
         _hasUnsavedChanges.value = false
     }
 

@@ -36,6 +36,7 @@ import com.outdu.camconnect.ui.components.settings.devmode.DevLayout
 import com.outdu.camconnect.ui.components.settings.logout.LogoutLayout
 import com.outdu.camconnect.ui.components.settings.network.NetworkLayout
 import com.outdu.camconnect.ui.components.settings.ota.OtaLayout
+import com.outdu.camconnect.ui.components.settings.userSettings.UserSettingsLayout
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 
@@ -53,7 +54,8 @@ fun SettingsControlLayout(
     systemStatus: SystemStatus,
     modifier: Modifier = Modifier,
     onCollapseClick: () -> Unit,
-    onLogout: () -> Unit = {} // Add callback for logout success
+    onLogout: () -> Unit = {}, // Add callback for logout success
+    onUserActivity: () -> Unit = {}
 ) {
     // Manage scroll state with proper cleanup
     val scrollState = rememberScrollState()
@@ -171,6 +173,10 @@ fun SettingsControlLayout(
 
                         ControlTab.NETWORK_LAYOUT -> {
                             NetworkLayout()
+                        }
+
+                        ControlTab.SETTINGS_LAYOUT -> {
+                            UserSettingsLayout(onUserActivity = onUserActivity)
                         }
                     }
                 }

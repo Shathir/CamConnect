@@ -16,7 +16,25 @@
 
 YOLO11::~YOLO11()
 {
-    det_target_size = 320;
+    // If there are detached inference threads still running, wait for them to finish before
+    // destroying the model/net objects. Otherwise those threads may dereference freed memory.
+    std::unique_lock<std::mutex> lk(active_threads_mtx);
+    active_threads_cv.wait(lk, [this]() { return active_inference_threads.load() == 0; });
+}
+
+void YOLO11::on_inference_thread_started()
+{
+    active_inference_threads.fetch_add(1, std::memory_order_relaxed);
+}
+
+void YOLO11::on_inference_thread_finished()
+{
+    // If this was the last running inference thread, wake any destructor waiting.
+    if (active_inference_threads.fetch_sub(1, std::memory_order_acq_rel) == 1)
+    {
+        std::lock_guard<std::mutex> lk(active_threads_mtx);
+        active_threads_cv.notify_all();
+    }
 }
 
 //int YOLO11::load(const char* parampath, const char* modelpath, bool use_gpu)
@@ -68,8 +86,10 @@ YOLO11::~YOLO11()
 #if NCNN_VULKAN
      yolo11_i2.opt.use_vulkan_compute = false;
 #endif
-//     yolo11_i2.load_param(mgr, parampath);
-//     yolo11_i2.load_model(mgr, modelpath);
+     // NOTE: detect_async() can select instance 2 when instance 1 is busy. If instance 2 isn't
+     // loaded, NCNN may crash during inference. Keep both instances loaded with the same model.
+     yolo11_i2.load_param(mgr, parampath);
+     yolo11_i2.load_model(mgr, modelpath);
 
      // Initialize selector and busy flags
      instance_selector.store(0);

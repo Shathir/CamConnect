@@ -28,6 +28,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.ui.platform.LocalContext
+import com.outdu.camconnect.Viewmodels.AppViewModel
 import com.outdu.camconnect.Viewmodels.RecorderViewModel
 import com.outdu.camconnect.singleton.MainActivitySingleton
 import com.outdu.camconnect.utils.MemoryManager
@@ -43,6 +44,8 @@ import com.outdu.camconnect.communication.CameraConfigurationManager
 import com.outdu.camconnect.utils.ConfigurationMigrationHelper
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import android.net.Uri
 import android.os.Environment
 import android.provider.Settings
@@ -50,6 +53,10 @@ import com.outdu.camconnect.security.MandatoryPermissionManager
 import com.outdu.camconnect.profiler.selectBestDecoder
 import kotlin.system.exitProcess
 import com.outdu.camconnect.auth.SessionManager
+import com.outdu.camconnect.communication.CameraWebSocketManager
+import com.outdu.camconnect.utils.NetworkConfigManager
+import com.outdu.camconnect.streaming.StreamLifecycleManager
+import android.os.SystemClock
 
 data class OverlayPoints(
     var labels: IntArray,
@@ -88,6 +95,8 @@ class MainActivity : ComponentActivity() {
     ): Boolean
     companion object {
         const val REQUEST_CODE_SCREEN_CAPTURE = 1001
+        const val EXTRA_CAMERA_WS_PORT = "CAMERA_WS_PORT"
+        const val EXTRA_CAMERA_WS_PATH = "CAMERA_WS_PATH"
 
         private val REQUIRED_PERMISSIONS = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -112,6 +121,19 @@ class MainActivity : ComponentActivity() {
                     .show()
             }
         }
+    }
+
+    private fun startCameraWebSocketIfConfigured() {
+        val cameraIp = intent.getStringExtra("CAMERA_IP") ?: SessionManager.getLastConnectedCameraIp()
+        if (cameraIp.isNullOrBlank()) {
+            Log.w("MainActivity", "No camera IP available; skipping CameraWebSocketManager start")
+            return
+        }
+
+        val wsPort = intent.getIntExtra(EXTRA_CAMERA_WS_PORT, NetworkConfigManager.getCameraWsPort())
+        val wsPath = intent.getStringExtra(EXTRA_CAMERA_WS_PATH) ?: NetworkConfigManager.getCameraWsPath()
+        CameraWebSocketManager.setTarget(cameraIp = cameraIp, port = wsPort, path = wsPath)
+        Log.i("MainActivity", "Camera WebSocket target set: ws://$cameraIp:$wsPort$wsPath")
     }
 
 
@@ -267,6 +289,7 @@ class MainActivity : ComponentActivity() {
     private var actualCodecName: String = ""
     private val viewModel: RecorderViewModel by viewModels()
     private val recordingViewModel: RecordingViewModel by viewModels()
+    private val appViewModel: AppViewModel by viewModels()
 
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -350,6 +373,9 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        // Start camera WebSocket (foreground-only, survives UI recompositions/navigation)
+        startCameraWebSocketIfConfigured()
+
         try {
             GStreamer.init(this)
         } catch (e: Exception) {
@@ -386,7 +412,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        val tInit0 = SystemClock.elapsedRealtime()
         nativeInit(actualCodecName)
+        Log.i("MainActivity", "nativeInit() returned (took ${SystemClock.elapsedRealtime() - tInit0}ms)")
         
         // Migrate old configuration if needed, then load current configuration
         lifecycleScope.launch {
@@ -399,17 +427,29 @@ class MainActivity : ComponentActivity() {
                 onSuccess = { config ->
                     Log.d("MainActivity", "Configuration loaded successfully")
                     // Load OD model after configuration is loaded
+                    val t0 = SystemClock.elapsedRealtime()
+                    Log.i("MainActivity", "OD model load start (modelVersion=${config.modelVersion})")
+                    withContext(Dispatchers.Default) {
                     loadODModel(config.modelVersion)
+                    }
+                    Log.i("MainActivity", "OD model load end (took ${SystemClock.elapsedRealtime() - t0}ms)")
                 },
                 onFailure = { exception ->
                     Log.e("MainActivity", "Failed to load configuration", exception)
                     // Load with default model version if configuration fails
-                    loadODModel(CameraConfigurationManager.getModelVersion())
+                    val fallbackVersion = CameraConfigurationManager.getModelVersion()
+                    val t0 = SystemClock.elapsedRealtime()
+                    Log.i("MainActivity", "OD model load start (fallback modelVersion=$fallbackVersion)")
+                    withContext(Dispatchers.Default) {
+                        loadODModel(fallbackVersion)
+                    }
+                    Log.i("MainActivity", "OD model load end (fallback, took ${SystemClock.elapsedRealtime() - t0}ms)")
                 }
             )
         }
         
         MainActivitySingleton.setMainActivity(this)
+        StreamLifecycleManager.bind(appViewModel)
     }
 
     /**
@@ -544,6 +584,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        StreamLifecycleManager.unbind(appViewModel)
         super.onDestroy()
         // Force cleanup of all native resources
 //        MemoryManager.forceCleanup()
