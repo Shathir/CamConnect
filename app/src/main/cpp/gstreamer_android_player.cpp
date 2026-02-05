@@ -8,6 +8,8 @@
 #include <gst/video/videooverlay.h>
 #include <string>
 #include <mutex>
+#include <cstdlib>
+#include <unistd.h>
 #include <android/asset_manager_jni.h>
 #include <opencv2/core/core.hpp>
 #include <gst/app/gstappsink.h>
@@ -257,12 +259,21 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
 
                 std::vector<Object> objects;
                 auto start_time = std::chrono::system_clock::now();
+
+                // Fetch results from previous frame if available
                 if(!ctx.empty() && ctx.size() >= 1)
                 {
                     g_yolo11->fetch_results(ctx[0], objects);
                     ctx.erase(ctx.begin());
                 }
-                auto curr_ctx = g_yolo11->detect_async(bgr);
+                
+                // CRITICAL: Clone the Mat before async inference to prevent use-after-free
+                // The 'bgr' Mat references GStreamer buffer memory that will be unmapped after
+                // this callback returns. The async thread needs its own copy.
+                cv::Mat bgr_clone = bgr.clone();
+                
+                // Submit for async inference with owned memory
+                auto curr_ctx = g_yolo11->detect_async(bgr_clone);
                 if(curr_ctx != nullptr) {
                     ctx.emplace_back(std::move(curr_ctx));
                 }
@@ -281,7 +292,7 @@ static GstFlowReturn new_sample (GstElement *sink, CustomData *data) {
                 GST_DEBUG("YOLO INFERENCE TIME IS %f", elapsed_seconds.count());
                 od_callback(objects, depthThreshold, data);
             }
-        } 
+        }
         gst_buffer_unmap(buffer, &gstBufferMap);
         gst_sample_unref(sample);
         return GST_FLOW_OK;
@@ -296,7 +307,6 @@ static void *app_function (void *userdata) {
     auto *data = (CustomData *)userdata;
     GSource *bus_source;
     GError *error = nullptr;
-
 
     /* Create our own GLib Main Context and make it the default one */
     data->context = g_main_context_new ();
@@ -342,6 +352,7 @@ static void *app_function (void *userdata) {
                                             "height", G_TYPE_INT, 640,
                                             "format", G_TYPE_STRING, "RGB", nullptr);
         gst_app_sink_set_caps(GST_APP_SINK(data->app_sink), caps);
+        gst_caps_unref(caps); // Free caps after setting
         g_object_set (data->app_sink, "emit-signals", TRUE, nullptr);
         g_signal_connect (data->app_sink, "new-sample", G_CALLBACK (new_sample), data);
     }
@@ -382,10 +393,19 @@ static void *app_function (void *userdata) {
     /* Free resources */
     g_main_context_pop_thread_default(data->context);
     g_main_context_unref (data->context);
-    gst_element_set_state (data->pipeline, GST_STATE_NULL);
-    gst_object_unref (data->video_sink);
-    gst_object_unref (data->app_sink);
-    gst_object_unref (data->pipeline);
+    
+    if (data->pipeline) {
+        gst_element_set_state (data->pipeline, GST_STATE_NULL);
+        // Note: video_sink and app_sink are owned by the pipeline
+        // They will be automatically unreffed when the pipeline is destroyed
+        // DO NOT manually unref them here to avoid double-free
+        gst_object_unref (data->pipeline);
+    }
+    
+    // Clear pointers to avoid dangling references
+    data->video_sink = nullptr;
+    data->app_sink = nullptr;
+    data->pipeline = nullptr;
 
     return nullptr;
 }
@@ -412,6 +432,12 @@ static void gst_native_finalize (JNIEnv* env, jobject thiz) {
     auto *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     if (!data) return;
 
+    // Clear any pending AI inference contexts
+    {
+        std::lock_guard<std::mutex> guard(g_yolo_mutex);
+        ctx.clear();
+    }
+
     env->DeleteGlobalRef (data->app);
     g_free (data);
     SET_CUSTOM_DATA (env, thiz, custom_data_field_id, nullptr);
@@ -434,9 +460,21 @@ static void gst_native_play (JNIEnv* env, jobject thiz, jint width, jint height,
 static void gst_native_pause (JNIEnv* env, jobject thiz) {
     auto *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     if (!data) return;
-    gst_element_set_state (data->pipeline, GST_STATE_PAUSED);
-    g_main_loop_quit (data->main_loop);
-    pthread_join (gst_app_thread, nullptr);
+    
+    // Clear any pending AI inference contexts before pausing
+    {
+        std::lock_guard<std::mutex> guard(g_yolo_mutex);
+        ctx.clear();
+    }
+    
+    if (data->pipeline) {
+        gst_element_set_state (data->pipeline, GST_STATE_PAUSED);
+    }
+    
+    if (data->main_loop) {
+        g_main_loop_quit (data->main_loop);
+        pthread_join (gst_app_thread, nullptr);
+    }
 }
 
 /* Set RTSP URL for streaming */
@@ -510,13 +548,18 @@ static void gst_native_surface_finalize (JNIEnv *env, jobject thiz) {
     if (!data) return;
     GST_DEBUG ("Releasing Native Window %p", data->native_window);
 
-    if (data->pipeline) {
-        gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (data->pipeline), (guintptr)nullptr);
+    if (data->pipeline && data->video_sink) {
+        // Properly validate video_sink before casting
+        if (GST_IS_VIDEO_OVERLAY(data->video_sink)) {
+            gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (data->video_sink), (guintptr)nullptr);
+        }
         gst_element_set_state (data->pipeline, GST_STATE_READY);
     }
 
-    ANativeWindow_release (data->native_window);
-    data->native_window = nullptr;
+    if (data->native_window) {
+        ANativeWindow_release (data->native_window);
+        data->native_window = nullptr;
+    }
     data->initialized = FALSE;
 }
 
@@ -539,17 +582,24 @@ static jboolean od_native_loadModel(JNIEnv *env, jobject thiz, jobject assetMana
     YOLO11* new_model = new YOLO11_det;
     new_model->load(mgr, paramPath.c_str(), modelPath.c_str(), use_gpu);
     new_model->set_det_target_size(640);
+    
+    __android_log_print(ANDROID_LOG_WARN, TAG, "=== Model Loaded Successfully ===");
 
+    YOLO11* old_model = nullptr;
     {
         std::lock_guard<std::mutex> guard(g_yolo_mutex);
         // Any in-flight async contexts belong to the old model; drop them.
         ctx.clear();
 
-        if (g_yolo11 != nullptr) {
-            delete g_yolo11;
-            g_yolo11 = nullptr;
-        }
+        old_model = g_yolo11;
         g_yolo11 = new_model;
+    }
+
+    // Delete old model outside the lock to avoid holding lock during cleanup
+    // Give a small delay to ensure any in-flight callbacks have completed
+    if (old_model != nullptr) {
+        usleep(50000); // 50ms delay to ensure pending callbacks complete
+        delete old_model;
     }
 
     return JNI_TRUE;

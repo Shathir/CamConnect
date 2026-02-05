@@ -171,8 +171,8 @@ private fun buildModeString(visionMode: VisionMode, cameraMode: CameraMode): Str
     val cameraPart = when (cameraMode) {
         CameraMode.OFF -> if (visionMode == VisionMode.BOTH) "COLOR" else ""
         CameraMode.EIS -> "EIS"
-        CameraMode.HDR -> "WDR"
-        CameraMode.BOTH -> "EIS+WDR"
+        CameraMode.HDR -> "HDR"
+        CameraMode.BOTH -> "EIS+HDR"
         CameraMode.FOURK -> "4K"
     }
 

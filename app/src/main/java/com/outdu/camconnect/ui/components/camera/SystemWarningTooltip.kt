@@ -97,7 +97,7 @@ fun SystemWarningTooltip(
     // Formatter.formatFileSize() uses SI units (1000-based) on Android O+ and binary units (1024-based) on older versions
     // We use SI units (1000-based) to match what users see in the formatted display
     val fiveGBInBytes =
-        2L * 1000 * 1000 * 1000  // SI units (matches Formatter.formatFileSize on Android O+)
+        5L * 1000 * 1000 * 1000  // SI units (matches Formatter.formatFileSize on Android O+)
     val isLowStorage = freeBytes < fiveGBInBytes
     val isLowBattery = batteryLevel < 30
     val hasWarning = isLowStorage || isLowBattery

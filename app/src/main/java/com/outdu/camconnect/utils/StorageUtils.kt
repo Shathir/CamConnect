@@ -8,7 +8,7 @@ object StorageUtils {
      * Minimum free storage required to start/continue a recording.
      * Uses SI units (1000-based) as requested.
      */
-    const val MIN_FREE_BYTES_FOR_RECORDING: Long = 332L * 1000L * 1000L * 1000L // 332GB (SI)
+    const val MIN_FREE_BYTES_FOR_RECORDING: Long = 5L * 1000L * 1000L * 1000L // 332GB (SI)
 
     fun getAvailableBytes(): Long {
         // Recording touches internal storage (cacheDir/tmp.mp4) and then writes to MediaStore (external primary).

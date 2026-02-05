@@ -62,6 +62,10 @@ class CameraLayoutViewModel : ViewModel() {
     private val _isStreamReloading = MutableStateFlow(false)
     val isStreamReloading = _isStreamReloading.asStateFlow()
 
+    // Optional text shown under "Applying changes..." while the camera reports a transition.
+    private val _streamReloadStatusText = MutableStateFlow<String?>(null)
+    val streamReloadStatusText = _streamReloadStatusText.asStateFlow()
+
     // Add state to track if UI should be interactive
     private val _isUIInteractive = MutableStateFlow(true)
     val isUIInteractive = _isUIInteractive.asStateFlow()
@@ -87,6 +91,7 @@ class CameraLayoutViewModel : ViewModel() {
             try {
                 streamReloadJob?.cancel()
                 _isStreamReloading.value = true
+                _streamReloadStatusText.value = null
                 reason?.let { Log.i(TAG, "triggerStreamReload: $it") }
 
                 // Optional callback hook if stream restart needs explicit action elsewhere.
@@ -95,10 +100,12 @@ class CameraLayoutViewModel : ViewModel() {
                 streamReloadJob = launch {
                     delay(durationMs)
                     _isStreamReloading.value = false
+                    _streamReloadStatusText.value = null
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error triggering stream reload", e)
                 _isStreamReloading.value = false
+                _streamReloadStatusText.value = null
             }
         }
     }
@@ -118,6 +125,7 @@ class CameraLayoutViewModel : ViewModel() {
                 if (_isStreamReloading.value) {
                     Log.w(TAG, "beginStreamReload watchdog fired after ${watchdogMs}ms; clearing reloading state")
                     _isStreamReloading.value = false
+                    _streamReloadStatusText.value = null
                 }
             }
         }
@@ -136,7 +144,22 @@ class CameraLayoutViewModel : ViewModel() {
                     reason?.let { Log.i(TAG, "endStreamReload: $it (delayMs=$delayMs)") }
                 }
                 _isStreamReloading.value = false
+                _streamReloadStatusText.value = null
             }
+        }
+    }
+
+    /**
+     * Called from WebSocket event handler when the camera reports it is switching MISC.
+     * Stores a human-readable "Changing X mode to Y mode" string for the overlay.
+     */
+    fun setWsChangingMisc(oldMisc: Int?, newMisc: Int?) {
+        val oldLabel = oldMisc?.let { miscToModeLabel(it) }
+        val newLabel = newMisc?.let { miscToModeLabel(it) }
+        _streamReloadStatusText.value = when {
+            oldLabel != null && newLabel != null -> "Changing $oldLabel mode to $newLabel mode"
+            newLabel != null -> "Changing mode to $newLabel mode"
+            else -> null
         }
     }
 
@@ -241,6 +264,81 @@ class CameraLayoutViewModel : ViewModel() {
         }
     }
 
+    private data class MiscDecoded(
+        val visionMode: VisionMode,
+        val cameraMode: CameraMode
+    )
+
+    private fun decodeMisc(misc: Int): MiscDecoded {
+        val visionMode = when {
+            misc in 1..4 -> VisionMode.VISION
+            misc in 5..8 -> VisionMode.BOTH
+            misc in 9..12 -> VisionMode.INFRARED
+            else -> VisionMode.VISION
+        }
+
+        val cameraMode = when {
+            // 4K mode: misc = 4 (visible) or misc = 12 (IR)
+            misc == 4 || misc == 12 -> CameraMode.FOURK
+            misc % 4 == 1 -> CameraMode.OFF
+            misc % 4 == 2 -> CameraMode.EIS
+            misc % 4 == 3 -> CameraMode.HDR
+            misc % 4 == 0 -> CameraMode.BOTH
+            else -> CameraMode.OFF
+        }
+
+        return MiscDecoded(visionMode = visionMode, cameraMode = cameraMode)
+    }
+
+    private fun miscToModeLabel(misc: Int): String {
+        val decoded = decodeMisc(misc)
+
+        // Special-case 4K because misc=4/12 overlaps with other ranges.
+        if (decoded.cameraMode == CameraMode.FOURK) {
+            val visionLabel = when (decoded.visionMode) {
+                VisionMode.VISION -> "Visible 4K"
+                VisionMode.INFRARED -> "Infrared 4K"
+                VisionMode.BOTH -> "Visible + Infrared 4K"
+            }
+            return visionLabel
+        }
+
+        // Product naming:
+        // - Visible + Infrared (Off) -> Low Light Color
+        // - Visible + Infrared (EIS + HDR) -> Low Light Mono
+        if (decoded.visionMode == VisionMode.BOTH) {
+            return when (decoded.cameraMode) {
+                CameraMode.OFF -> "Low Light Color"
+                CameraMode.BOTH -> "Low Light Mono"
+                else -> {
+                    // Keep a descriptive fallback for other (less common) combos.
+                    val cameraLabel = when (decoded.cameraMode) {
+                        CameraMode.EIS -> "EIS"
+                        CameraMode.HDR -> "HDR"
+                        CameraMode.FOURK -> "4K"
+                        CameraMode.OFF, CameraMode.BOTH -> "" // handled above
+                    }
+                    "Visible + Infrared ($cameraLabel)"
+                }
+            }
+        }
+
+        val visionLabel = when (decoded.visionMode) {
+            VisionMode.VISION -> "Visible"
+            VisionMode.BOTH -> "Visible + Infrared"
+            VisionMode.INFRARED -> "Infrared"
+        }
+        val cameraLabel = when (decoded.cameraMode) {
+            CameraMode.OFF -> "Off"
+            CameraMode.EIS -> "EIS"
+            CameraMode.HDR -> "HDR"
+            CameraMode.BOTH -> "EIS + HDR"
+            CameraMode.FOURK -> "4K"
+        }
+
+        return "$visionLabel ($cameraLabel)"
+    }
+
     fun applyChanges1() {
         viewModelScope.launch {
             try {
@@ -261,8 +359,7 @@ class CameraLayoutViewModel : ViewModel() {
                     return@launch
                 }
 
-                // For other changes, reload stream and disable UI
-                _isStreamReloading.value = true
+                // For other changes, disable UI; stream reload overlay is WebSocket-driven.
                 _isUIInteractive.value = false
 
                 // Track completion of all API calls
@@ -358,13 +455,11 @@ class CameraLayoutViewModel : ViewModel() {
                     Log.w(TAG, "Some camera settings failed to apply")
                 }
 
-                // Reset loading state and re-enable UI
-                _isStreamReloading.value = false
+                // Re-enable UI; stream reload overlay is WebSocket-driven.
                 _isUIInteractive.value = true
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in applyChanges", e)
-                _isStreamReloading.value = false
                 _isUIInteractive.value = true
             }
         }
@@ -388,7 +483,7 @@ class CameraLayoutViewModel : ViewModel() {
                     return@launch
                 }
 
-                _isStreamReloading.value = true
+                // Stream reload overlay is WebSocket-driven; do not toggle local reloading state here.
                 _isUIInteractive.value = false
 
                 val apiCalls = mutableListOf<Deferred<Boolean>>()
@@ -497,12 +592,11 @@ class CameraLayoutViewModel : ViewModel() {
 
                 delay(1000)
 
-                _isStreamReloading.value = false
+                // Stream reload overlay is WebSocket-driven.
                 _isUIInteractive.value = true
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in applyChanges", e)
-                _isStreamReloading.value = false
                 _isUIInteractive.value = true
             }
         }

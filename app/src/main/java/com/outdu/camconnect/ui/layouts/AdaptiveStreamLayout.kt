@@ -486,6 +486,10 @@ fun AdaptiveStreamLayout(
                 when (eventType) {
                     "changing_misc" -> {
                         Log.i("AdaptiveStreamLayout", "WS event changing_misc -> start loading + stop stream")
+                        // If provided, show "Changing A mode to B mode" under the spinner.
+                        val oldMisc = obj.optString("old_misc", obj.optString("oldMisc", "")).toIntOrNull()
+                        val newMisc = obj.optString("new_misc", obj.optString("newMisc", "")).toIntOrNull()
+                        cameraLayoutViewModel.setWsChangingMisc(oldMisc = oldMisc, newMisc = newMisc)
                         cameraLayoutViewModel.beginStreamReload(reason = "ws:changing_misc")
                     }
                     "started_streaming" -> {

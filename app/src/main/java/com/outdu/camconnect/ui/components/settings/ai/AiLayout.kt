@@ -261,6 +261,8 @@ fun AiLayout(
         scope.launch {
             try {
                 appViewModel.setPlaying(false)
+                // Give time for AI inference threads to complete and pipeline to fully stop
+                kotlinx.coroutines.delay(150)
             } catch (e: Exception) {
                 Log.e("AiLayout", "Error stopping stream", e)
             }
@@ -269,11 +271,16 @@ fun AiLayout(
                 // Update system status to reflect AI enabled state
                 onSystemStatusChange(systemStatus.copy(isAiEnabled = uiState.od))
 
-                // Restart stream after successful save
-                try {
-                    appViewModel.setPlaying(true)
-                } catch (e: Exception) {
-                    Log.e("AiLayout", "Error starting stream", e)
+                scope.launch {
+                    // Small delay before restarting to ensure clean state
+                    kotlinx.coroutines.delay(100)
+                    
+                    // Restart stream after successful save
+                    try {
+                        appViewModel.setPlaying(true)
+                    } catch (e: Exception) {
+                        Log.e("AiLayout", "Error starting stream", e)
+                    }
                 }
             }
         }

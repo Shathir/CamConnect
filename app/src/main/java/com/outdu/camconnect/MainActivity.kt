@@ -46,6 +46,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 import android.net.Uri
 import android.os.Environment
 import android.provider.Settings
@@ -106,7 +107,26 @@ class MainActivity : ComponentActivity() {
         @JvmStatic
         private external fun nativeClassInit(currentTimeMillis: Long): Boolean
 
+        // Track if model has been loaded in this process lifetime
+        // This prevents OpenMP re-initialization crashes when logging out/in
+        @Volatile
+        private var isModelLoaded = false
+        
+        private val modelLoadLock = Any()
+
         init {
+            // CRITICAL: Set OpenMP environment variables BEFORE loading native library
+            // This prevents OpenMP from trying to set CPU affinity on Android which causes crashes
+            try {
+                android.system.Os.setenv("KMP_AFFINITY", "disabled", true)
+                android.system.Os.setenv("OMP_PROC_BIND", "false", true)
+                android.system.Os.setenv("OMP_NUM_THREADS", "2", true)
+                android.system.Os.setenv("OMP_WAIT_POLICY", "PASSIVE", true)
+                android.util.Log.i("MainActivity", "OpenMP environment variables set from Java")
+            } catch (e: Exception) {
+                android.util.Log.w("MainActivity", "Failed to set OpenMP env vars", e)
+            }
+            
             System.loadLibrary("gstreamer_android_player")
             nativeClassInit(System.currentTimeMillis())
         }
@@ -121,6 +141,66 @@ class MainActivity : ComponentActivity() {
                     .show()
             }
         }
+    }
+
+    /**
+     * Load OD model asynchronously on a background thread to avoid blocking the main thread.
+     * Uses a static flag to prevent reloading the model if it's already loaded in this process,
+     * which prevents OpenMP re-initialization crashes on logout/login.
+     * 
+     * @param modelId The model version to load
+     * @param forceReload If true, will attempt to reload even if already loaded (may crash due to OpenMP)
+     */
+    private fun loadODModelAsync(modelId: Int, forceReload: Boolean = false) {
+        // Check if model is already loaded (prevents OpenMP crash on re-login)
+        synchronized(modelLoadLock) {
+            if (isModelLoaded && !forceReload) {
+                Log.i("MainActivity", "OD model already loaded in this process - skipping reload")
+                return
+            }
+            
+            if (isModelLoaded && forceReload) {
+                Log.w("MainActivity", "Force reloading OD model - this may cause OpenMP crash!")
+            }
+        }
+        
+        Thread {
+            try {
+                val t0 = SystemClock.elapsedRealtime()
+                Log.i("MainActivity", "OD model load start on background thread (modelVersion=$modelId, forceReload=$forceReload)")
+                
+                // Double-check inside thread with lock
+                synchronized(modelLoadLock) {
+                    if (isModelLoaded && !forceReload) {
+                        Log.i("MainActivity", "OD model already loaded (checked in thread) - skipping reload")
+                        return@Thread
+                    }
+                    
+                    // Load model on background thread
+                    val retInit = nativeLoadOdModel(assets, 0, 1, CameraConfigurationManager.isDepthSensingEnabled(), 1)
+                    
+                    val loadTime = SystemClock.elapsedRealtime() - t0
+                    Log.i("MainActivity", "OD model load end (took ${loadTime}ms)")
+                    
+                    if (!retInit) {
+                        Log.e("MainActivity", "yolov8ncnn loadModel failed")
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "yolov8ncnn loadModel failed", Toast.LENGTH_SHORT)
+                                .show()
+                        }
+                    } else {
+                        isModelLoaded = true // Mark as loaded
+                        Log.i("MainActivity", "OD model loaded successfully - marked as loaded")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error loading OD model on background thread", e)
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Error loading model: ${e.message}", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
+        }.start()
     }
 
     private fun startCameraWebSocketIfConfigured() {
@@ -387,6 +467,28 @@ class MainActivity : ComponentActivity() {
         // Check additional permissions (location for WiFi signal strength)
         checkAndRequestPermissions()
 
+        val tInit0 = SystemClock.elapsedRealtime()
+        nativeInit(actualCodecName)
+        Log.i("MainActivity", "nativeInit() returned (took ${SystemClock.elapsedRealtime() - tInit0}ms)")
+        
+        // Load model on MAIN THREAD BEFORE showing UI - prevents OpenMP crashes and ANR
+        // This runs during app startup (splash screen still visible), so no ANR
+        val modelVersion = try {
+            // Try to migrate old config and load current configuration
+            runBlocking {
+                ConfigurationMigrationHelper.migrateIfNeeded(this@MainActivity)
+                val config = CameraConfigurationManager.loadConfigurationAsync(this@MainActivity).getOrNull()
+                config?.modelVersion ?: CameraConfigurationManager.getModelVersion()
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to load configuration, using default", e)
+            CameraConfigurationManager.getModelVersion()
+        }
+        
+        // Load model synchronously on main thread BEFORE UI
+        loadODModel(modelVersion)
+        Log.i("MainActivity", "Model loaded on main thread - ready for inference")
+
         setContent {
             CamConnectTheme {
                 Box(
@@ -410,42 +512,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
-        }
-
-        val tInit0 = SystemClock.elapsedRealtime()
-        nativeInit(actualCodecName)
-        Log.i("MainActivity", "nativeInit() returned (took ${SystemClock.elapsedRealtime() - tInit0}ms)")
-        
-        // Migrate old configuration if needed, then load current configuration
-        lifecycleScope.launch {
-            // First try to migrate from old Data.java format
-            ConfigurationMigrationHelper.migrateIfNeeded(this@MainActivity)
-            
-            // Then load the current configuration
-            val result = CameraConfigurationManager.loadConfigurationAsync(this@MainActivity)
-            result.fold(
-                onSuccess = { config ->
-                    Log.d("MainActivity", "Configuration loaded successfully")
-                    // Load OD model after configuration is loaded
-                    val t0 = SystemClock.elapsedRealtime()
-                    Log.i("MainActivity", "OD model load start (modelVersion=${config.modelVersion})")
-                    withContext(Dispatchers.Default) {
-                    loadODModel(config.modelVersion)
-                    }
-                    Log.i("MainActivity", "OD model load end (took ${SystemClock.elapsedRealtime() - t0}ms)")
-                },
-                onFailure = { exception ->
-                    Log.e("MainActivity", "Failed to load configuration", exception)
-                    // Load with default model version if configuration fails
-                    val fallbackVersion = CameraConfigurationManager.getModelVersion()
-                    val t0 = SystemClock.elapsedRealtime()
-                    Log.i("MainActivity", "OD model load start (fallback modelVersion=$fallbackVersion)")
-                    withContext(Dispatchers.Default) {
-                        loadODModel(fallbackVersion)
-                    }
-                    Log.i("MainActivity", "OD model load end (fallback, took ${SystemClock.elapsedRealtime() - t0}ms)")
-                }
-            )
         }
         
         MainActivitySingleton.setMainActivity(this)

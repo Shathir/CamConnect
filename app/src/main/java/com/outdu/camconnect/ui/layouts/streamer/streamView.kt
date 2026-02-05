@@ -611,6 +611,7 @@ fun ZoomableVideoTextureView(
 
     fun safelyFinalizeSurface() {
         if (!isSurfaceFinalized) {
+            Log.i("ZoomableTextureView", "Finalizing Surface")
             try {
                 MainActivitySingleton.nativePause()
                 MainActivitySingleton.nativeSurfaceFinalize()

@@ -76,16 +76,18 @@ void YOLO11::on_inference_thread_finished()
      // Initialize instance 1
      yolo11_i1.opt = ncnn::Option();
 #if NCNN_VULKAN
-     yolo11_i1.opt.use_vulkan_compute = true;
+     yolo11_i1.opt.use_vulkan_compute = use_gpu;
 #endif
+     yolo11_i1.opt.num_threads = 2;  // Multi-threaded for better performance
      yolo11_i1.load_param(mgr,parampath);
      yolo11_i1.load_model(mgr, modelpath);
 
-     // Initialize instance 2
+     // Initialize instance 2 with SAME settings (both must use GPU or both CPU)
      yolo11_i2.opt = ncnn::Option();
 #if NCNN_VULKAN
-     yolo11_i2.opt.use_vulkan_compute = false;
+     yolo11_i2.opt.use_vulkan_compute = use_gpu;  // FIXED: Respects use_gpu parameter
 #endif
+     yolo11_i2.opt.num_threads = 2;  // Multi-threaded for better performance
      // NOTE: detect_async() can select instance 2 when instance 1 is busy. If instance 2 isn't
      // loaded, NCNN may crash during inference. Keep both instances loaded with the same model.
      yolo11_i2.load_param(mgr, parampath);

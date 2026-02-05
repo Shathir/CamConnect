@@ -1,6 +1,7 @@
 package com.outdu.camconnect.ui.components.settings.camera
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -108,8 +110,74 @@ fun OptionButton(
     }
 }
 
+// Apply Changes Button Component - separated for flexible layout
 @Composable
-fun CameraLayout(
+fun CameraLayoutApplyButton(
+    viewModel: CameraLayoutViewModel = viewModel()
+) {
+    val hasChanges = viewModel.hasUnsavedChanges.value
+    val isUIInteractive by viewModel.isUIInteractive.collectAsState()
+    val isApplying = !isUIInteractive
+    
+    // Pulse animation when applying changes
+    val pulseAnimation by rememberInfiniteTransition(label = "pulse").animateFloat(
+        initialValue = 1f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+    
+    // Scale animation for button press feedback
+    val scale by animateFloatAsState(
+        targetValue = if (isApplying) pulseAnimation else 1f,
+        animationSpec = tween(durationMillis = 300),
+        label = "scale"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.End
+    ) {
+        Button(
+            onClick = { viewModel.applyChanges() },
+            enabled = hasChanges && isUIInteractive,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                disabledContainerColor = Color(0xFF2C2C2C)
+            ),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.scale(scale)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Show loading indicator when applying
+                if (isApplying) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                }
+                
+                Text(
+                    text = if (isApplying) "Applying..." else "Apply Changes",
+                    color = if (hasChanges && isUIInteractive) Color.White else Color(0xFF777777)
+                )
+            }
+        }
+    }
+}
+
+// Camera Layout Content - Settings without the button
+@Composable
+fun CameraLayoutContent(
     modifier: Modifier = Modifier,
     viewModel: CameraLayoutViewModel = viewModel()
 ) {
@@ -121,73 +189,47 @@ fun CameraLayout(
     val currentVisionMode = viewModel.currentVisionMode.value
     val currentCameraMode = viewModel.currentCameraMode.value
     val currentOrientationMode = viewModel.currentOrientationMode.value
-    val hasChanges = viewModel.hasUnsavedChanges.value
 
+    // Settings sections
     Column(
-        modifier = modifier
-            .fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // Apply Changes Button - always visible, enabled only when there are changes
-        Row(
+        // Auto / Manual toggle
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Button(
-                onClick = { viewModel.applyChanges() },
-                enabled = hasChanges,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = Color(0xFF2C2C2C)
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = "Apply Changes",
-                    color = if (hasChanges) Color.White else Color(0xFF777777)
+            Text(
+                text = "Control Mode",
+                style = TextStyle(
+                    fontSize = if (deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                    lineHeight = 14.02.sp,
+                    fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                    fontWeight = FontWeight(500),
+                    color = if (isDarkTheme) Color.White else Color.Black
+                )
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OptionButton(
+                    text = "Auto",
+                    isSelected = autoDayNightEnabled,
+                    onClick = { viewModel.setAutoDayNight(true) },
+                    modifier = Modifier.weight(1f),
+                    iconVal = R.drawable.low_light
+                )
+                OptionButton(
+                    text = "Manual",
+                    isSelected = !autoDayNightEnabled,
+                    onClick = { viewModel.setAutoDayNight(false) },
+                    modifier = Modifier.weight(1f),
+                    iconVal = R.drawable.settings_line
                 )
             }
         }
 
-        // Settings sections
-        Column(
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // Auto / Manual toggle
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "Control Mode",
-                    style = TextStyle(
-                        fontSize = if (deviceType == DeviceType.TABLET) 16.sp else 14.sp,
-                        lineHeight = 14.02.sp,
-                        fontFamily = FontFamily(Font(R.font.just_sans_regular)),
-                        fontWeight = FontWeight(500),
-                        color = if (isDarkTheme) Color.White else Color.Black
-                    )
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OptionButton(
-                        text = "Auto",
-                        isSelected = autoDayNightEnabled,
-                        onClick = { viewModel.setAutoDayNight(true) },
-                        modifier = Modifier.weight(1f),
-                        iconVal = R.drawable.low_light
-                    )
-                    OptionButton(
-                        text = "Manual",
-                        isSelected = !autoDayNightEnabled,
-                        onClick = { viewModel.setAutoDayNight(false) },
-                        modifier = Modifier.weight(1f),
-                        iconVal = R.drawable.settings_line
-                    )
-                }
-            }
-
-            // If Auto is enabled, hide all other controls
-            if (!autoDayNightEnabled) {
+        // If Auto is enabled, hide all other controls
+        if (!autoDayNightEnabled) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
@@ -409,12 +451,27 @@ fun CameraLayout(
                     color = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF777777)
                 )
             )
-            }
         }
     }
 
     // Effect to refresh settings when the composable enters composition
     LaunchedEffect(Unit) {
         viewModel.refreshSettings()
+    }
+}
+
+
+// Full Camera Layout - combines button and content (for backward compatibility)
+@Composable
+fun CameraLayout(
+    modifier: Modifier = Modifier,
+    viewModel: CameraLayoutViewModel = viewModel()
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        CameraLayoutApplyButton(viewModel = viewModel)
+        CameraLayoutContent(viewModel = viewModel)
     }
 }

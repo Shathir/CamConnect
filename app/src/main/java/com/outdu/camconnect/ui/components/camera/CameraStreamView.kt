@@ -65,6 +65,7 @@ fun CameraStreamView(
     val recordingState by recordingViewModel.recordingState.collectAsStateWithLifecycle()
     val cameraLayoutViewModel: CameraLayoutViewModel = viewModel()
     val isStreamReloading by cameraLayoutViewModel.isStreamReloading.collectAsStateWithLifecycle()
+    val streamReloadStatusText by cameraLayoutViewModel.streamReloadStatusText.collectAsStateWithLifecycle()
     val cameraControlViewModel: CameraControlViewModel = viewModel()
     // Lottie animation setup
     val composition by rememberLottieComposition(
@@ -166,21 +167,42 @@ fun CameraStreamView(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Lottie Animation
-                    LottieAnimation(
-                        composition = composition,
-                        progress = { animationState.progress },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .scale(1f)
-                    )
-                    Text(
-                        text = "Applying changes...",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // Line 1: animation + "Applying changes..."
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            LottieAnimation(
+                                composition = composition,
+                                progress = { animationState.progress },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .scale(1f)
+                            )
+                            Text(
+                                text = "Applying changes...",
+                                color = Color.White,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Start
+                            )
+                        }
+
+                        // Line 2: mode transition (optional)
+                        streamReloadStatusText?.let { status ->
+                            Text(
+                                text = status,
+                                color = Color.White.copy(alpha = 0.95f),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Normal,
+                                textAlign = TextAlign.Start
+                            )
+                        }
+                    }
                 }
             }
         }

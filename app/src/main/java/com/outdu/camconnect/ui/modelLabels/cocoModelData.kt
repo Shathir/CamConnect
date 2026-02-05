@@ -80,6 +80,20 @@ var COCO_LABELS: Array<String> = arrayOf(
             "scissors",
             "teddy bear",
             "hair drier",
-            "toothbrush"
+            "toothbrush",
+            "sail_boat",
+            "ships",
+            "pontoon_boat",
+            "tug_boat",
+            "buoy",
+            "power_boat",
+            "kayak",
+            "jetski",
+            "tanker",
+            "yacht",
+            "barge",
+            "patrol_boat",
+            "fishing_boat"
         )
+
 

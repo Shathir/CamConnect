@@ -23,6 +23,8 @@ import com.outdu.camconnect.ui.components.buttons.CustomizableButton
 import com.outdu.camconnect.ui.components.settings.*
 import com.outdu.camconnect.ui.components.settings.ai.AiLayout
 import com.outdu.camconnect.ui.components.settings.camera.CameraLayout
+import com.outdu.camconnect.ui.components.settings.camera.CameraLayoutApplyButton
+import com.outdu.camconnect.ui.components.settings.camera.CameraLayoutContent
 import com.outdu.camconnect.ui.components.settings.license.LicenseLayout
 import com.outdu.camconnect.ui.models.*
 import com.outdu.camconnect.ui.theme.*
@@ -134,6 +136,10 @@ fun SettingsControlLayout(
                 )
             }
 
+            // Apply Changes button for Camera Control (non-scrollable)
+            if (selectedTab == ControlTab.CAMERA_CONTROL) {
+                CameraLayoutApplyButton()
+            }
 
             // Scrollable content with managed scroll state
             Column(
@@ -147,8 +153,8 @@ fun SettingsControlLayout(
                 key(selectedTab) {
                     when (selectedTab) {
                         ControlTab.CAMERA_CONTROL -> {
-                            // Using the new CameraLayout with ViewModel
-                            CameraLayout()
+                            // Using the split CameraLayout with button outside scroll
+                            CameraLayoutContent()
                         }
 
                         ControlTab.AI_CONTROL -> {
