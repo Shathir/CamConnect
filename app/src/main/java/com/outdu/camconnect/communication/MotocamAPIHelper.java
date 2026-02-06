@@ -676,16 +676,19 @@ public class MotocamAPIHelper {
         int dataLength = response[3];
 
         if(header != Header.ACK.getVal()) {
-            throw new Exception("Invalid header in response");
+            throw new Exception("Invalid header in response. Expected ACK(0x03), got 0x" + Integer.toHexString(header) + 
+                " | Full response: " + arrayToHexString(response, length));
         }
         if(command != command_req) {
-            throw new Exception("Invalid command in response");
+            throw new Exception("Invalid command in response. Expected 0x" + Integer.toHexString(command_req) + 
+                ", got 0x" + Integer.toHexString(command));
         }
         if(subCommand != subCommand_req) {
-            throw new Exception("Invalid sub command in response");
+            throw new Exception("Invalid sub command in response. Expected 0x" + Integer.toHexString(subCommand_req) + 
+                ", got 0x" + Integer.toHexString(subCommand));
         }
         if(dataLength != 2) {
-            throw new Exception("Invalid data/data length in response");
+            throw new Exception("Invalid data/data length in response. Expected 2, got " + dataLength);
         }
 
         int s_or_e = response[4];
@@ -698,10 +701,21 @@ public class MotocamAPIHelper {
             }
         } else if(s_or_e == 1){//1 failed
             int e_val = response[5];
-            throw new Exception("error response val="+ e_val);
+            // Convert unsigned byte to signed byte (-128 to 127)
+            // Error codes like -5, -6, -7 are sent as 251, 250, 249 respectively
+            int signedErrorCode = (e_val > 127) ? e_val - 256 : e_val;
+            throw new Exception(String.valueOf(signedErrorCode));
         } else {
             throw new Exception("Invalid data in response");
         }
+    }
+    
+    private static String arrayToHexString(int[] array, int length) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < length && i < array.length; i++) {
+            sb.append(String.format("0x%02X ", array[i]));
+        }
+        return sb.toString().trim();
     }
 
     private static Map<String, Object> getConfigCmdResponseParse(int response[], int length, ConfigGetSubCommands configGetSubCommand)
@@ -1739,6 +1753,59 @@ public class MotocamAPIHelper {
 
     public static boolean configResetCmdResponseParse(int response[], int length) throws Exception {
         return setCmdResponseParse(response, length, Commands.SYSTEM.getVal(), SystemSubCommands.CONFIG_RESET.getVal());
+    }
+
+    /**
+     * Reset login PIN via SYSTEM/SET_LOGIN_PIN.
+     * Payload format (per device protocol):
+     * [pinLength][pinBytes...][dobBytes...] where dob is DD-MM-YYYY (10 bytes)
+     * 
+     * Example: PIN="1245", DOB="02-02-2025"
+     * 0x01 0x06 0x02 0x0F 0x04 0x31 0x32 0x34 0x35 0x30 0x32 0x2D 0x30 0x32 0x2D 0x32 0x30 0x32 0x35 [CRC]
+     */
+    public static int[] resetLoginPinCmd(String pin, String dob) throws Exception {
+        if (pin == null || pin.isEmpty()) throw new Exception("PIN is null or empty");
+        if (dob == null) throw new Exception("DOB is null");
+        
+        pin = pin.trim();
+        dob = dob.trim();
+        
+        if (!dob.matches("\\d{2}-\\d{2}-\\d{4}")) {
+            throw new Exception("Invalid DOB format. Expected DD-MM-YYYY");
+        }
+        
+        byte[] pinBytes = pin.getBytes(StandardCharsets.US_ASCII);
+        byte[] dobBytes = dob.getBytes(StandardCharsets.US_ASCII);
+        
+        if (pinBytes.length <= 0 || pinBytes.length > 20) {
+            throw new Exception("Invalid PIN length");
+        }
+        if (dobBytes.length != 10) {
+            throw new Exception("Invalid DOB length. Expected 10 bytes");
+        }
+        
+        int dataLength = 1 + pinBytes.length + dobBytes.length;  // pinLength + pin + dob
+        int packetLength = 5 + dataLength;  // header+cmd+subcmd+datalen + data + crc
+        int[] cmd = new int[packetLength];
+        
+        int idx = 0;
+        cmd[idx] = Header.SET.getVal();                         // 0x01
+        cmd[++idx] = Commands.SYSTEM.getVal();                  // 0x06
+        cmd[++idx] = SystemSubCommands.SET_LOGIN_PIN.getVal();  // 0x02
+        cmd[++idx] = dataLength;                                // 0x0F (15) for example
+        cmd[++idx] = pinBytes.length;                           // 0x04 for "1245"
+        
+        for (byte b : pinBytes) cmd[++idx] = b;                 // PIN bytes
+        for (byte b : dobBytes) cmd[++idx] = b;                 // DOB bytes (DD-MM-YYYY)
+        
+        cmd[packetLength - 1] = 0; // crc calculated before sending
+        
+        System.out.println("resetLoginPinCmd built: " + arrayToHexString(cmd, cmd.length));
+        return cmd;
+    }
+    
+    public static boolean resetLoginPinCmdResponseParse(int response[], int length) throws Exception {
+        return setCmdResponseParse(response, length, Commands.SYSTEM.getVal(), SystemSubCommands.SET_LOGIN_PIN.getVal());
     }
 
     /*public static void uploadPatchFile(String ipAddress, String username, String pwd, String filePath, String storeFilePath) {

@@ -126,7 +126,8 @@ fun ViewerFlowScreen(
                 uiState.showNoCamerasDialog -> {
                     NoCamerasFoundScreen(
                         onGoToWifiSettings = onGoToWifiSettings,
-                        onRetry = viewModel::retryDiscovery
+                        onRetry = viewModel::retryDiscovery,
+                        onManualIpEntry = viewModel::showManualIpDialog
                     )
                 }
             }
@@ -146,6 +147,16 @@ fun ViewerFlowScreen(
             },
             onDismiss = viewModel::dismissPinDialog,
             onClearAuthError = viewModel::clearAuthError
+        )
+    }
+    
+    // Manual IP entry dialog
+    if (uiState.showManualIpDialog) {
+        ManualIpDialog(
+            onIpEntered = { ip ->
+                viewModel.connectWithManualIp(ip)
+            },
+            onDismiss = viewModel::dismissManualIpDialog
         )
     }
 }
@@ -645,7 +656,8 @@ private fun CameraListSection(
 @Composable
 private fun NoCamerasFoundScreen(
     onGoToWifiSettings: () -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onManualIpEntry: () -> Unit
 ) {
 
     val deviceType = rememberDeviceType()
@@ -756,6 +768,24 @@ private fun NoCamerasFoundScreen(
             )
             Spacer(modifier = Modifier.width(4.dp))
              Text("Retry")
+         }
+         
+         // Manual IP Entry button
+         OutlinedButton(
+            onClick = onManualIpEntry,
+            modifier = Modifier.fillMaxWidth(if(deviceType == DeviceType.TABLET) 0.5f else 1f),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = StravionBlue
+            ),
+            shape = RoundedCornerShape(12.dp)
+         ) {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Enter IP Manually")
          }
          
          Spacer(modifier = Modifier.height(32.dp))
@@ -1076,6 +1106,144 @@ private fun PinInputBox(
             )
         )
     }
+}
+
+@Composable
+private fun ManualIpDialog(
+    onIpEntered: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var ipAddress by remember { mutableStateOf("") }
+    var ipError by remember { mutableStateOf<String?>(null) }
+    
+    // Background overlay with fade
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable { onDismiss() }
+    ) {
+        // Center modal content
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .align(Alignment.Center)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .clickable { } // Prevent clicks from passing through
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // Title
+            Text(
+                text = "Enter Camera IP Address",
+                style = TextStyle(
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A1A1C)
+                )
+            )
+            
+            // Description
+            Text(
+                text = "Enter the IP address of your camera to connect directly",
+                style = TextStyle(
+                    fontSize = 14.sp,
+                    color = Color(0xFF9097A0),
+                    textAlign = TextAlign.Center
+                )
+            )
+            
+            // IP Address Input Field
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { 
+                        ipAddress = it
+                        ipError = null
+                    },
+                    label = { Text("IP Address") },
+                    placeholder = { Text("192.168.1.100") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    isError = ipError != null,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = StravionBlue,
+                        focusedLabelColor = StravionBlue
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                
+                // Error message
+                if (ipError != null) {
+                    Text(
+                        text = ipError!!,
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    )
+                }
+            }
+            
+            // Buttons Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Cancel button
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF9097A0)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Cancel")
+                }
+                
+                // Connect button
+                Button(
+                    onClick = {
+                        val trimmedIp = ipAddress.trim()
+                        if (trimmedIp.isEmpty()) {
+                            ipError = "Please enter an IP address"
+                        } else if (!isValidIpFormat(trimmedIp)) {
+                            ipError = "Invalid IP address format"
+                        } else {
+                            onIpEntered(trimmedIp)
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = StravionBlue
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Connect")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Validate IP address format
+ */
+private fun isValidIpFormat(ip: String): Boolean {
+    val ipPattern = Regex(
+        "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+    )
+    return ipPattern.matches(ip)
 }
 
 /**

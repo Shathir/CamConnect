@@ -221,6 +221,62 @@ class ViewerFlowViewModel : ViewModel() {
     fun clearWifiConnectionError() {
         _uiState.value = _uiState.value.copy(wifiConnectionError = null)
     }
+    
+    /**
+     * Show manual IP entry dialog
+     */
+    fun showManualIpDialog() {
+        Log.i(TAG, "Showing manual IP entry dialog")
+        _uiState.value = _uiState.value.copy(showManualIpDialog = true)
+    }
+    
+    /**
+     * Dismiss manual IP entry dialog
+     */
+    fun dismissManualIpDialog() {
+        Log.i(TAG, "Dismissing manual IP entry dialog")
+        _uiState.value = _uiState.value.copy(showManualIpDialog = false)
+    }
+    
+    /**
+     * Connect to camera with manually entered IP
+     */
+    fun connectWithManualIp(ipAddress: String) {
+        Log.i(TAG, "Connecting to camera with manual IP: $ipAddress")
+        
+        // Validate IP address format
+        if (!isValidIpAddress(ipAddress)) {
+            Log.w(TAG, "Invalid IP address format: $ipAddress")
+            _uiState.value = _uiState.value.copy(
+                errorMessage = "Invalid IP address format"
+            )
+            return
+        }
+        
+        // Create an OnvifDevice with the manual IP
+        val manualDevice = OnvifDevice(
+            ipAddress = ipAddress,
+            endpointUrls = listOf("http://$ipAddress/onvif/device_service"),
+            deviceType = "Manual Entry",
+            scopes = emptyList()
+        )
+        
+        // Dismiss the manual IP dialog
+        dismissManualIpDialog()
+        
+        // Select the device and show PIN dialog for authentication
+        selectCamera(manualDevice)
+    }
+    
+    /**
+     * Validate IP address format
+     */
+    private fun isValidIpAddress(ip: String): Boolean {
+        val ipPattern = Regex(
+            "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+        )
+        return ipPattern.matches(ip.trim())
+    }
 }
 
 /**
@@ -237,5 +293,6 @@ data class ViewerFlowState(
     val showQRScanner: Boolean = false,
     val isConnectingToWifi: Boolean = false,
     val wifiConnectionError: String? = null,
-    val wifiConnectionSuccess: Boolean = false
+    val wifiConnectionSuccess: Boolean = false,
+    val showManualIpDialog: Boolean = false
 )

@@ -582,6 +582,23 @@ object MotocamAPIAndroidHelper {
             }
         }
     }
+    
+    fun resetLoginPinAsync(
+        scope: CoroutineScope,
+        pin: String,
+        dob: String,
+        callback: (Boolean, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = MotocamAPIHelperWrapper.resetLoginPin(pin, dob)
+                callback(result, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "resetLoginPinAsync failed", e)
+                callback(false, e.message)
+            }
+        }
+    }
 
 
     fun getHealthStatusAsync(

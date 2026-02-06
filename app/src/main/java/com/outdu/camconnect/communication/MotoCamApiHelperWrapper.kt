@@ -302,6 +302,20 @@ object MotocamAPIHelperWrapper {
         MotocamAPIHelper.setUserDobCmd(dob),
         MotocamAPIHelper::setUserDobCmdResponseParse
     )
+    
+    suspend fun resetLoginPin(pin: String, dob: String) = sendCommand(
+        MotocamAPIHelper.resetLoginPinCmd(pin, dob),
+        MotocamAPIHelper::resetLoginPinCmdResponseParse
+    )
+    
+    /**
+     * Reset login PIN on specific camera (for viewer flow)
+     */
+    suspend fun resetLoginPin(pin: String, dob: String, cameraIp: String) = sendCommand(
+        MotocamAPIHelper.resetLoginPinCmd(pin, dob),
+        MotocamAPIHelper::resetLoginPinCmdResponseParse,
+        cameraIp
+    )
 
     suspend fun startStream() = sendCommand(
         MotocamAPIHelper.startStreamCmd(),

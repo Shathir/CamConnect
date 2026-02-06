@@ -110,6 +110,12 @@ fun UserSettingsLayout(
 
     var lastStatusMessage by remember { mutableStateOf<String?>(null) }
     var lastStatusIsError by remember { mutableStateOf(false) }
+    
+    // Dialog-specific status messages
+    var dobDialogStatus by remember { mutableStateOf<String?>(null) }
+    var dobDialogIsError by remember { mutableStateOf(false) }
+    var configResetDialogStatus by remember { mutableStateOf<String?>(null) }
+    var configResetDialogIsError by remember { mutableStateOf(false) }
 
     val isConfigResetDobValid = validateDobDigits(configResetDigits) != null
     val progressFraction = ((60 - logoutCountdownSeconds).coerceIn(0, 60)) / 60f
@@ -142,6 +148,7 @@ fun UserSettingsLayout(
                 configResetStep = 1
                 configResetValidatedDate = null
                 configResetError = null
+                configResetDialogStatus = null
                 showConfigResetConfirm = true
             },
             isDarkTheme = isDarkTheme
@@ -153,7 +160,10 @@ fun UserSettingsLayout(
             buttonText = if (isSubmittingDob) "Saving..." else "Set DOB",
             isDestructive = false,
             enabled = !isSubmittingDob && !isSubmittingConfigReset,
-            onClick = { showDobDialog = true },
+            onClick = { 
+                dobDialogStatus = null
+                showDobDialog = true 
+            },
             isDarkTheme = isDarkTheme
         )
 
@@ -172,7 +182,12 @@ fun UserSettingsLayout(
 
     if (showConfigResetConfirm) {
         AlertDialog(
-            onDismissRequest = { if (!isSubmittingConfigReset) showConfigResetConfirm = false },
+            onDismissRequest = { 
+                if (!isSubmittingConfigReset) {
+                    showConfigResetConfirm = false
+                    configResetDialogStatus = null
+                }
+            },
             title = {
                 Text(
                     text = if (configResetStep == 1) "Enter DOB" else "Confirm Configuration Reset",
@@ -233,22 +248,36 @@ fun UserSettingsLayout(
                         }
                     }
                 } else {
-                    val date = configResetValidatedDate ?: "DD-MM-YYYY"
-                    Text(
-                        text = "Confirm Configuration Reset\n\n" +
-                            "This action will:\n\n" +
-                            "Reset all configuration settings to defaults\n\n" +
-                            "May require reconnecting to the device\n\n" +
-                            "Device may restart or reload settings\n\n" +
-                            "DOB: $date\n\n" +
-                            "Are you sure you want to continue?",
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            fontFamily = titleFont,
-                            fontWeight = FontWeight(400),
-                            color = descriptionColor
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val date = configResetValidatedDate ?: "DD-MM-YYYY"
+                        Text(
+                            text = "Confirm Configuration Reset\n\n" +
+                                "This action will:\n\n" +
+                                "Reset all configuration settings to defaults\n\n" +
+                                "May require reconnecting to the device\n\n" +
+                                "Device may restart or reload settings\n\n" +
+                                "DOB: $date\n\n" +
+                                "Are you sure you want to continue?",
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                fontFamily = titleFont,
+                                fontWeight = FontWeight(400),
+                                color = descriptionColor
+                            )
                         )
-                    )
+                        
+                        configResetDialogStatus?.let { status ->
+                            Text(
+                                text = status,
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    fontFamily = titleFont,
+                                    fontWeight = FontWeight(500),
+                                    color = if (configResetDialogIsError) Color(0xFFD32F2F) else Color(0xFF1B8F3A)
+                                )
+                            )
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -277,13 +306,15 @@ fun UserSettingsLayout(
                         }
 
                         isSubmittingConfigReset = true
-                        lastStatusMessage = null
+                        configResetDialogStatus = null
 
                         MotocamAPIAndroidHelper.configResetAsync(scope, resetDate) { ok, err ->
                             if (!ok) {
+                                // Error - show in dialog, keep it open
                                 isSubmittingConfigReset = false
-                                lastStatusIsError = true
-                                lastStatusMessage = "Error: Config reset failed: ${err ?: "Unknown error"}"
+                                configResetDialogIsError = true
+                                val errorMsg = parseUserSettingsError(err)
+                                configResetDialogStatus = "Error: $errorMsg"
                                 return@configResetAsync
                             }
 
@@ -299,6 +330,7 @@ fun UserSettingsLayout(
 
                             // Keep the UI in non-hidden state while we wait (prevents the 20s auto-hide).
                             showConfigResetConfirm = false
+                            configResetDialogStatus = null
                             showResetProgress = true
                             isSubmittingConfigReset = false
                             logoutCountdownSeconds = 60
@@ -343,9 +375,11 @@ fun UserSettingsLayout(
                         if (configResetStep == 2) {
                             // Go back to DOB entry
                             configResetStep = 1
+                            configResetDialogStatus = null
                             onUserActivity()
                         } else {
                             showConfigResetConfirm = false
+                            configResetDialogStatus = null
                         }
                     }
                 ) {
@@ -370,6 +404,7 @@ fun UserSettingsLayout(
                 if (!isSubmittingDob) {
                     showDobDialog = false
                     dobError = null
+                    dobDialogStatus = null
                 }
             },
             title = {
@@ -399,6 +434,7 @@ fun UserSettingsLayout(
                         value = dobDigits,
                         onValueChange = { raw ->
                             dobError = null
+                            dobDialogStatus = null
                             dobDigits = raw.onlyDigits().take(8)
                         },
                         singleLine = true,
@@ -429,6 +465,18 @@ fun UserSettingsLayout(
                             )
                         )
                     }
+                    
+                    dobDialogStatus?.let { status ->
+                        Text(
+                            text = status,
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                fontFamily = titleFont,
+                                fontWeight = FontWeight(500),
+                                color = if (dobDialogIsError) Color(0xFFD32F2F) else Color(0xFF1B8F3A)
+                            )
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -442,15 +490,23 @@ fun UserSettingsLayout(
                         }
 
                         isSubmittingDob = true
-                        lastStatusMessage = null
+                        dobDialogStatus = null
                         MotocamAPIAndroidHelper.setUserDobAsync(scope, validated) { ok, err ->
                             isSubmittingDob = false
-                            showDobDialog = false
-                            dobError = null
-                            lastStatusIsError = !ok
-                            lastStatusMessage =
-                                if (ok) "Success: DOB updated."
-                                else "Error: DOB update failed: ${err ?: "Unknown error"}"
+                            dobDialogIsError = !ok
+                            
+                            if (ok) {
+                                // Success - dismiss dialog and show on main layout
+                                showDobDialog = false
+                                dobError = null
+                                dobDialogStatus = null
+                                lastStatusIsError = false
+                                lastStatusMessage = "Success: DOB updated."
+                            } else {
+                                // Error - show in dialog, keep it open
+                                val errorMsg = parseUserSettingsError(err)
+                                dobDialogStatus = "Error: $errorMsg"
+                            }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = StravionBlue)
@@ -472,6 +528,7 @@ fun UserSettingsLayout(
                     onClick = {
                         showDobDialog = false
                         dobError = null
+                        dobDialogStatus = null
                     }
                 ) {
                     Text(
@@ -494,6 +551,7 @@ fun UserSettingsLayout(
             onDismiss = { showDatePicker = false },
             onDateSelected = { formatted ->
                 dobError = null
+                dobDialogStatus = null
                 dobDigits = formatted.onlyDigits().take(8)
                 showDatePicker = false
             }
@@ -766,5 +824,30 @@ private fun validateDobDigits(dobDigits: String): String? {
         trimmed
     } catch (_: Exception) {
         null
+    }
+}
+
+/**
+ * Parse error codes from user settings operations.
+ * Error codes:
+ * -5: Invalid DOB format/length
+ * -6: User DOB not set in system
+ * -7: User DOB validation failed (mismatch)
+ */
+private fun parseUserSettingsError(err: String?): String {
+    if (err == null) return "Unknown error"
+    
+    // Try to extract error code from the error string
+    val errorCode = err.toIntOrNull() ?: run {
+        // Try to find a number in the error string (e.g., "Error: -5")
+        val match = Regex("-?\\d+").find(err)
+        match?.value?.toIntOrNull()
+    }
+    
+    return when (errorCode) {
+        -5 -> "Invalid DOB format or length"
+        -6 -> "User DOB not set in system"
+        -7 -> "User DOB validation failed (mismatch)"
+        else -> err
     }
 }
