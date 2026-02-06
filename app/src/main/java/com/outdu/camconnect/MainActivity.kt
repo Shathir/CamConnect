@@ -12,6 +12,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -36,7 +41,6 @@ import org.freedesktop.gstreamer.GStreamer
 import java.util.Locale
 import com.outdu.camconnect.ui.theme.*
 import android.content.res.Configuration
-import androidx.compose.runtime.mutableStateOf
 import com.outdu.camconnect.ui.viewmodels.RecordingViewModel
 import android.app.Activity
 import androidx.annotation.RequiresApi
@@ -47,6 +51,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
 import android.net.Uri
 import android.os.Environment
 import android.provider.Settings
@@ -112,7 +117,17 @@ class MainActivity : ComponentActivity() {
         @Volatile
         private var isModelLoaded = false
         
+        // Track if user chose to skip model loading
+        @Volatile
+        private var modelLoadSkipped = false
+        
         private val modelLoadLock = Any()
+        
+        /**
+         * Check if AI features are enabled (model loaded and not skipped)
+         */
+        @JvmStatic
+        fun isAIEnabled(): Boolean = isModelLoaded && !modelLoadSkipped
 
         init {
             // CRITICAL: Set OpenMP environment variables BEFORE loading native library
@@ -140,6 +155,63 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this@MainActivity, "yolov8ncnn loadModel failed", Toast.LENGTH_SHORT)
                     .show()
             }
+        }
+    }
+    
+    /**
+     * Safe wrapper for model loading with comprehensive error handling
+     * Returns true if model loaded successfully, false otherwise
+     */
+    private fun loadODModelSafe(modelId: Int): Boolean {
+        return try {
+            synchronized(modelLoadLock) {
+                // If already loaded, return success immediately
+                if (isModelLoaded) {
+                    Log.i("MainActivity", "Model already loaded, skipping reload")
+                    return true
+                }
+                
+                // Log memory status (but don't fail based on it)
+                val runtime = Runtime.getRuntime()
+                val maxMemory = runtime.maxMemory()
+                val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+                val availableMemory = maxMemory - usedMemory
+                Log.i("MainActivity", "Memory status: ${availableMemory / (1024 * 1024)}MB available, ${maxMemory / (1024 * 1024)}MB max")
+                
+                Log.i("MainActivity", "Starting model load (modelVersion=$modelId)")
+                val t0 = SystemClock.elapsedRealtime()
+                
+                val success = nativeLoadOdModel(
+                    assets,
+                    0,
+                    1,
+                    CameraConfigurationManager.isDepthSensingEnabled(),
+                    1
+                )
+                
+                val elapsed = SystemClock.elapsedRealtime() - t0
+                Log.i("MainActivity", "Model load completed in ${elapsed}ms, Success: $success")
+                
+                if (success) {
+                    isModelLoaded = true
+                    Log.i("MainActivity", "Model loaded successfully and marked as loaded")
+                } else {
+                    Log.e("MainActivity", "Model load returned false - native function failed")
+                    // Cleanup on failure
+                    System.gc()
+                    MemoryManager.cleanupWeakReferences()
+                }
+                
+                success
+            }
+        } catch (e: OutOfMemoryError) {
+            Log.e("MainActivity", "OutOfMemoryError during model load", e)
+            System.gc()
+            MemoryManager.cleanupWeakReferences()
+            false
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Exception during model load", e)
+            false
         }
     }
 
@@ -366,6 +438,162 @@ class MainActivity : ComponentActivity() {
 
 
 
+    /**
+     * Main composable that handles model loading with overlay UI
+     */
+    @Composable
+    private fun MainActivityWithModelLoading() {
+        // State management for model loading
+        var loadingState by remember { mutableStateOf<com.outdu.camconnect.ui.components.loading.ModelLoadState>(
+            com.outdu.camconnect.ui.components.loading.ModelLoadState.Loading
+        ) }
+        var retryAttempt by remember { mutableStateOf(0) }
+        val loadingStartTime = remember { System.currentTimeMillis() }
+        
+        // Capture context and assets early
+        val context = LocalContext.current
+        val assetManager = remember { context.assets }
+        
+        // Determine model version
+        val modelVersion = remember {
+            try {
+                runBlocking {
+                    ConfigurationMigrationHelper.migrateIfNeeded(this@MainActivity)
+                    val config = CameraConfigurationManager.loadConfigurationAsync(this@MainActivity).getOrNull()
+                    config?.modelVersion ?: CameraConfigurationManager.getModelVersion()
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Failed to load configuration, using default", e)
+                CameraConfigurationManager.getModelVersion()
+            }
+        }
+        
+        // Load model after UI is composed
+        LaunchedEffect(retryAttempt) {
+            Log.i("MainActivity", "LaunchedEffect triggered - retryAttempt=$retryAttempt, isModelLoaded=$isModelLoaded, modelLoadSkipped=$modelLoadSkipped")
+            
+            if (!isModelLoaded && !modelLoadSkipped) {
+                loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Loading
+                Log.i("MainActivity", "Starting model load from LaunchedEffect")
+                
+                // Small delay to ensure UI is visible before starting load
+                kotlinx.coroutines.delay(100)
+                
+                // Load on background thread to avoid blocking UI updates
+                withContext(Dispatchers.IO) {
+                    try {
+                        val success = loadODModelSafe(modelVersion)
+                        
+                        Log.i("MainActivity", "Model load finished with success=$success")
+                        
+                        // Update state on main thread
+                        withContext(Dispatchers.Main) {
+                            loadingState = if (success) {
+                                com.outdu.camconnect.ui.components.loading.ModelLoadState.Success
+                            } else {
+                                com.outdu.camconnect.ui.components.loading.ModelLoadState.Error(
+                                    error = com.outdu.camconnect.ui.components.loading.ModelLoadError.fromNativeFailure(),
+                                    attemptNumber = retryAttempt + 1,
+                                    maxAttempts = 3
+                                )
+                            }
+                        }
+                    } catch (e: OutOfMemoryError) {
+                        Log.e("MainActivity", "OutOfMemoryError during model load", e)
+                        withContext(Dispatchers.Main) {
+                            loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Error(
+                                error = com.outdu.camconnect.ui.components.loading.ModelLoadError.OutOfMemory,
+                                attemptNumber = retryAttempt + 1,
+                                maxAttempts = 3
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "Exception during model load", e)
+                        withContext(Dispatchers.Main) {
+                            loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Error(
+                                error = com.outdu.camconnect.ui.components.loading.ModelLoadError.fromException(e),
+                                attemptNumber = retryAttempt + 1,
+                                maxAttempts = 3
+                            )
+                        }
+                    }
+                }
+            } else if (isModelLoaded) {
+                // Model already loaded (e.g., from previous session)
+                Log.i("MainActivity", "Model already loaded - showing success immediately")
+                loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Success
+            } else if (modelLoadSkipped) {
+                // User previously skipped loading
+                Log.i("MainActivity", "Model loading was skipped previously")
+                loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Skipped
+            }
+        }
+        
+        // Main UI with overlay
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Main application UI (always composed, may be behind overlay)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(VeryDarkBackground)
+                    .padding(
+                        start = 24.dp,
+                        top = 8.dp,
+                        end = 8.dp,
+                        bottom = 8.dp
+                    )
+            ) {
+                AdaptiveStreamLayout(
+                    context = LocalContext.current,
+                    pointState = odPointsState,
+                    onLogout = {
+                        // Handle logout - navigate back to SetupActivity
+                        handleLogout()
+                    }
+                )
+            }
+            
+            // Loading/Error overlay
+            when (val state = loadingState) {
+                is com.outdu.camconnect.ui.components.loading.ModelLoadState.Loading -> {
+                    com.outdu.camconnect.ui.components.loading.ModelLoadingOverlay(
+                        loadingStartTime = loadingStartTime,
+                        onSkip = {
+                            Log.i("MainActivity", "User chose to skip model loading")
+                            modelLoadSkipped = true
+                            loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Skipped
+                        }
+                    )
+                }
+                is com.outdu.camconnect.ui.components.loading.ModelLoadState.Error -> {
+                    com.outdu.camconnect.ui.components.loading.ModelLoadingErrorOverlay(
+                        error = state,
+                        onRetry = {
+                            if (retryAttempt < 2) { // Max 3 attempts (0, 1, 2)
+                                Log.i("MainActivity", "Retrying model load (attempt ${retryAttempt + 2})")
+                                retryAttempt++
+                            } else {
+                                Log.w("MainActivity", "Max retry attempts reached")
+                            }
+                        },
+                        onSkip = {
+                            Log.i("MainActivity", "User chose to skip model loading after error")
+                            modelLoadSkipped = true
+                            loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Skipped
+                        }
+                    )
+                }
+                is com.outdu.camconnect.ui.components.loading.ModelLoadState.Success,
+                is com.outdu.camconnect.ui.components.loading.ModelLoadState.Skipped -> {
+                    // No overlay - show main UI
+                    if (loadingState is com.outdu.camconnect.ui.components.loading.ModelLoadState.Skipped) {
+                        Log.i("MainActivity", "Running in skip mode - AI features disabled")
+                    }
+                }
+            }
+        }
+    }
+
     private var actualCodecName: String = ""
     private val viewModel: RecorderViewModel by viewModels()
     private val recordingViewModel: RecordingViewModel by viewModels()
@@ -470,47 +698,10 @@ class MainActivity : ComponentActivity() {
         val tInit0 = SystemClock.elapsedRealtime()
         nativeInit(actualCodecName)
         Log.i("MainActivity", "nativeInit() returned (took ${SystemClock.elapsedRealtime() - tInit0}ms)")
-        
-        // Load model on MAIN THREAD BEFORE showing UI - prevents OpenMP crashes and ANR
-        // This runs during app startup (splash screen still visible), so no ANR
-        val modelVersion = try {
-            // Try to migrate old config and load current configuration
-            runBlocking {
-                ConfigurationMigrationHelper.migrateIfNeeded(this@MainActivity)
-                val config = CameraConfigurationManager.loadConfigurationAsync(this@MainActivity).getOrNull()
-                config?.modelVersion ?: CameraConfigurationManager.getModelVersion()
-            }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Failed to load configuration, using default", e)
-            CameraConfigurationManager.getModelVersion()
-        }
-        
-        // Load model synchronously on main thread BEFORE UI
-        loadODModel(modelVersion)
-        Log.i("MainActivity", "Model loaded on main thread - ready for inference")
 
         setContent {
             CamConnectTheme {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(VeryDarkBackground)
-                        .padding(
-                            start = 24.dp,
-                            top = 8.dp,
-                            end = 8.dp,
-                            bottom = 8.dp
-                        )
-                ) {
-                    AdaptiveStreamLayout(
-                        context = LocalContext.current,
-                        pointState = odPointsState,
-                        onLogout = {
-                            // Handle logout - navigate back to SetupActivity
-                            handleLogout()
-                        }
-                    )
-                }
+                MainActivityWithModelLoading()
             }
         }
         
