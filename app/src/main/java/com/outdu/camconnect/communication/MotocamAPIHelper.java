@@ -140,7 +140,9 @@ public class MotocamAPIHelper {
         SHUTDOWN(4),
         OTA_UPDATE(5),
         USER_DOB(7),
-        CONFIG_RESET(8);
+        CONFIG_RESET(8),
+        SET_TIME(9),
+        HAPTIC_MOTOR(10);
 
         private final int val;
 

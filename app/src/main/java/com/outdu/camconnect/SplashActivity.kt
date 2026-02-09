@@ -105,7 +105,7 @@ fun SplashScreen(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                text = "Version 2025.11.0",
+                text = "Version 2026.2.0",
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = Color.White,
                     fontSize = 12.sp

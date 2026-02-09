@@ -73,11 +73,11 @@ fun ModelLoadingOverlay(
             Spacer(modifier = Modifier.height(32.dp))
             
             // Loading spinner
-            CircularProgressIndicator(
-                modifier = Modifier.size(48.dp),
-                color = StravionBlue,
-                strokeWidth = 4.dp
-            )
+//            CircularProgressIndicator(
+//                modifier = Modifier.size(48.dp),
+//                color = StravionBlue,
+//                strokeWidth = 4.dp
+//            )
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -103,71 +103,71 @@ fun ModelLoadingOverlay(
             )
             
             // Extended loading message (appears after 6 seconds)
-            AnimatedVisibility(
-                visible = showExtendedMessage,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Taking longer",
-                        tint = Color(0xFFFFA726),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    
-                    Text(
-                        text = "Taking longer than expected...",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = Color(0xFFFFA726),
-                            fontWeight = FontWeight.Medium
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-                    
-                    Text(
-                        text = "This may happen on slower devices",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = MediumGray,
-                            fontSize = 12.sp
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+//            AnimatedVisibility(
+//                visible = showExtendedMessage,
+//                enter = fadeIn() + expandVertically(),
+//                exit = fadeOut() + shrinkVertically()
+//            ) {
+//                Column(
+//                    horizontalAlignment = Alignment.CenterHorizontally,
+//                    verticalArrangement = Arrangement.spacedBy(8.dp),
+//                    modifier = Modifier.padding(top = 16.dp)
+//                ) {
+//                    Icon(
+//                        imageVector = Icons.Default.Warning,
+//                        contentDescription = "Taking longer",
+//                        tint = Color(0xFFFFA726),
+//                        modifier = Modifier.size(24.dp)
+//                    )
+//
+//                    Text(
+//                        text = "Taking longer than expected...",
+//                        style = MaterialTheme.typography.bodySmall.copy(
+//                            color = Color(0xFFFFA726),
+//                            fontWeight = FontWeight.Medium
+//                        ),
+//                        textAlign = TextAlign.Center
+//                    )
+//
+//                    Text(
+//                        text = "This may happen on slower devices",
+//                        style = MaterialTheme.typography.bodySmall.copy(
+//                            color = MediumGray,
+//                            fontSize = 12.sp
+//                        ),
+//                        textAlign = TextAlign.Center
+//                    )
+//                }
+//            }
             
-            Spacer(modifier = Modifier.height(8.dp))
+//            Spacer(modifier = Modifier.height(8.dp))
             
             // Elapsed time indicator
-            Text(
-                text = "${elapsedSeconds}s elapsed",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = MediumGray,
-                    fontSize = 12.sp
-                ),
-                textAlign = TextAlign.Center
-            )
+//            Text(
+//                text = "${elapsedSeconds}s elapsed",
+//                style = MaterialTheme.typography.bodySmall.copy(
+//                    color = MediumGray,
+//                    fontSize = 12.sp
+//                ),
+//                textAlign = TextAlign.Center
+//            )
             
-            Spacer(modifier = Modifier.height(24.dp))
+//            Spacer(modifier = Modifier.height(24.dp))
             
             // Skip button (subtle, at bottom)
-            TextButton(
-                onClick = onSkip,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MediumLightGray
-                )
-            ) {
-                Text(
-                    text = "Continue Without AI",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 13.sp
-                    )
-                )
-            }
+//            TextButton(
+//                onClick = onSkip,
+//                colors = ButtonDefaults.textButtonColors(
+//                    contentColor = MediumLightGray
+//                )
+//            ) {
+//                Text(
+//                    text = "Continue Without AI",
+//                    style = MaterialTheme.typography.bodySmall.copy(
+//                        fontSize = 13.sp
+//                    )
+//                )
+//            }
         }
     }
 }

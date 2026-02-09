@@ -477,46 +477,41 @@ class MainActivity : ComponentActivity() {
                 Log.i("MainActivity", "Starting model load from LaunchedEffect")
                 
                 // Small delay to ensure UI is visible before starting load
-                kotlinx.coroutines.delay(100)
+                // We run on Main thread to prevent OpenMP crashes, so this delay is critical
+                // to let the "Loading" screen render at least once before we block.
+                kotlinx.coroutines.delay(500)
                 
-                // Load on background thread to avoid blocking UI updates
-                withContext(Dispatchers.IO) {
-                    try {
-                        val success = loadODModelSafe(modelVersion)
-                        
-                        Log.i("MainActivity", "Model load finished with success=$success")
-                        
-                        // Update state on main thread
-                        withContext(Dispatchers.Main) {
-                            loadingState = if (success) {
-                                com.outdu.camconnect.ui.components.loading.ModelLoadState.Success
-                            } else {
-                                com.outdu.camconnect.ui.components.loading.ModelLoadState.Error(
-                                    error = com.outdu.camconnect.ui.components.loading.ModelLoadError.fromNativeFailure(),
-                                    attemptNumber = retryAttempt + 1,
-                                    maxAttempts = 3
-                                )
-                            }
-                        }
-                    } catch (e: OutOfMemoryError) {
-                        Log.e("MainActivity", "OutOfMemoryError during model load", e)
-                        withContext(Dispatchers.Main) {
-                            loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Error(
-                                error = com.outdu.camconnect.ui.components.loading.ModelLoadError.OutOfMemory,
-                                attemptNumber = retryAttempt + 1,
-                                maxAttempts = 3
-                            )
-                        }
-                    } catch (e: Exception) {
-                        Log.e("MainActivity", "Exception during model load", e)
-                        withContext(Dispatchers.Main) {
-                            loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Error(
-                                error = com.outdu.camconnect.ui.components.loading.ModelLoadError.fromException(e),
-                                attemptNumber = retryAttempt + 1,
-                                maxAttempts = 3
-                            )
-                        }
+                // Load on MAIN thread to avoid OpenMP crashes
+                // NOTE: This will freeze the UI animation for the duration of the load,
+                // but it prevents the SIGABRT crashes seen with background thread loading.
+                try {
+                    val success = loadODModelSafe(modelVersion)
+                    
+                    Log.i("MainActivity", "Model load finished with success=$success")
+                    
+                    loadingState = if (success) {
+                        com.outdu.camconnect.ui.components.loading.ModelLoadState.Success
+                    } else {
+                        com.outdu.camconnect.ui.components.loading.ModelLoadState.Error(
+                            error = com.outdu.camconnect.ui.components.loading.ModelLoadError.fromNativeFailure(),
+                            attemptNumber = retryAttempt + 1,
+                            maxAttempts = 3
+                        )
                     }
+                } catch (e: OutOfMemoryError) {
+                    Log.e("MainActivity", "OutOfMemoryError during model load", e)
+                    loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Error(
+                        error = com.outdu.camconnect.ui.components.loading.ModelLoadError.OutOfMemory,
+                        attemptNumber = retryAttempt + 1,
+                        maxAttempts = 3
+                    )
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Exception during model load", e)
+                    loadingState = com.outdu.camconnect.ui.components.loading.ModelLoadState.Error(
+                        error = com.outdu.camconnect.ui.components.loading.ModelLoadError.fromException(e),
+                        attemptNumber = retryAttempt + 1,
+                        maxAttempts = 3
+                    )
                 }
             } else if (isModelLoaded) {
                 // Model already loaded (e.g., from previous session)
@@ -537,10 +532,10 @@ class MainActivity : ComponentActivity() {
                     .fillMaxSize()
                     .background(VeryDarkBackground)
                     .padding(
-                        start = 24.dp,
-                        top = 8.dp,
-                        end = 8.dp,
-                        bottom = 8.dp
+                        start = 4.dp,
+                        top = 2.dp,
+                        end = 2.dp,
+                        bottom = 2.dp
                     )
             ) {
                 AdaptiveStreamLayout(

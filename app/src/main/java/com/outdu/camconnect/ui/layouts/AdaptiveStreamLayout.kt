@@ -497,7 +497,7 @@ fun AdaptiveStreamLayout(
                         // Delay clearing loading a bit to avoid resuming into a "hung" pipeline.
                         if (isStreamReloading.value) {
                             Log.i("AdaptiveStreamLayout", "WS event started_streaming -> stop loading + start stream (delayed)")
-                            cameraLayoutViewModel.endStreamReload(delayMs = 1_000L, reason = "ws:started_streaming")
+                            cameraLayoutViewModel.endStreamReload(delayMs = 3_000L, reason = "ws:started_streaming")
                         } else {
                             // If we didn't see a preceding changing_misc (or state got out of sync),
                             // pulse a short reload to force a clean restart.

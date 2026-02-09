@@ -568,5 +568,5 @@ enum class ControlTab(val displayName: String) {
     DEV_LAYOUT("Dev Mode"),
     OTA_LAYOUT("OTA"),
     NETWORK_LAYOUT("Network"),
-    SETTINGS_LAYOUT("Settings")
+    SETTINGS_LAYOUT("System")
 }
