@@ -80,14 +80,14 @@ object MotocamAPIHelperWrapper {
         cameraIp: String? = null
     ): T = withSocketClient(cameraIp) { client ->
         val reqWithCrcForLog = reqCmd.withCalculatedCrc()
-        Log.d(
+        Log.i(
             TAG,
             "SEND ip=${client.getCameraIp()} ${describePacket(reqCmd, reqCmd.size)} hex=${reqWithCrcForLog.toHexString()}"
         )
         val res = IntArray(MAX_BYTES)
         val len = client.sendCmd(reqCmd, res)
 
-        Log.d(
+        Log.i(
             TAG,
             "RECV ip=${client.getCameraIp()} ${describePacket(res, len)} hex=${res.toHexString(len)}"
         )
@@ -296,6 +296,12 @@ object MotocamAPIHelperWrapper {
     suspend fun configReset(date: String) = sendCommand(
         MotocamAPIHelper.configResetCmd(date),
         MotocamAPIHelper::configResetCmdResponseParse
+    )
+
+    suspend fun setTime(epochTime: Long, cameraIp: String? = null) = sendCommand(
+        MotocamAPIHelper.setTimeCmd(epochTime),
+        MotocamAPIHelper::setTimeCmdResponseParse,
+        cameraIp
     )
 
     suspend fun setUserDob(dob: String) = sendCommand(

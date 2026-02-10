@@ -1680,6 +1680,32 @@ public class MotocamAPIHelper {
         return setCmdResponseParse(response, length, Commands.SYSTEM.getVal(), SystemSubCommands.SHUTDOWN.getVal());
     }
 
+    public static int[] setTimeCmd(long epochTimeMillis) {
+        long seconds = epochTimeMillis / 1000;
+        // Format to 10 digits
+        String s = String.format(java.util.Locale.US, "%010d", seconds);
+        int dataLength = 10;
+        int packetLength = 5 + dataLength; // header+cmd+subcmd+datalen + data + crc
+        int[] cmd = new int[packetLength];
+
+        int idx = 0;
+        cmd[idx] = Header.SET.getVal();
+        cmd[++idx] = Commands.SYSTEM.getVal();
+        cmd[++idx] = SystemSubCommands.SET_TIME.getVal();
+        cmd[++idx] = dataLength;
+
+        for (int i = 0; i < 10; i++) {
+            cmd[++idx] = Character.getNumericValue(s.charAt(i));
+        }
+
+        cmd[packetLength - 1] = 0; // crc calculated before sending
+        return cmd;
+    }
+
+    public static boolean setTimeCmdResponseParse(int response[], int length) throws Exception {
+        return setCmdResponseParse(response, length, Commands.SYSTEM.getVal(), SystemSubCommands.SET_TIME.getVal());
+    }
+
     /**
      * Set user DOB (DD-MM-YYYY) via SYSTEM/USER_DOB.
      *

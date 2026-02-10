@@ -166,6 +166,7 @@ class MotocamSocketClient {
             // Convert response bytes to integer array
             convert(responseBytes, res)
             Log.i("MotocamSocketClient", "responseBytes: ${responseBytes.contentToString()}")
+            Log.i("MotocamSocketClient", "responseBytesHex: ${formatToHexString(responseBytes)}")
             Log.i("MotocamSocketClient", "res after conversion: ${res.sliceArray(0..minOf(responseBytes.size-1, res.size-1)).contentToString()}")
             return@withContext responseBytes.size
         } catch (e: Exception) {

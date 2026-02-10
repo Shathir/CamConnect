@@ -1,5 +1,7 @@
 package com.outdu.camconnect
 
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -412,51 +414,65 @@ class ViewerFlowActivity : ComponentActivity() {
      * Handle successful PIN authentication
      */
     private fun handleAuthenticationSuccess(camera: OnvifDevice) {
-        Log.i("ViewerFlow", "Authentication successful for camera: ${camera.ipAddress}")
+        lifecycleScope.launch {
+            Log.i("ViewerFlow", "Authentication successful for camera: ${camera.ipAddress}")
 
-        // Persist last connected camera for auto-reconnect on next launch
-        try {
-            SessionManager.setLastConnectedCameraIp(camera.ipAddress)
-        } catch (e: Exception) {
-            Log.w("ViewerFlow", "Failed to persist last connected camera IP", e)
-        }
-        
-        // Generate RTSP URL for the camera
-        val rtspUrl = generateRtspUrl(camera)
-        
-        // Navigate to MainActivity for stream consumption
-        // Keep the app-scoped WiFi binding alive across the Activity transition. Otherwise, onDestroy()
-        // will unbind + cleanup and Android will drop the ephemeral WifiNetworkSpecifier connection.
-        keepWifiBindingAcrossNavigation = true
+            // Send system time before starting stream
+            try {
+                Log.i("ViewerFlow", "Sending system time to camera...")
+                com.outdu.camconnect.communication.MotocamAPIHelperWrapper.setTime(
+                    System.currentTimeMillis(),
+                    camera.ipAddress
+                )
+                Log.i("ViewerFlow", "System time sent successfully")
+            } catch (e: Exception) {
+                Log.e("ViewerFlow", "Failed to send system time", e)
+            }
 
-        // Configure and start the camera WebSocket manager (foreground-scoped, app-wide)
-        // Uses defaults from network_config.properties unless overridden by extras.
-        try {
-            val wsPort = com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPort()
-            val wsPath = com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPath()
-            CameraWebSocketManager.setTarget(cameraIp = camera.ipAddress, port = wsPort, path = wsPath)
-            Log.i("ViewerFlow", "Camera WebSocket target set: ws://${camera.ipAddress}:$wsPort$wsPath")
-        } catch (e: Exception) {
-            Log.w("ViewerFlow", "Failed to start CameraWebSocketManager", e)
-        }
-        val intent = Intent(this, MainActivity::class.java).apply {
-            // Pass camera information to MainActivity
-            putExtra("CAMERA_IP", camera.ipAddress)
-            putExtra("CAMERA_ENDPOINTS", camera.endpointUrls.toTypedArray())
-            putExtra("CAMERA_TYPE", camera.deviceType)
-            putExtra("CAMERA_RTSP_URL", rtspUrl)
-            putExtra("USER_TYPE", "VIEWER")
-            putExtra(MainActivity.EXTRA_CAMERA_WS_PORT, com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPort())
-            putExtra(MainActivity.EXTRA_CAMERA_WS_PATH, com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPath())
+            // Persist last connected camera for auto-reconnect on next launch
+            try {
+                SessionManager.setLastConnectedCameraIp(camera.ipAddress)
+            } catch (e: Exception) {
+                Log.w("ViewerFlow", "Failed to persist last connected camera IP", e)
+            }
             
-            // Clear the task stack so user can't go back
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            // Generate RTSP URL for the camera
+            val rtspUrl = generateRtspUrl(camera)
+            
+            // Navigate to MainActivity for stream consumption
+            // Keep the app-scoped WiFi binding alive across the Activity transition. Otherwise, onDestroy()
+            // will unbind + cleanup and Android will drop the ephemeral WifiNetworkSpecifier connection.
+            keepWifiBindingAcrossNavigation = true
+
+            // Configure and start the camera WebSocket manager (foreground-scoped, app-wide)
+            // Uses defaults from network_config.properties unless overridden by extras.
+            try {
+                val wsPort = com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPort()
+                val wsPath = com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPath()
+                CameraWebSocketManager.setTarget(cameraIp = camera.ipAddress, port = wsPort, path = wsPath)
+                Log.i("ViewerFlow", "Camera WebSocket target set: ws://${camera.ipAddress}:$wsPort$wsPath")
+            } catch (e: Exception) {
+                Log.w("ViewerFlow", "Failed to start CameraWebSocketManager", e)
+            }
+            val intent = Intent(this@ViewerFlowActivity, MainActivity::class.java).apply {
+                // Pass camera information to MainActivity
+                putExtra("CAMERA_IP", camera.ipAddress)
+                putExtra("CAMERA_ENDPOINTS", camera.endpointUrls.toTypedArray())
+                putExtra("CAMERA_TYPE", camera.deviceType)
+                putExtra("CAMERA_RTSP_URL", rtspUrl)
+                putExtra("USER_TYPE", "VIEWER")
+                putExtra(MainActivity.EXTRA_CAMERA_WS_PORT, com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPort())
+                putExtra(MainActivity.EXTRA_CAMERA_WS_PATH, com.outdu.camconnect.utils.NetworkConfigManager.getCameraWsPath())
+                
+                // Clear the task stack so user can't go back
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            
+            startActivity(intent)
+            finish()
+            
+            Log.i("ViewerFlow", "Navigated to MainActivity for stream consumption")
         }
-        
-        startActivity(intent)
-        finish()
-        
-        Log.i("ViewerFlow", "Navigated to MainActivity for stream consumption")
     }
     
     /**
