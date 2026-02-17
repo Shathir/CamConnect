@@ -28,6 +28,7 @@ import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
 import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.models.*
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
+import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import com.outdu.camconnect.ui.theme.DarkBackground3
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
@@ -115,7 +116,7 @@ fun OptionButton(
 fun CameraLayoutApplyButton(
     viewModel: CameraLayoutViewModel = viewModel()
 ) {
-    val hasChanges = viewModel.hasUnsavedChanges.value
+    val hasChanges by remember { viewModel.hasUnsavedChanges }
     val isUIInteractive by viewModel.isUIInteractive.collectAsState()
     val isApplying = !isUIInteractive
     
@@ -147,7 +148,7 @@ fun CameraLayoutApplyButton(
             onClick = { viewModel.applyChanges() },
             enabled = hasChanges && isUIInteractive,
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
+                containerColor = StravionBlue,
                 disabledContainerColor = Color(0xFF2C2C2C)
             ),
             shape = RoundedCornerShape(8.dp),
@@ -185,10 +186,11 @@ fun CameraLayoutContent(
     val deviceType = rememberDeviceType()
 
     // Observe states from ViewModel using collectAsState
-    val autoDayNightEnabled = viewModel.isAutoDayNightEnabled.value
-    val currentVisionMode = viewModel.currentVisionMode.value
-    val currentCameraMode = viewModel.currentCameraMode.value
-    val currentOrientationMode = viewModel.currentOrientationMode.value
+    val autoDayNightEnabled by remember { viewModel.isAutoDayNightEnabled }
+    val appliedAutoDayNight by remember { viewModel.appliedAutoDayNight }
+    val currentVisionMode by remember { viewModel.currentVisionMode }
+    val currentCameraMode by remember { viewModel.currentCameraMode }
+    val currentOrientationMode by remember { viewModel.currentOrientationMode }
 
     // Settings sections
     Column(
@@ -228,8 +230,8 @@ fun CameraLayoutContent(
             }
         }
 
-        // If Auto is enabled, hide all other controls
-        if (!autoDayNightEnabled) {
+        // If Auto is enabled (applied state), hide all other controls
+        if (!appliedAutoDayNight) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)

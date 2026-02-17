@@ -25,6 +25,10 @@ class CameraLayoutViewModel : ViewModel() {
     private val _isAutoDayNightEnabled = mutableStateOf(false)
     val isAutoDayNightEnabled: State<Boolean> = _isAutoDayNightEnabled
 
+    // Expose the applied auto/manual mode state
+    private val _appliedAutoDayNight = mutableStateOf(false)
+    val appliedAutoDayNight: State<Boolean> = _appliedAutoDayNight
+
     // Display Modes (maps to MISC)
     private val _currentVisionMode = mutableStateOf(VisionMode.VISION)
     val currentVisionMode: State<VisionMode> = _currentVisionMode
@@ -170,6 +174,7 @@ class CameraLayoutViewModel : ViewModel() {
     private fun fetchCameraSettings() {
         viewModelScope.launch {
             try {
+                Log.d(TAG, "fetchCameraSettings() CALLED - This might override applied settings!")
                 MotocamAPIAndroidHelper.getConfigAsync(
                     viewModelScope,
                     type = "Current"
@@ -184,7 +189,11 @@ class CameraLayoutViewModel : ViewModel() {
 
                         // Parse DAYMODE for Auto Low Light
                         val dayMode = conf["DAYMODE"]?.toString()
-                        _isAutoDayNightEnabled.value = dayMode == "ON"
+                        val fetchedAutoDayNight = dayMode == "ON"
+                        Log.d(TAG, "fetchCameraSettings - Setting _isAutoDayNightEnabled to: $fetchedAutoDayNight (from DAYMODE=$dayMode)")
+                        Log.d(TAG, "  Current _isAutoDayNightEnabled BEFORE update: ${_isAutoDayNightEnabled.value}")
+                        _isAutoDayNightEnabled.value = fetchedAutoDayNight
+                        _appliedAutoDayNight.value = fetchedAutoDayNight
 
                         // Parse MISC for Vision Mode and Camera Mode
                         val misc = conf["MISC"]?.toString()?.toIntOrNull() ?: 1
@@ -468,16 +477,28 @@ class CameraLayoutViewModel : ViewModel() {
     fun applyChanges() {
         viewModelScope.launch {
             try {
+                Log.d(TAG, "=== APPLY CHANGES STARTED ===")
+                Log.d(TAG, "Current State BEFORE Apply:")
+                Log.d(TAG, "  _isAutoDayNightEnabled: ${_isAutoDayNightEnabled.value}")
+                Log.d(TAG, "  initialAutoDayNight: $initialAutoDayNight")
+                Log.d(TAG, "  _appliedAutoDayNight: ${_appliedAutoDayNight.value}")
+                Log.d(TAG, "  _hasUnsavedChanges: ${_hasUnsavedChanges.value}")
+                Log.d(TAG, "  currentVisionMode: ${_currentVisionMode.value}")
+                Log.d(TAG, "  currentCameraMode: ${_currentCameraMode.value}")
+                Log.d(TAG, "  currentOrientationMode: ${_currentOrientationMode.value}")
+                
                 val onlyOrientationChanged = initialVisionMode == _currentVisionMode.value &&
                         initialCameraMode == _currentCameraMode.value &&
                         initialAutoDayNight == _isAutoDayNightEnabled.value &&
                         initialOrientationMode != _currentOrientationMode.value
 
                 if (onlyOrientationChanged) {
+                    Log.d(TAG, "Only orientation changed, taking fast path")
                     _isUIInteractive.value = false
                     val orientationSuccess = applyOrientationChanges()
                     if (orientationSuccess) {
                         saveInitialValues()
+                        checkForChanges()
                     }
                     _isUIInteractive.value = true
                     return@launch
@@ -488,48 +509,65 @@ class CameraLayoutViewModel : ViewModel() {
 
                 val apiCalls = mutableListOf<Deferred<Boolean>>()
 
-                // MISC Task
-                val miscVal = calculateMiscValue()
-                Log.d("Misc Value is : ", miscVal.toString())
-                val miscDeferred = async {
-                    val start = System.currentTimeMillis()
-                    val success = suspendCancellableCoroutine<Boolean> { cont ->
-                        MotocamAPIAndroidHelper.setMiscAsync(
-                            scope = viewModelScope,
-                            miscValue = miscVal
-                        ) { result, error ->
-                            if (error != null) {
-                                Log.e(TAG, "Error setting MISC value $error")
-                            }
-                            cont.resume(error == null)
-                        }
-                    }
-                    val end = System.currentTimeMillis()
-                    Log.d(TAG, "API TIME - MISC: ${end - start} ms")
-                    success
-                }
-                apiCalls.add(miscDeferred)
-                delay(100)
-                // DAYMODE Task
+                // DAYMODE Task - Always execute first
+                // This determines whether the camera is in Auto or Manual mode
                 val dayModeDeferred = async {
                     val start = System.currentTimeMillis()
+                    Log.d(TAG, "DAYMODE API Call - Setting to: ${if (_isAutoDayNightEnabled.value) "ON" else "OFF"}")
                     val success = suspendCancellableCoroutine<Boolean> { cont ->
                         MotocamAPIAndroidHelper.setDayModeAsync(
                             scope = viewModelScope,
                             dayMode = if (_isAutoDayNightEnabled.value) MotocamAPIHelper.DAYMODE.ON else MotocamAPIHelper.DAYMODE.OFF
                         ) { result, error ->
                             if (error != null) {
-                                Log.e(TAG, "Error setting day mode $error")
+                                Log.e(TAG, "DAYMODE API Error: $error")
+                            } else {
+                                Log.d(TAG, "DAYMODE API Success - Result: $result")
                             }
                             cont.resume(error == null)
                         }
                     }
                     val end = System.currentTimeMillis()
-                    Log.d(TAG, "API TIME - DAYMODE: ${end - start} ms")
+                    Log.d(TAG, "API TIME - DAYMODE: ${end - start} ms, Success: $success")
                     success
                 }
-                delay(100)
                 apiCalls.add(dayModeDeferred)
+                
+                // Wait for DAYMODE to complete before setting MISC
+                delay(300)
+
+                // MISC Task - Only set if in MANUAL mode (DAYMODE=OFF)
+                // In AUTO mode, the camera controls MISC automatically based on lighting conditions
+                if (!_isAutoDayNightEnabled.value) {
+                    val miscVal = calculateMiscValue()
+                    Log.d(TAG, "MANUAL mode - Setting MISC manually")
+                    Log.d(TAG, "Calculated MISC value: $miscVal")
+                    Log.d(TAG, "  _currentVisionMode: ${_currentVisionMode.value}")
+                    Log.d(TAG, "  _currentCameraMode: ${_currentCameraMode.value}")
+                    Log.d(TAG, "MISC API Call - Setting to: $miscVal")
+                    val miscDeferred = async {
+                        val start = System.currentTimeMillis()
+                        val success = suspendCancellableCoroutine<Boolean> { cont ->
+                            MotocamAPIAndroidHelper.setMiscAsync(
+                                scope = viewModelScope,
+                                miscValue = miscVal
+                            ) { result, error ->
+                                if (error != null) {
+                                    Log.e(TAG, "MISC API Error: $error")
+                                } else {
+                                    Log.d(TAG, "MISC API Success - Result: $result")
+                                }
+                                cont.resume(error == null)
+                            }
+                        }
+                        val end = System.currentTimeMillis()
+                        Log.d(TAG, "API TIME - MISC: ${end - start} ms, Success: $success")
+                        success
+                    }
+                    apiCalls.add(miscDeferred)
+                } else {
+                    Log.d(TAG, "AUTO mode - Skipping MISC (camera controls it automatically)")
+                }
 
                 // Orientation (FLIP + MIRROR)
                 val orientationDeferred = async {
@@ -583,17 +621,44 @@ class CameraLayoutViewModel : ViewModel() {
                 val results = apiCalls.awaitAll()
                 val allSuccessful = results.all { it }
 
+                Log.d(TAG, "=== API CALLS COMPLETED ===")
+                Log.d(TAG, "All API calls successful: $allSuccessful")
+                Log.d(TAG, "Individual results: $results")
+
                 if (allSuccessful) {
+                    Log.d(TAG, "Calling saveInitialValues()...")
                     saveInitialValues()
+                    
+                    Log.d(TAG, "State AFTER saveInitialValues():")
+                    Log.d(TAG, "  initialAutoDayNight: $initialAutoDayNight")
+                    Log.d(TAG, "  _isAutoDayNightEnabled: ${_isAutoDayNightEnabled.value}")
+                    Log.d(TAG, "  _appliedAutoDayNight: ${_appliedAutoDayNight.value}")
+                    Log.d(TAG, "  _hasUnsavedChanges: ${_hasUnsavedChanges.value}")
+                    
+                    Log.d(TAG, "Calling checkForChanges()...")
+                    checkForChanges()
+                    
+                    Log.d(TAG, "State AFTER checkForChanges():")
+                    Log.d(TAG, "  _hasUnsavedChanges: ${_hasUnsavedChanges.value}")
+                    Log.d(TAG, "  Comparison - initialAutoDayNight ($initialAutoDayNight) == _isAutoDayNightEnabled (${_isAutoDayNightEnabled.value}): ${initialAutoDayNight == _isAutoDayNightEnabled.value}")
+                    
                     Log.d(TAG, "All camera settings applied successfully")
                 } else {
                     Log.w(TAG, "Some camera settings failed to apply")
                 }
 
                 delay(1000)
+                
+                Log.d(TAG, "=== APPLY CHANGES COMPLETE (after 1s delay) ===")
+                Log.d(TAG, "Final state before re-enabling UI:")
+                Log.d(TAG, "  _hasUnsavedChanges: ${_hasUnsavedChanges.value}")
+                Log.d(TAG, "  _isAutoDayNightEnabled: ${_isAutoDayNightEnabled.value}")
+                Log.d(TAG, "  initialAutoDayNight: $initialAutoDayNight")
 
                 // Stream reload overlay is WebSocket-driven.
                 _isUIInteractive.value = true
+                
+                Log.d(TAG, "UI re-enabled. Monitoring for state changes...")
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in applyChanges", e)
@@ -649,6 +714,7 @@ class CameraLayoutViewModel : ViewModel() {
 
         // Commit "applied" values only when we reach a known-success point
         // (successful initial fetch or successful Apply).
+        _appliedAutoDayNight.value = _isAutoDayNightEnabled.value
         _appliedVisionMode.value = _currentVisionMode.value
         _appliedCameraMode.value = _currentCameraMode.value
 
@@ -656,19 +722,32 @@ class CameraLayoutViewModel : ViewModel() {
     }
 
     private fun checkForChanges() {
-        _hasUnsavedChanges.value = initialAutoDayNight != _isAutoDayNightEnabled.value ||
-                initialVisionMode != _currentVisionMode.value ||
-                initialCameraMode != _currentCameraMode.value ||
-                initialOrientationMode != _currentOrientationMode.value
+        val autoDayNightChanged = initialAutoDayNight != _isAutoDayNightEnabled.value
+        val visionModeChanged = initialVisionMode != _currentVisionMode.value
+        val cameraModeChanged = initialCameraMode != _currentCameraMode.value
+        val orientationModeChanged = initialOrientationMode != _currentOrientationMode.value
+        
+        val hasChanges = autoDayNightChanged || visionModeChanged || cameraModeChanged || orientationModeChanged
+        
+        Log.d(TAG, "checkForChanges() - Details:")
+        Log.d(TAG, "  autoDayNightChanged: $autoDayNightChanged (initial: $initialAutoDayNight, current: ${_isAutoDayNightEnabled.value})")
+        Log.d(TAG, "  visionModeChanged: $visionModeChanged (initial: $initialVisionMode, current: ${_currentVisionMode.value})")
+        Log.d(TAG, "  cameraModeChanged: $cameraModeChanged (initial: $initialCameraMode, current: ${_currentCameraMode.value})")
+        Log.d(TAG, "  orientationModeChanged: $orientationModeChanged (initial: $initialOrientationMode, current: ${_currentOrientationMode.value})")
+        Log.d(TAG, "  RESULT hasChanges: $hasChanges")
+        
+        _hasUnsavedChanges.value = hasChanges
     }
 
     // State update functions remain the same
     fun setAutoDayNight(enabled: Boolean) {
+        Log.d(TAG, "setAutoDayNight() called with enabled=$enabled (current: ${_isAutoDayNightEnabled.value})")
         _isAutoDayNightEnabled.value = enabled
         checkForChanges()
     }
 
     fun setVisionMode(mode: VisionMode) {
+        Log.d(TAG, "setVisionMode() called with mode=$mode (current: ${_currentVisionMode.value})")
         // Handle different vision mode transitions
         when (mode) {
             VisionMode.VISION -> {
@@ -699,6 +778,7 @@ class CameraLayoutViewModel : ViewModel() {
         get() = _currentVisionMode.value == VisionMode.BOTH
 
     fun setCameraMode(mode: CameraMode) {
+        Log.d(TAG, "setCameraMode() called with mode=$mode (current: ${_currentCameraMode.value})")
         _currentCameraMode.value = mode
         checkForChanges()
     }

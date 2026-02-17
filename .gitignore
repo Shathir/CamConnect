@@ -18,6 +18,7 @@ app/src/main/cpp/opencv-4.9.0-android-sdk
 .kotlin/
 git_token.txt
 sonar-with-coverage.sh
+generate-coverage.sh
 # Local configuration file (sdk path, etc)
 local.properties
 

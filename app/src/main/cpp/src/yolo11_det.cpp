@@ -678,7 +678,7 @@ int YOLO11_det::postprocess(AsyncInferenceContext& ctx, std::vector<Object>& obj
         return -1; // Inference not complete
     }
 
-    const float prob_threshold = 0.55f;
+    const float prob_threshold = 0.3f;
     const float nms_threshold = 0.45f;
 
     // ultralytics/cfg/models/v8/yolo11.yaml

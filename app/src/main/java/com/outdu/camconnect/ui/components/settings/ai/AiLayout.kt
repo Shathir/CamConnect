@@ -31,6 +31,7 @@ import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.DarkBackground3
 import com.outdu.camconnect.ui.viewmodels.AiConfigurationViewModel
 import com.outdu.camconnect.ui.layouts.streamer.AiRegionOverlayType
+import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 import kotlinx.coroutines.launch
@@ -306,7 +307,7 @@ fun AiLayout(
                     onClick = { saveChanges() },
                     enabled = uiState.hasUnsavedChanges && !uiState.isLoading,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
+                        containerColor = StravionBlue,
                         disabledContainerColor = Color(0xFF2C2C2C) // Dark theme disabled color
                     ),
                     shape = RoundedCornerShape(8.dp)

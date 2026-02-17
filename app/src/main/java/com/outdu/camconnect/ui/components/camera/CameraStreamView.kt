@@ -67,6 +67,8 @@ fun CameraStreamView(
     val isStreamReloading by cameraLayoutViewModel.isStreamReloading.collectAsStateWithLifecycle()
     val streamReloadStatusText by cameraLayoutViewModel.streamReloadStatusText.collectAsStateWithLifecycle()
     val cameraControlViewModel: CameraControlViewModel = viewModel()
+    // Tooltip manager for coordinating tooltip visibility
+    val tooltipManager = remember { TooltipManager() }
     // Lottie animation setup
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.scout_intro)
@@ -133,18 +135,58 @@ fun CameraStreamView(
                 )
             }
 
-            // Warning and info tooltips in a row
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // Tab-style tooltip interface: icons and content box
+            val systemWarningData = rememberSystemWarningData()
+            
+            // Auto-hide tooltip after 5 seconds
+            LaunchedEffect(tooltipManager.activeTooltipId.value) {
+                val activeId = tooltipManager.activeTooltipId.value
+                if (activeId != null) {
+                    kotlinx.coroutines.delay(10000) // 5 seconds
+                    tooltipManager.closeTooltip(activeId)
+                }
+            }
+            
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // System warning tooltip (shows only if there are warnings)
-                SystemWarningTooltip()
+                // Row 1: Icon buttons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // System warning icon
+                    SystemWarningIcon(
+                        tooltipManager = tooltipManager,
+                        hasWarning = systemWarningData.hasWarning
+                    )
+                    
+                    // Camera info icon
+                    CameraInfoIcon(
+                        tooltipManager = tooltipManager
+                    )
+                }
                 
-                // Camera info tooltip (always visible)
-                CameraInfoTooltip(
-                    cameraControlViewModel = cameraControlViewModel,
-                    cameraLayoutViewModel = cameraLayoutViewModel
+                // Row 2: Shared content box
+                TooltipContentBox(
+                    activeTooltipId = tooltipManager.activeTooltipId.value,
+                    content = { tooltipId ->
+                        when (tooltipId) {
+                            "system_warning" -> {
+                                SystemWarningContent(
+                                    isLowStorage = systemWarningData.isLowStorage,
+                                    isLowBattery = systemWarningData.isLowBattery,
+                                    formattedStorageSize = systemWarningData.formattedStorageSize,
+                                    batteryLevel = systemWarningData.batteryLevel
+                                )
+                            }
+                            "camera_info" -> {
+                                LiveCameraInfoContent(
+                                    pollIntervalMs = 12000L  // Poll every 2 seconds
+                                )
+                            }
+                        }
+                    }
                 )
             }
         }
