@@ -14,7 +14,6 @@ import android.os.IBinder
 import android.os.Parcelable
 import android.provider.MediaStore
 import android.util.Log
-import android.widget.Toast
 import androidx.window.layout.WindowMetricsCalculator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

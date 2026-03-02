@@ -16,16 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
-import androidx.compose.material3.Text
 import androidx.compose.ui.unit.Dp
-import com.outdu.camconnect.ui.components.indicators.AiStatusIndicator
-import com.outdu.camconnect.ui.components.indicators.BatteryIndicator
-import com.outdu.camconnect.ui.components.indicators.WifiIndicator
-import com.outdu.camconnect.ui.models.SystemStatus
 import com.outdu.camconnect.ui.theme.*
 
 /**

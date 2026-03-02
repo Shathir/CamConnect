@@ -1,6 +1,5 @@
 package com.outdu.camconnect.ui.components.settings.camera
 
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,7 +24,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.R
 import com.outdu.camconnect.Viewmodels.CameraLayoutViewModel
-import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.models.*
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue

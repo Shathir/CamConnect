@@ -1,6 +1,5 @@
 package com.outdu.camconnect.ui.components.settings.logout
 
-import android.graphics.Paint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable

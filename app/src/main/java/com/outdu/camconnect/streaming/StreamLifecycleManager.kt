@@ -4,7 +4,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.outdu.camconnect.Viewmodels.AppViewModel
-import com.outdu.camconnect.singleton.MainActivitySingleton
 import java.lang.ref.WeakReference
 
 /**

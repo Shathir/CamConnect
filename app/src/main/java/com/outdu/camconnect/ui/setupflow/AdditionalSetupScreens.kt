@@ -47,7 +47,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import com.outdu.camconnect.utils.WifiConnectionManager
-import com.outdu.camconnect.utils.WifiConnectionResult
 import com.outdu.camconnect.utils.WifiCredentials
 import com.outdu.camconnect.utils.WifiPersistResult
 

@@ -1,7 +1,6 @@
 package com.outdu.camconnect.singleton
 
 import com.outdu.camconnect.MainActivity
-import com.outdu.camconnect.communication.Data
 import com.outdu.camconnect.communication.CameraConfigurationManager
 
 object MainActivitySingleton {

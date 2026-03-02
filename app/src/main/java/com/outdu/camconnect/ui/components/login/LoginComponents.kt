@@ -55,7 +55,6 @@ import com.outdu.camconnect.auth.MaxAttemptsExceededException
 import com.outdu.camconnect.auth.SessionManager
 import com.outdu.camconnect.ui.theme.AppColors.BorderColor
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
-import com.outdu.camconnect.ui.theme.SpyBlue
 import com.outdu.camconnect.viewmodels.SetupState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

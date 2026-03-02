@@ -2,9 +2,7 @@ package com.outdu.camconnect.ui.components.settings.devmode
 
 import android.util.Log
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,13 +17,8 @@ import com.outdu.camconnect.communication.MotocamAPIHelper
 import com.outdu.camconnect.communication.StreamConfiguration
 import com.outdu.camconnect.ui.theme.AppColors
 import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import android.os.Environment
-import android.os.StatFs
-import android.text.format.Formatter
-import androidx.compose.ui.platform.LocalContext
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 

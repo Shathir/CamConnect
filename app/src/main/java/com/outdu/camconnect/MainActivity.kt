@@ -48,10 +48,7 @@ import com.outdu.camconnect.communication.CameraConfigurationManager
 import com.outdu.camconnect.utils.ConfigurationMigrationHelper
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.delay
 import android.net.Uri
 import android.os.Environment
 import android.provider.Settings

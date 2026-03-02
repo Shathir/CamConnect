@@ -13,7 +13,6 @@ import androidx.compose.foundation.horizontalScroll
 import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,7 +27,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -38,7 +36,6 @@ import com.outdu.camconnect.ui.models.OrientationMode
 import com.outdu.camconnect.ui.models.VisionMode
 import com.outdu.camconnect.ui.theme.*
 import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
-import com.outdu.camconnect.ui.theme.AppColors.ButtonIconColor
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 

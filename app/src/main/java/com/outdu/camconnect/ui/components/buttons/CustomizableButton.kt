@@ -1,6 +1,5 @@
 package com.outdu.camconnect.ui.components.buttons
 
-import android.widget.Button
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,15 +14,12 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.size
-import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.Canvas
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import com.outdu.camconnect.ui.theme.camConnectIsDarkTheme
@@ -32,7 +28,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import com.outdu.camconnect.ui.theme.*
-import com.outdu.camconnect.ui.theme.AppColors.ButtonBorderColor
 import com.outdu.camconnect.R
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType

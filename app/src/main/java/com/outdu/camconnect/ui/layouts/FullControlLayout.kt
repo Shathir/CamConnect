@@ -22,7 +22,6 @@ import com.outdu.camconnect.ui.components.buttons.ButtonConfig
 import com.outdu.camconnect.ui.components.buttons.CustomizableButton
 import com.outdu.camconnect.ui.components.settings.*
 import com.outdu.camconnect.ui.components.settings.ai.AiLayout
-import com.outdu.camconnect.ui.components.settings.camera.CameraLayout
 import com.outdu.camconnect.ui.components.settings.camera.CameraLayoutApplyButton
 import com.outdu.camconnect.ui.components.settings.camera.CameraLayoutContent
 import com.outdu.camconnect.ui.components.settings.license.LicenseLayout
