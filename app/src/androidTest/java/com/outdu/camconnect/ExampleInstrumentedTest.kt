@@ -19,6 +19,7 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.outdu.camconnect", appContext.packageName)
+        // Package name includes .debug suffix in debug builds
+        assertTrue(appContext.packageName.startsWith("com.outdu.camconnect"))
     }
 }

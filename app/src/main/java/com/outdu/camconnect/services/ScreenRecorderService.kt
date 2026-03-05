@@ -372,4 +372,9 @@ sealed interface ServiceEvent {
      * Recording was stopped automatically because the device dropped below the minimum required free space.
      */
     object StoppedLowStorage : ServiceEvent
+
+    /**
+     * Recording was stopped normally (user or service stop). No low-storage UI event.
+     */
+    data class RecordingStopped(val outputPath: String) : ServiceEvent
 }

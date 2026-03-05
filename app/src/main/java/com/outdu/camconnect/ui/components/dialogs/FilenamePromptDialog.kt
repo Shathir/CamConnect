@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.outdu.camconnect.ui.theme.*
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -40,9 +41,14 @@ fun FilenamePromptDialog(
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     
-    // Request focus when dialog opens
+    // Request focus when dialog opens (delay so focusRequester is attached to the text field)
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        delay(100)
+        try {
+            focusRequester.requestFocus()
+        } catch (_: IllegalStateException) {
+            // FocusRequester not yet attached (e.g. dialog window not ready)
+        }
     }
     
     Dialog(

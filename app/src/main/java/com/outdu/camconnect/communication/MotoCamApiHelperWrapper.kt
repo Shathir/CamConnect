@@ -15,6 +15,15 @@ object MotocamAPIHelperWrapper {
     private const val MAX_BYTES = 255
 
     private var deviceIpAddress: String = "192.168.2.1"
+
+    /** Test-only: override client creation for unit tests (e.g. with MockEngine). */
+    @Volatile
+    var clientFactory: (() -> MotocamSocketClient)? = null
+        internal set
+
+    fun setClientFactory(factory: (() -> MotocamSocketClient)?) {
+        clientFactory = factory
+    }
     private const val MOTOCAM_CLIENT_SOCKET_PORT = 9000
     const val MOTOCAM_SERVER_SOCKET_PORT = 9002
 
@@ -64,7 +73,7 @@ object MotocamAPIHelperWrapper {
     }
 
     private suspend fun <T> withSocketClient(cameraIp: String? = null, block: suspend (MotocamSocketClient) -> T): T {
-        val client = MotocamSocketClient()
+        val client = clientFactory?.invoke() ?: MotocamSocketClient()
         return try {
             val targetIp = cameraIp ?: deviceIpAddress
             client.init(targetIp)

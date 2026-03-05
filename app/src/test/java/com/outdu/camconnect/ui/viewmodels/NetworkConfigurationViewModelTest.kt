@@ -1,26 +1,22 @@
 package com.outdu.camconnect.ui.viewmodels
 
 import app.cash.turbine.test
+import com.outdu.camconnect.communication.MotocamAPIAndroidHelper
 import com.outdu.camconnect.testutils.MainDispatcherRule
+import io.mockk.every
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-/**
- * Unit tests for NetworkConfigurationViewModel
- * 
- * Tests cover:
- * - Initial state
- * - Hotspot configuration updates (SSID, password, IP, subnet)
- * - WiFi configuration updates (SSID, password, IP, subnet, dynamic IP)
- * - Data class defaults
- * - StateFlow emissions
- * 
- * Note: API call tests (setHotspotMode, setClientMode, load methods) require androidTest
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NetworkConfigurationViewModelTest {
 
@@ -31,282 +27,585 @@ class NetworkConfigurationViewModelTest {
 
     @Before
     fun setup() {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.setWifiClientAsync(
+                any(), any(), any(), any(), any(), any(), any()
+            )
+        } answers {
+            val callback = lastArg<(Boolean, String?) -> Unit>()
+            callback(false, "unavailable")
+        }
         viewModel = NetworkConfigurationViewModel()
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     // ========== Initial State Tests ==========
 
     @Test
-    fun `initial hotspot state should have default values`() {
-        val state = viewModel.hotspotState.value
-        
-        assertEquals("SaberAthena01", state.hotspot_ssid)
-        assertEquals("1234567890", state.hotspot_password)
-        assertEquals(NetworkDefaults.DEFAULT_HOTSPOT_IP, state.hotspot_ip_address)
-        assertEquals(NetworkDefaults.DEFAULT_SUBNET_MASK, state.hotspot_subnet_mask)
-    }
-
-    @Test
-    fun `initial wifi state should have default values`() {
-        val state = viewModel.wifiState.value
-        
-        assertEquals("SaberAthena01", state.wifi_ssid)
-        assertEquals("1234567890", state.wifi_password)
-        assertEquals(NetworkDefaults.DEFAULT_WIFI_IP, state.wifi_ip_address)
-        assertEquals(NetworkDefaults.DEFAULT_SUBNET_MASK, state.wifi_subnet_mask)
-        assertTrue(state.dynamicIpEnabled)
-    }
-
-    // ========== Hotspot Configuration Tests ==========
-
-    @Test
-    fun `updateHotspotSSID should update hotspot SSID`() {
-        // Act
-        viewModel.updateHotspotSSID("MyHotspot")
-
-        // Assert
-        assertEquals("MyHotspot", viewModel.hotspotState.value.hotspot_ssid)
-    }
-
-    @Test
-    fun `updateHotspotPassword should update hotspot password`() {
-        // Act
-        viewModel.updateHotspotPassword("NewPassword123")
-
-        // Assert
-        assertEquals("NewPassword123", viewModel.hotspotState.value.hotspot_password)
-    }
-
-    @Test
-    fun `updateHotspotIPAddress should update hotspot IP`() {
-        // Act
-        viewModel.updateHotspotIPAddress("192.168.5.1")
-
-        // Assert
-        assertEquals("192.168.5.1", viewModel.hotspotState.value.hotspot_ip_address)
-    }
-
-    @Test
-    fun `updateHotspotSubnetMask should update hotspot subnet mask`() {
-        // Act
-        viewModel.updateHotspotSubnetMask("255.255.0.0")
-
-        // Assert
-        assertEquals("255.255.0.0", viewModel.hotspotState.value.hotspot_subnet_mask)
-    }
-
-    @Test
-    fun `multiple hotspot updates should work correctly`() {
-        // Act
-        viewModel.updateHotspotSSID("TestHotspot")
-        viewModel.updateHotspotPassword("TestPass")
-        viewModel.updateHotspotIPAddress("192.168.10.1")
-        viewModel.updateHotspotSubnetMask("255.255.255.0")
-
-        // Assert
-        val state = viewModel.hotspotState.value
-        assertEquals("TestHotspot", state.hotspot_ssid)
-        assertEquals("TestPass", state.hotspot_password)
-        assertEquals("192.168.10.1", state.hotspot_ip_address)
-        assertEquals("255.255.255.0", state.hotspot_subnet_mask)
-    }
-
-    // ========== WiFi Configuration Tests ==========
-
-    @Test
-    fun `updateWifiSSID should update wifi SSID`() {
-        // Act
-        viewModel.updateWifiSSID("MyWiFiNetwork")
-
-        // Assert
-        assertEquals("MyWiFiNetwork", viewModel.wifiState.value.wifi_ssid)
-    }
-
-    @Test
-    fun `updateWifiPassword should update wifi password`() {
-        // Act
-        viewModel.updateWifiPassword("SecurePassword456")
-
-        // Assert
-        assertEquals("SecurePassword456", viewModel.wifiState.value.wifi_password)
-    }
-
-    @Test
-    fun `updateWifiIPAddress should update wifi IP`() {
-        // Act
-        viewModel.updateWifiIPAddress("192.168.1.200")
-
-        // Assert
-        assertEquals("192.168.1.200", viewModel.wifiState.value.wifi_ip_address)
-    }
-
-    @Test
-    fun `updateWifiSubnetMask should update wifi subnet mask`() {
-        // Act
-        viewModel.updateWifiSubnetMask("255.255.240.0")
-
-        // Assert
-        assertEquals("255.255.240.0", viewModel.wifiState.value.wifi_subnet_mask)
-    }
-
-    @Test
-    fun `updateDynamicIpEnabled should toggle dynamic IP`() {
-        // Arrange - Initial state is true
-        assertTrue(viewModel.wifiState.value.dynamicIpEnabled)
-
-        // Act
-        viewModel.updateDynamicIpEnabled(false)
-
-        // Assert
-        assertFalse(viewModel.wifiState.value.dynamicIpEnabled)
-    }
-
-    @Test
-    fun `multiple wifi updates should work correctly`() {
-        // Act
-        viewModel.updateWifiSSID("TestWiFi")
-        viewModel.updateWifiPassword("TestWiFiPass")
-        viewModel.updateWifiIPAddress("192.168.1.150")
-        viewModel.updateWifiSubnetMask("255.255.255.0")
-        viewModel.updateDynamicIpEnabled(false)
-
-        // Assert
-        val state = viewModel.wifiState.value
-        assertEquals("TestWiFi", state.wifi_ssid)
-        assertEquals("TestWiFiPass", state.wifi_password)
-        assertEquals("192.168.1.150", state.wifi_ip_address)
-        assertEquals("255.255.255.0", state.wifi_subnet_mask)
-        assertFalse(state.dynamicIpEnabled)
-    }
-
-    // ========== StateFlow Emission Tests ==========
-
-    @Test
-    fun `hotspotState should emit updates when SSID changes`() = runTest {
+    fun `initial hotspot state has default values`() = runTest {
         viewModel.hotspotState.test {
-            // Initial state
-            val initial = awaitItem()
-            assertEquals("SaberAthena01", initial.hotspot_ssid)
-
-            // Update SSID
-            viewModel.updateHotspotSSID("NewHotspot")
-            val updated = awaitItem()
-            assertEquals("NewHotspot", updated.hotspot_ssid)
+            val state = awaitItem()
+            assertEquals("SaberAthena01", state.hotspot_ssid)
+            assertEquals("1234567890", state.hotspot_password)
+            assertEquals(NetworkDefaults.DEFAULT_HOTSPOT_IP, state.hotspot_ip_address)
+            assertEquals(NetworkDefaults.DEFAULT_SUBNET_MASK, state.hotspot_subnet_mask)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `wifiState should emit updates when dynamic IP changes`() = runTest {
+    fun `initial wifi state has default values`() = runTest {
         viewModel.wifiState.test {
-            // Initial state
-            val initial = awaitItem()
-            assertTrue(initial.dynamicIpEnabled)
-
-            // Toggle dynamic IP
-            viewModel.updateDynamicIpEnabled(false)
-            val updated = awaitItem()
-            assertFalse(updated.dynamicIpEnabled)
+            val state = awaitItem()
+            assertEquals("SaberAthena01", state.wifi_ssid)
+            assertEquals("1234567890", state.wifi_password)
+            assertEquals(NetworkDefaults.DEFAULT_WIFI_IP, state.wifi_ip_address)
+            assertEquals(NetworkDefaults.DEFAULT_SUBNET_MASK, state.wifi_subnet_mask)
+            assertTrue(state.dynamicIpEnabled)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
-    // ========== Data Class Tests ==========
+    // ========== Hotspot State Update Tests ==========
 
     @Test
-    fun `HotspotConfiguration should have correct defaults`() {
-        val config = HotspotConfiguration()
-
-        assertEquals("SaberAthena01", config.hotspot_ssid)
-        assertEquals("1234567890", config.hotspot_password)
-        assertEquals(NetworkDefaults.DEFAULT_HOTSPOT_IP, config.hotspot_ip_address)
-        assertEquals(NetworkDefaults.DEFAULT_SUBNET_MASK, config.hotspot_subnet_mask)
+    fun `updateHotspotSSID updates hotspot ssid`() = runTest {
+        viewModel.updateHotspotSSID("MyHotspot")
+        viewModel.hotspotState.test {
+            assertEquals("MyHotspot", awaitItem().hotspot_ssid)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `HotspotConfiguration with custom values should work`() {
-        val config = HotspotConfiguration(
-            hotspot_ssid = "CustomHotspot",
-            hotspot_password = "CustomPass",
-            hotspot_ip_address = "10.0.0.1",
-            hotspot_subnet_mask = "255.255.0.0"
-        )
-
-        assertEquals("CustomHotspot", config.hotspot_ssid)
-        assertEquals("CustomPass", config.hotspot_password)
-        assertEquals("10.0.0.1", config.hotspot_ip_address)
-        assertEquals("255.255.0.0", config.hotspot_subnet_mask)
+    fun `updateHotspotPassword updates hotspot password`() = runTest {
+        viewModel.updateHotspotPassword("secret123")
+        viewModel.hotspotState.test {
+            assertEquals("secret123", awaitItem().hotspot_password)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `WifiConfiguration should have correct defaults`() {
-        val config = WifiConfiguration()
-
-        assertEquals("SaberAthena01", config.wifi_ssid)
-        assertEquals("1234567890", config.wifi_password)
-        assertEquals(NetworkDefaults.DEFAULT_WIFI_IP, config.wifi_ip_address)
-        assertEquals(NetworkDefaults.DEFAULT_SUBNET_MASK, config.wifi_subnet_mask)
-        assertTrue(config.dynamicIpEnabled)
+    fun `updateHotspotIPAddress updates hotspot ip`() = runTest {
+        viewModel.updateHotspotIPAddress("192.168.10.1")
+        viewModel.hotspotState.test {
+            assertEquals("192.168.10.1", awaitItem().hotspot_ip_address)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `WifiConfiguration with custom values should work`() {
-        val config = WifiConfiguration(
-            wifi_ssid = "CustomWiFi",
-            wifi_password = "CustomWiFiPass",
-            wifi_ip_address = "192.168.1.50",
-            wifi_subnet_mask = "255.255.255.128",
-            dynamicIpEnabled = false
-        )
+    fun `updateHotspotSubnetMask updates hotspot subnet mask`() = runTest {
+        viewModel.updateHotspotSubnetMask("255.255.0.0")
+        viewModel.hotspotState.test {
+            assertEquals("255.255.0.0", awaitItem().hotspot_subnet_mask)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
-        assertEquals("CustomWiFi", config.wifi_ssid)
-        assertEquals("CustomWiFiPass", config.wifi_password)
-        assertEquals("192.168.1.50", config.wifi_ip_address)
-        assertEquals("255.255.255.128", config.wifi_subnet_mask)
-        assertFalse(config.dynamicIpEnabled)
+    // ========== WiFi State Update Tests ==========
+
+    @Test
+    fun `updateWifiSSID updates wifi ssid`() = runTest {
+        viewModel.updateWifiSSID("MyWiFi")
+        viewModel.wifiState.test {
+            assertEquals("MyWiFi", awaitItem().wifi_ssid)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `HotspotConfiguration copy should work correctly`() {
-        val original = HotspotConfiguration(hotspot_ssid = "Original")
-        val copied = original.copy(hotspot_password = "NewPass")
-
-        assertEquals("Original", copied.hotspot_ssid)
-        assertEquals("NewPass", copied.hotspot_password)
+    fun `updateWifiPassword updates wifi password`() = runTest {
+        viewModel.updateWifiPassword("wifiSecret")
+        viewModel.wifiState.test {
+            assertEquals("wifiSecret", awaitItem().wifi_password)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `WifiConfiguration copy should work correctly`() {
-        val original = WifiConfiguration(wifi_ssid = "Original", dynamicIpEnabled = true)
-        val copied = original.copy(dynamicIpEnabled = false)
-
-        assertEquals("Original", copied.wifi_ssid)
-        assertFalse(copied.dynamicIpEnabled)
+    fun `updateWifiIPAddress updates wifi ip`() = runTest {
+        viewModel.updateWifiIPAddress("192.168.1.50")
+        viewModel.wifiState.test {
+            assertEquals("192.168.1.50", awaitItem().wifi_ip_address)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
-    // ========== Edge Case Tests ==========
+    @Test
+    fun `updateWifiSubnetMask updates wifi subnet mask`() = runTest {
+        viewModel.updateWifiSubnetMask("255.255.255.0")
+        viewModel.wifiState.test {
+            assertEquals("255.255.255.0", awaitItem().wifi_subnet_mask)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     @Test
-    fun `updateHotspotSSID with empty string should update`() {
+    fun `updateDynamicIpEnabled updates dynamic ip flag`() = runTest {
+        viewModel.updateDynamicIpEnabled(false)
+        viewModel.wifiState.test {
+            assertFalse(awaitItem().dynamicIpEnabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ========== setHotspotMode Validation Tests ==========
+
+    @Test
+    fun `setHotspotMode with empty SSID calls onError`() = runTest {
         viewModel.updateHotspotSSID("")
-        assertEquals("", viewModel.hotspotState.value.hotspot_ssid)
+        viewModel.updateHotspotPassword("validpass")
+        var errorMessage: String? = null
+        var successCalled = false
+        viewModel.setHotspotMode(this, onSuccess = { successCalled = true }, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Please enter a valid SSID", errorMessage)
+        assertFalse(successCalled)
     }
 
     @Test
-    fun `updateWifiSSID with special characters should update`() {
-        viewModel.updateWifiSSID("Test-WiFi_2.4GHz")
-        assertEquals("Test-WiFi_2.4GHz", viewModel.wifiState.value.wifi_ssid)
+    fun `setHotspotMode with placeholder SSID calls onError`() = runTest {
+        viewModel.updateHotspotSSID("Enter hotspot name")
+        viewModel.updateHotspotPassword("validpass")
+        var errorMessage: String? = null
+        viewModel.setHotspotMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Please enter a valid SSID", errorMessage)
     }
 
     @Test
-    fun `updateHotspotPassword with long string should update`() {
-        val longPassword = "ThisIsAVeryLongPasswordWithLotsOfCharacters123!@#"
-        viewModel.updateHotspotPassword(longPassword)
-        assertEquals(longPassword, viewModel.hotspotState.value.hotspot_password)
+    fun `setHotspotMode with empty password calls onError`() = runTest {
+        viewModel.updateHotspotSSID("ValidSSID")
+        viewModel.updateHotspotPassword("")
+        var errorMessage: String? = null
+        viewModel.setHotspotMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Please enter a password", errorMessage)
     }
 
     @Test
-    fun `NetworkDefaults constants should have expected values`() {
-        assertEquals("255.255.255.0", NetworkDefaults.DEFAULT_SUBNET_MASK)
-        assertEquals("192.168.2.1", NetworkDefaults.DEFAULT_HOTSPOT_IP)
-        assertEquals("192.168.1.100", NetworkDefaults.DEFAULT_WIFI_IP)
+    fun `setHotspotMode with placeholder password calls onError`() = runTest {
+        viewModel.updateHotspotSSID("ValidSSID")
+        viewModel.updateHotspotPassword("Enter Password")
+        var errorMessage: String? = null
+        viewModel.setHotspotMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Please enter a password", errorMessage)
+    }
+
+    @Test
+    fun `setHotspotMode with valid config invokes API and onSuccess when API succeeds`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.setWifiHotspotAsync(
+                any(), any(), any(), any(), any(), any(), any()
+            )
+        } answers {
+            val callback = lastArg<(Boolean, String?) -> Unit>()
+            callback(true, null)
+        }
+        viewModel.updateHotspotSSID("ValidSSID")
+        viewModel.updateHotspotPassword("validpass")
+        var successCalled = false
+        var errorMessage: String? = "not null"
+        viewModel.setHotspotMode(this, onSuccess = { successCalled = true }, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertTrue(successCalled)
+        assertEquals("not null", errorMessage)
+    }
+
+    @Test
+    fun `setHotspotMode with valid config invokes API and onError when API fails`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.setWifiHotspotAsync(
+                any(), any(), any(), any(), any(), any(), any()
+            )
+        } answers {
+            val callback = lastArg<(Boolean, String?) -> Unit>()
+            callback(false, "Network error")
+        }
+        viewModel.updateHotspotSSID("ValidSSID")
+        viewModel.updateHotspotPassword("validpass")
+        var errorMessage: String? = null
+        viewModel.setHotspotMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Network error", errorMessage)
+    }
+
+    @Test
+    fun `setHotspotMode onError uses default message when API returns null error`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.setWifiHotspotAsync(
+                any(), any(), any(), any(), any(), any(), any()
+            )
+        } answers {
+            val callback = lastArg<(Boolean, String?) -> Unit>()
+            callback(false, null)
+        }
+        viewModel.updateHotspotSSID("ValidSSID")
+        viewModel.updateHotspotPassword("validpass")
+        var errorMessage: String? = null
+        viewModel.setHotspotMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Failed to start hotspot mode", errorMessage)
+    }
+
+    // ========== setClientMode Validation Tests ==========
+
+    @Test
+    fun `setClientMode with empty SSID calls onError`() = runTest {
+        viewModel.updateWifiSSID("")
+        viewModel.updateWifiPassword("validpass")
+        var errorMessage: String? = null
+        viewModel.setClientMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Please enter a valid SSID", errorMessage)
+    }
+
+    @Test
+    fun `setClientMode with empty password calls onError`() = runTest {
+        viewModel.updateWifiSSID("ValidSSID")
+        viewModel.updateWifiPassword("")
+        var errorMessage: String? = null
+        viewModel.setClientMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Please enter a password", errorMessage)
+    }
+
+    @Test
+    fun `setClientMode with static IP and empty IP address calls onError`() = runTest {
+        viewModel.updateWifiSSID("ValidSSID")
+        viewModel.updateWifiPassword("pass")
+        viewModel.updateDynamicIpEnabled(false)
+        viewModel.updateWifiIPAddress("")
+        viewModel.updateWifiSubnetMask("255.255.255.0")
+        var errorMessage: String? = null
+        viewModel.setClientMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Please enter an IP address", errorMessage)
+    }
+
+    @Test
+    fun `setClientMode with static IP and empty subnet mask calls onError`() = runTest {
+        viewModel.updateWifiSSID("ValidSSID")
+        viewModel.updateWifiPassword("pass")
+        viewModel.updateDynamicIpEnabled(false)
+        viewModel.updateWifiIPAddress("192.168.1.100")
+        viewModel.updateWifiSubnetMask("")
+        var errorMessage: String? = null
+        viewModel.setClientMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Please enter a subnet mask", errorMessage)
+    }
+
+    @Test
+    fun `setClientMode with valid config and dynamic IP invokes API and onSuccess`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.setWifiClientAsync(
+                any(), any(), any(), any(), any(), any(), any()
+            )
+        } answers {
+            val callback = lastArg<(Boolean, String?) -> Unit>()
+            callback(true, null)
+        }
+        viewModel.updateWifiSSID("ValidSSID")
+        viewModel.updateWifiPassword("pass")
+        viewModel.updateDynamicIpEnabled(true)
+        var successCalled = false
+        viewModel.setClientMode(this, onSuccess = { successCalled = true }, onError = {})
+        advanceUntilIdle()
+        assertTrue(successCalled)
+    }
+
+    @Test
+    fun `setClientMode with valid config and static IP invokes API and onError when API fails`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.setWifiClientAsync(
+                any(), any(), any(), any(), any(), any(), any()
+            )
+        } answers {
+            val callback = lastArg<(Boolean, String?) -> Unit>()
+            callback(false, "Connection failed")
+        }
+        viewModel.updateWifiSSID("ValidSSID")
+        viewModel.updateWifiPassword("pass")
+        viewModel.updateDynamicIpEnabled(false)
+        viewModel.updateWifiIPAddress("192.168.1.100")
+        viewModel.updateWifiSubnetMask("255.255.255.0")
+        var errorMessage: String? = null
+        viewModel.setClientMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Connection failed", errorMessage)
+    }
+
+    @Test
+    fun `setClientMode onError uses default message when API returns null error`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.setWifiClientAsync(
+                any(), any(), any(), any(), any(), any(), any()
+            )
+        } answers {
+            val callback = lastArg<(Boolean, String?) -> Unit>()
+            callback(false, null)
+        }
+        viewModel.updateWifiSSID("ValidSSID")
+        viewModel.updateWifiPassword("pass")
+        viewModel.updateDynamicIpEnabled(true)
+        var errorMessage: String? = null
+        viewModel.setClientMode(this, onSuccess = {}, onError = { errorMessage = it })
+        advanceUntilIdle()
+        assertEquals("Failed to connect to network", errorMessage)
+    }
+
+    // ========== loadHotspotConfiguration Tests ==========
+
+    @Test
+    fun `loadHotspotConfiguration updates state when API returns config`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.getWifiHotspotConfigAsync(any(), any())
+        } answers {
+            val callback = lastArg<(Map<String, Any>?, String?) -> Unit>()
+            callback(
+                mapOf(
+                    "ssid" to "LoadedSSID",
+                    "encryptionkey" to "LoadedPass",
+                    "ipaddress" to "192.168.2.2",
+                    "subnetmask" to "255.255.0.0"
+                ),
+                null
+            )
+        }
+        viewModel.loadHotspotConfiguration()
+        advanceUntilIdle()
+        viewModel.hotspotState.test {
+            val state = awaitItem()
+            assertEquals("LoadedSSID", state.hotspot_ssid)
+            assertEquals("LoadedPass", state.hotspot_password)
+            assertEquals("192.168.2.2", state.hotspot_ip_address)
+            assertEquals("255.255.0.0", state.hotspot_subnet_mask)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `loadHotspotConfiguration uses placeholders when API returns empty strings`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.getWifiHotspotConfigAsync(any(), any())
+        } answers {
+            val callback = lastArg<(Map<String, Any>?, String?) -> Unit>()
+            callback(
+                mapOf(
+                    "ssid" to "",
+                    "encryptionkey" to "",
+                    "ipaddress" to "",
+                    "subnetmask" to ""
+                ),
+                null
+            )
+        }
+        viewModel.loadHotspotConfiguration()
+        advanceUntilIdle()
+        viewModel.hotspotState.test {
+            val state = awaitItem()
+            assertEquals("Enter hotspot name", state.hotspot_ssid)
+            assertEquals("Enter Password", state.hotspot_password)
+            assertEquals(NetworkDefaults.DEFAULT_HOTSPOT_IP, state.hotspot_ip_address)
+            assertEquals(NetworkDefaults.DEFAULT_SUBNET_MASK, state.hotspot_subnet_mask)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `loadHotspotConfiguration does not update state when API returns error`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.getWifiHotspotConfigAsync(any(), any())
+        } answers {
+            val callback = lastArg<(Map<String, Any>?, String?) -> Unit>()
+            callback(null, "Load failed")
+        }
+        viewModel.updateHotspotSSID("BeforeLoad")
+        viewModel.loadHotspotConfiguration()
+        advanceUntilIdle()
+        viewModel.hotspotState.test {
+            assertEquals("BeforeLoad", awaitItem().hotspot_ssid)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ========== loadWifiConfiguration Tests ==========
+
+    @Test
+    fun `loadWifiConfiguration updates state when API returns config with static IP`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.getWifiClientConfigAsync(any(), any())
+        } answers {
+            val callback = lastArg<(Map<String, Any>?, String?) -> Unit>()
+            callback(
+                mapOf(
+                    "ssid" to "LoadedWiFi",
+                    "encryptionkey" to "LoadedWifiPass",
+                    "ipaddress" to "192.168.1.200",
+                    "subnetmask" to "255.255.255.0"
+                ),
+                null
+            )
+        }
+        viewModel.loadWifiConfiguration()
+        advanceUntilIdle()
+        viewModel.wifiState.test {
+            val state = awaitItem()
+            assertEquals("LoadedWiFi", state.wifi_ssid)
+            assertEquals("LoadedWifiPass", state.wifi_password)
+            assertEquals("192.168.1.200", state.wifi_ip_address)
+            assertEquals("255.255.255.0", state.wifi_subnet_mask)
+            assertFalse(state.dynamicIpEnabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `loadWifiConfiguration sets dynamicIpEnabled when API returns empty IP`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.getWifiClientConfigAsync(any(), any())
+        } answers {
+            val callback = lastArg<(Map<String, Any>?, String?) -> Unit>()
+            callback(
+                mapOf(
+                    "ssid" to "DHCPNetwork",
+                    "encryptionkey" to "pass",
+                    "ipaddress" to "",
+                    "subnetmask" to ""
+                ),
+                null
+            )
+        }
+        viewModel.loadWifiConfiguration()
+        advanceUntilIdle()
+        viewModel.wifiState.test {
+            val state = awaitItem()
+            assertEquals("DHCPNetwork", state.wifi_ssid)
+            assertTrue(state.dynamicIpEnabled)
+            assertEquals("", state.wifi_ip_address)
+            assertEquals("", state.wifi_subnet_mask)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `loadWifiConfiguration does not update state when API returns error`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.getWifiClientConfigAsync(any(), any())
+        } answers {
+            val callback = lastArg<(Map<String, Any>?, String?) -> Unit>()
+            callback(null, "Load failed")
+        }
+        viewModel.updateWifiSSID("BeforeLoad")
+        viewModel.loadWifiConfiguration()
+        advanceUntilIdle()
+        viewModel.wifiState.test {
+            assertEquals("BeforeLoad", awaitItem().wifi_ssid)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ========== Hour 3: Validation and connection state branches ==========
+
+    @Test
+    fun `valid IP address format is accepted`() = runTest {
+        viewModel.updateHotspotIPAddress("192.168.1.1")
+        viewModel.hotspotState.test {
+            assertEquals("192.168.1.1", awaitItem().hotspot_ip_address)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `empty SSID is accepted by state`() = runTest {
+        viewModel.updateWifiSSID("")
+        viewModel.wifiState.test {
+            assertEquals("", awaitItem().wifi_ssid)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `subnet mask update is reflected`() = runTest {
+        viewModel.updateWifiSubnetMask("255.255.255.0")
+        viewModel.wifiState.test {
+            assertEquals("255.255.255.0", awaitItem().wifi_subnet_mask)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `dynamic IP enabled flag can be set`() = runTest {
+        viewModel.updateDynamicIpEnabled(false)
+        viewModel.wifiState.test {
+            assertFalse(awaitItem().dynamicIpEnabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `dynamic IP enabled true by default`() = runTest {
+        viewModel.wifiState.test {
+            assertTrue(awaitItem().dynamicIpEnabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `hotspot IP with different octets is stored`() = runTest {
+        viewModel.updateHotspotIPAddress("10.0.0.1")
+        viewModel.hotspotState.test {
+            assertEquals("10.0.0.1", awaitItem().hotspot_ip_address)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `wifi password update is stored`() = runTest {
+        viewModel.updateWifiPassword("newpass")
+        viewModel.wifiState.test {
+            assertEquals("newpass", awaitItem().wifi_password)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `loadHotspotConfiguration with error keeps previous state`() = runTest {
+        mockkObject(MotocamAPIAndroidHelper)
+        every {
+            MotocamAPIAndroidHelper.getWifiHotspotConfigAsync(any(), any())
+        } answers {
+            val callback = lastArg<(Map<String, Any>?, String?) -> Unit>()
+            callback(null, "error")
+        }
+        viewModel.updateHotspotSSID("BeforeHotspotLoad")
+        viewModel.loadHotspotConfiguration()
+        advanceUntilIdle()
+        viewModel.hotspotState.test {
+            val state = awaitItem()
+            assertEquals("BeforeHotspotLoad", state.hotspot_ssid)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

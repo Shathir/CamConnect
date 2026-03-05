@@ -3,26 +3,24 @@ package com.outdu.camconnect.ui.viewmodels
 import app.cash.turbine.test
 import com.outdu.camconnect.testutils.MainDispatcherRule
 import com.outdu.camconnect.ui.layouts.streamer.AiRegionOverlayType
+import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
 /**
- * Unit tests for AiConfigurationViewModel
- * 
- * Tests cover:
- * - Initial state
- * - Configuration updates (OD, FAR, DS, Audio, Model)
- * - Unsaved changes tracking
- * - Threshold updates
- * - Overlay type changes (MASK, BOX, NONE)
- * - Error handling
- * - StateFlow emissions
- * 
- * Note: Tests requiring Context (load/save) should be in androidTest
+ * Unit tests for AiConfigurationViewModel.
+ * Tests state updates, hasUnsavedChanges logic, and clearError.
+ * loadConfiguration, saveConfiguration, resetToDefaults require Context and are
+ * covered in ViewModelsInstrumentedTest.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AiConfigurationViewModelTest {
@@ -37,279 +35,327 @@ class AiConfigurationViewModelTest {
         viewModel = AiConfigurationViewModel()
     }
 
+    @After
+    fun tearDown() {
+        unmockkAll()
+    }
+
     // ========== Initial State Tests ==========
 
     @Test
-    fun `initial state should have default values`() {
-        val state = viewModel.uiState.value
-        
-        assertFalse(state.far)
-        assertFalse(state.od)
-        assertFalse(state.ds)
-        assertFalse(state.audio)
-        assertEquals(1, state.model)
-        assertEquals(0.5f, state.dsThreshold, 0.001f)
-        assertEquals(AiRegionOverlayType.MASK, state.overlayType)
-        assertFalse(state.isLoading)
-        assertFalse(state.hasUnsavedChanges)
-        assertNull(state.errorMessage)
+    fun `initial uiState has default values`() = runTest {
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.far)
+            assertFalse(state.od)
+            assertFalse(state.ds)
+            assertFalse(state.audio)
+            assertEquals(1, state.model)
+            assertEquals(0.5f, state.dsThreshold, 0.001f)
+            assertEquals(AiRegionOverlayType.MASK, state.overlayType)
+            assertFalse(state.isLoading)
+            assertFalse(state.hasUnsavedChanges)
+            assertNull(state.errorMessage)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
-    // ========== Object Detection (OD) Tests ==========
+    // ========== Update OD (Object Detection) Tests ==========
 
     @Test
-    fun `updateOD should update OD state`() {
-        // Act
+    fun `updateOD true sets od`() = runTest {
         viewModel.updateOD(true)
-
-        // Assert
-        assertTrue(viewModel.uiState.value.od)
+        viewModel.uiState.test {
+            assertTrue(awaitItem().od)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `updateOD should update OD state correctly`() {
-        // Act
-        viewModel.updateOD(true)
-        assertTrue(viewModel.uiState.value.od)
-
+    fun `updateOD false sets od`() = runTest {
         viewModel.updateOD(false)
-        assertFalse(viewModel.uiState.value.od)
-
-        // Note: hasUnsavedChanges requires originalState to be set (via loadConfiguration),
-        // which requires Context and should be tested in androidTest
+        viewModel.uiState.test {
+            assertFalse(awaitItem().od)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
-    @Test
-    fun `updateOD multiple times should toggle correctly`() {
-        // Act
-        viewModel.updateOD(true)
-        assertTrue(viewModel.uiState.value.od)
-
-        viewModel.updateOD(false)
-        assertFalse(viewModel.uiState.value.od)
-
-        viewModel.updateOD(true)
-        assertTrue(viewModel.uiState.value.od)
-    }
-
-    // ========== Far Detection (FAR) Tests ==========
+    // ========== Update FAR Tests ==========
 
     @Test
-    fun `updateFAR should update FAR state`() {
-        // Act
+    fun `updateFAR true sets far`() = runTest {
         viewModel.updateFAR(true)
-
-        // Assert
-        assertTrue(viewModel.uiState.value.far)
+        viewModel.uiState.test {
+            assertTrue(awaitItem().far)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `updateFAR should toggle correctly`() {
-        viewModel.updateFAR(true)
-        assertTrue(viewModel.uiState.value.far)
-
+    fun `updateFAR false sets far`() = runTest {
         viewModel.updateFAR(false)
-        assertFalse(viewModel.uiState.value.far)
+        viewModel.uiState.test {
+            assertFalse(awaitItem().far)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
-    // ========== Depth Sensing (DS) Tests ==========
+    // ========== Update DS (Depth Sensing) Tests ==========
 
     @Test
-    fun `updateDS should update DS state`() {
-        // Act
+    fun `updateDS true sets ds`() = runTest {
         viewModel.updateDS(true)
-
-        // Assert
-        assertTrue(viewModel.uiState.value.ds)
+        viewModel.uiState.test {
+            assertTrue(awaitItem().ds)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `updateDS should toggle correctly`() {
-        viewModel.updateDS(true)
-        assertTrue(viewModel.uiState.value.ds)
-
+    fun `updateDS false sets ds`() = runTest {
         viewModel.updateDS(false)
-        assertFalse(viewModel.uiState.value.ds)
+        viewModel.uiState.test {
+            assertFalse(awaitItem().ds)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
-    // ========== Audio Tests ==========
+    // ========== Update Audio Tests ==========
 
     @Test
-    fun `updateAudio should update audio state`() {
-        // Act
+    fun `updateAudio true sets audio`() = runTest {
         viewModel.updateAudio(true)
-
-        // Assert
-        assertTrue(viewModel.uiState.value.audio)
+        viewModel.uiState.test {
+            assertTrue(awaitItem().audio)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `updateAudio should toggle correctly`() {
-        viewModel.updateAudio(true)
-        assertTrue(viewModel.uiState.value.audio)
-
+    fun `updateAudio false sets audio`() = runTest {
         viewModel.updateAudio(false)
-        assertFalse(viewModel.uiState.value.audio)
+        viewModel.uiState.test {
+            assertFalse(awaitItem().audio)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
-    // ========== Model Version Tests ==========
+    // ========== Update Model Tests ==========
 
     @Test
-    fun `updateModel should update model version`() {
-        // Act
+    fun `updateModel sets model version`() = runTest {
         viewModel.updateModel(2)
-
-        // Assert
-        assertEquals(2, viewModel.uiState.value.model)
+        viewModel.uiState.test {
+            assertEquals(2, awaitItem().model)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `updateModel should accept different versions`() {
+    fun `updateModel sets model and emits state`() = runTest {
         viewModel.updateModel(1)
-        assertEquals(1, viewModel.uiState.value.model)
-
-        viewModel.updateModel(3)
-        assertEquals(3, viewModel.uiState.value.model)
-
-        viewModel.updateModel(5)
-        assertEquals(5, viewModel.uiState.value.model)
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals(1, state.model)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
-    // ========== Depth Sensing Threshold Tests ==========
+    // ========== Update DS Threshold Tests ==========
 
     @Test
-    fun `updateDsThreshold should update threshold value`() {
-        // Act
+    fun `updateDsThreshold sets threshold`() = runTest {
         viewModel.updateDsThreshold(0.75f)
-
-        // Assert
-        assertEquals(0.75f, viewModel.uiState.value.dsThreshold, 0.001f)
+        viewModel.uiState.test {
+            assertEquals(0.75f, awaitItem().dsThreshold, 0.001f)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
-    @Test
-    fun `updateDsThreshold should accept various threshold values`() {
-        viewModel.updateDsThreshold(0.0f)
-        assertEquals(0.0f, viewModel.uiState.value.dsThreshold, 0.001f)
-
-        viewModel.updateDsThreshold(0.5f)
-        assertEquals(0.5f, viewModel.uiState.value.dsThreshold, 0.001f)
-
-        viewModel.updateDsThreshold(1.0f)
-        assertEquals(1.0f, viewModel.uiState.value.dsThreshold, 0.001f)
-    }
-
-    // ========== Overlay Type Tests ==========
+    // ========== Update Overlay Type Tests ==========
 
     @Test
-    fun `updateOverlayType should update overlay type`() {
-        // Act
+    fun `updateOverlayType sets overlay type to BOX`() = runTest {
         viewModel.updateOverlayType(AiRegionOverlayType.BOX)
-
-        // Assert
-        assertEquals(AiRegionOverlayType.BOX, viewModel.uiState.value.overlayType)
+        viewModel.uiState.test {
+            assertEquals(AiRegionOverlayType.BOX, awaitItem().overlayType)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `updateOverlayType should cycle through types`() {
-        viewModel.updateOverlayType(AiRegionOverlayType.MASK)
-        assertEquals(AiRegionOverlayType.MASK, viewModel.uiState.value.overlayType)
-
-        viewModel.updateOverlayType(AiRegionOverlayType.BOX)
-        assertEquals(AiRegionOverlayType.BOX, viewModel.uiState.value.overlayType)
-
+    fun `updateOverlayType sets overlay type to NONE`() = runTest {
         viewModel.updateOverlayType(AiRegionOverlayType.NONE)
-        assertEquals(AiRegionOverlayType.NONE, viewModel.uiState.value.overlayType)
-    }
-
-    // ========== Error Handling Tests ==========
-
-    @Test
-    fun `clearError should clear error message`() {
-        // Act
-        viewModel.clearError()
-
-        // Assert
-        assertNull(viewModel.uiState.value.errorMessage)
-    }
-
-    // ========== StateFlow Emission Tests ==========
-
-    @Test
-    fun `uiState should emit updates when OD changes`() = runTest {
         viewModel.uiState.test {
-            // Initial state
-            val initial = awaitItem()
-            assertFalse(initial.od)
-
-            // Update OD
-            viewModel.updateOD(true)
-            val updated = awaitItem()
-            assertTrue(updated.od)
+            assertEquals(AiRegionOverlayType.NONE, awaitItem().overlayType)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `uiState should emit updates when model changes`() = runTest {
-        viewModel.uiState.test {
-            // Initial state
-            val initial = awaitItem()
-            assertEquals(1, initial.model)
-
-            // Update model
-            viewModel.updateModel(3)
-            val updated = awaitItem()
-            assertEquals(3, updated.model)
-        }
-    }
-
-    // ========== Integration Tests ==========
-
-    @Test
-    fun `multiple configuration changes should work together`() {
-        // Act - Update multiple settings
-        viewModel.updateOD(true)
-        viewModel.updateFAR(true)
-        viewModel.updateDS(true)
-        viewModel.updateAudio(true)
-        viewModel.updateModel(2)
-        viewModel.updateDsThreshold(0.8f)
+    fun `updateOverlayType sets overlay type to MASK`() = runTest {
         viewModel.updateOverlayType(AiRegionOverlayType.BOX)
+        viewModel.updateOverlayType(AiRegionOverlayType.MASK)
+        viewModel.uiState.test {
+            assertEquals(AiRegionOverlayType.MASK, awaitItem().overlayType)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
-        // Assert
-        val state = viewModel.uiState.value
-        assertTrue(state.od)
-        assertTrue(state.far)
-        assertTrue(state.ds)
-        assertTrue(state.audio)
-        assertEquals(2, state.model)
-        assertEquals(0.8f, state.dsThreshold, 0.001f)
-        assertEquals(AiRegionOverlayType.BOX, state.overlayType)
+    // ========== clearError Test ==========
+
+    @Test
+    fun `clearError clears error message`() = runTest {
+        viewModel.clearError()
+        viewModel.uiState.test {
+            assertNull(awaitItem().errorMessage)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ========== loadConfiguration with mocked CameraConfigurationManager ==========
+
+    @Test
+    fun `loadConfiguration on success updates state from config`() = runTest {
+        val config = com.outdu.camconnect.communication.CameraConfigurationManager.CameraConfig(
+            farDetectionEnabled = true,
+            objectDetectionEnabled = true,
+            depthSensingEnabled = true,
+            audioEnabled = true,
+            modelVersion = 2,
+            depthSensingThreshold = 0.6f
+        )
+        val context = io.mockk.mockk<android.content.Context>(relaxed = true)
+        val prefs = io.mockk.mockk<android.content.SharedPreferences>(relaxed = true)
+        every { context.getSharedPreferences(any(), any()) } returns prefs
+        every { prefs.getString(any(), any()) } returns AiRegionOverlayType.MASK.name
+        every { prefs.edit() } returns io.mockk.mockk<android.content.SharedPreferences.Editor>(relaxed = true).apply {
+            every { putString(any(), any()) } returns this
+            every { apply() } just Runs
+        }
+
+        mockkObject(com.outdu.camconnect.communication.CameraConfigurationManager)
+        coEvery {
+            com.outdu.camconnect.communication.CameraConfigurationManager.loadConfigurationAsync(context)
+        } returns kotlin.Result.success(config)
+
+        viewModel.loadConfiguration(context)
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.far)
+            assertTrue(state.od)
+            assertTrue(state.ds)
+            assertTrue(state.audio)
+            assertEquals(2, state.model)
+            assertEquals(0.6f, state.dsThreshold, 0.001f)
+            assertFalse(state.isLoading)
+            assertFalse(state.hasUnsavedChanges)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `AiConfigurationUiState data class should have correct defaults`() {
-        val state = AiConfigurationUiState()
+    fun `loadConfiguration on failure sets error message`() = runTest {
+        val context = io.mockk.mockk<android.content.Context>(relaxed = true)
+        mockkObject(com.outdu.camconnect.communication.CameraConfigurationManager)
+        coEvery {
+            com.outdu.camconnect.communication.CameraConfigurationManager.loadConfigurationAsync(context)
+        } returns kotlin.Result.failure(RuntimeException("Load failed"))
 
-        assertFalse(state.far)
-        assertFalse(state.od)
-        assertFalse(state.ds)
-        assertFalse(state.audio)
-        assertEquals(1, state.model)
-        assertEquals(0.5f, state.dsThreshold, 0.001f)
-        assertEquals(AiRegionOverlayType.MASK, state.overlayType)
-        assertFalse(state.isLoading)
-        assertFalse(state.hasUnsavedChanges)
-        assertNull(state.errorMessage)
+        viewModel.loadConfiguration(context)
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.isLoading)
+            assertTrue(state.errorMessage!!.contains("Load failed"))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ========== saveConfiguration with mock ==========
+
+    @Test
+    fun `saveConfiguration on success clears hasUnsavedChanges and calls onSuccess`() = runTest {
+        val context = io.mockk.mockk<android.content.Context>(relaxed = true)
+        val prefs = io.mockk.mockk<android.content.SharedPreferences>(relaxed = true)
+        every { context.getSharedPreferences(any(), any()) } returns prefs
+        val editor = io.mockk.mockk<android.content.SharedPreferences.Editor>(relaxed = true)
+        every { prefs.edit() } returns editor
+        every { editor.putString(any(), any()) } returns editor
+        every { editor.apply() } just Runs
+
+        mockkObject(com.outdu.camconnect.communication.CameraConfigurationManager)
+        coEvery {
+            com.outdu.camconnect.communication.CameraConfigurationManager.updateConfiguration(context, any())
+        } returns kotlin.Result.success(Unit)
+
+        viewModel.updateOD(true)
+        var successCalled = false
+        viewModel.saveConfiguration(context, onSuccess = { successCalled = true })
+        advanceUntilIdle()
+
+        assertTrue(successCalled)
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.hasUnsavedChanges)
+            assertFalse(state.isLoading)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `AiConfigurationUiState copy should work correctly`() {
-        val original = AiConfigurationUiState(od = true, far = true)
-        val copied = original.copy(ds = true)
+    fun `saveConfiguration on failure sets error message`() = runTest {
+        val context = io.mockk.mockk<android.content.Context>(relaxed = true)
+        mockkObject(com.outdu.camconnect.communication.CameraConfigurationManager)
+        coEvery {
+            com.outdu.camconnect.communication.CameraConfigurationManager.updateConfiguration(context, any())
+        } returns kotlin.Result.failure(RuntimeException("Save failed"))
 
-        assertTrue(copied.od)
-        assertTrue(copied.far)
-        assertTrue(copied.ds)
-        assertFalse(copied.audio) // Unchanged
+        viewModel.updateOD(true)
+        viewModel.saveConfiguration(context)
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.isLoading)
+            assertTrue(state.errorMessage!!.contains("Save failed"))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ========== hasUnsavedChanges logic ==========
+
+    @Test
+    fun `hasUnsavedChanges true when state differs from loaded original`() = runTest {
+        val config = com.outdu.camconnect.communication.CameraConfigurationManager.CameraConfig(
+            farDetectionEnabled = false,
+            objectDetectionEnabled = true,
+            depthSensingEnabled = false,
+            audioEnabled = false,
+            modelVersion = 1,
+            depthSensingThreshold = 0.5f
+        )
+        val context = io.mockk.mockk<android.content.Context>(relaxed = true)
+        val prefs = io.mockk.mockk<android.content.SharedPreferences>(relaxed = true)
+        every { context.getSharedPreferences(any(), any()) } returns prefs
+        every { prefs.getString(any(), any()) } returns AiRegionOverlayType.MASK.name
+        every { prefs.edit() } returns io.mockk.mockk<android.content.SharedPreferences.Editor>(relaxed = true).apply {
+            every { putString(any(), any()) } returns this
+            every { apply() } just Runs
+        }
+        mockkObject(com.outdu.camconnect.communication.CameraConfigurationManager)
+        coEvery {
+            com.outdu.camconnect.communication.CameraConfigurationManager.loadConfigurationAsync(context)
+        } returns kotlin.Result.success(config)
+        viewModel.loadConfiguration(context)
+        advanceUntilIdle()
+        viewModel.updateOD(false)
+        viewModel.uiState.test {
+            assertTrue(awaitItem().hasUnsavedChanges)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

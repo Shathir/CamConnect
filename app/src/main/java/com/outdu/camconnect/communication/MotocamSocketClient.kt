@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
@@ -18,7 +19,8 @@ import java.util.Base64
 import com.outdu.camconnect.auth.SessionManager
 import java.security.MessageDigest
 
-class MotocamSocketClient {
+class MotocamSocketClient() {
+
 
     companion object {
         private const val TAG = "MotocamSocketClient"
@@ -29,6 +31,15 @@ class MotocamSocketClient {
 
     private var httpClient: HttpClient? = null
     private var cameraIp: String = DEFAULT_CAMERA_IP
+
+    /** Test-only: inject an engine (e.g. MockEngine) to avoid real network. */
+    constructor(engine: HttpClientEngine) : this() {
+        httpClient = HttpClient(engine) {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+    }
 
     suspend fun checkDevice(ipAddress: String): Boolean = withContext(Dispatchers.IO) {
         return@withContext try {
@@ -52,16 +63,17 @@ class MotocamSocketClient {
             this.cameraIp = DEFAULT_CAMERA_IP
             Log.i(TAG, "Using default camera IP: $DEFAULT_CAMERA_IP")
         }
-        
-        httpClient = HttpClient(CIO) {
-            install(ContentNegotiation) {
-                json()
-            }
-            engine {
-                requestTimeout = TIMEOUT_MS.toLong()
-                endpoint {
-                    connectTimeout = TIMEOUT_MS.toLong()
-                    connectAttempts = 1
+        if (httpClient == null) {
+            httpClient = HttpClient(CIO) {
+                install(ContentNegotiation) {
+                    json()
+                }
+                engine {
+                    requestTimeout = TIMEOUT_MS.toLong()
+                    endpoint {
+                        connectTimeout = TIMEOUT_MS.toLong()
+                        connectAttempts = 1
+                    }
                 }
             }
         }

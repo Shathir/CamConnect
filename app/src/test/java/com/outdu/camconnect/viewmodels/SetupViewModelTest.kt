@@ -436,4 +436,26 @@ class SetupViewModelTest {
         assertTrue(viewModel.setupState.value.isNetworkConfigured)
         assertNull(viewModel.setupState.value.error)
     }
+
+    // ========== Error Handling / Edge Cases ==========
+
+    @Test
+    fun `setError then clearError clears error`() = runTest {
+        viewModel.setError("Some error")
+        assertEquals("Some error", viewModel.setupState.value.error)
+        viewModel.clearError()
+        assertNull(viewModel.setupState.value.error)
+    }
+
+    @Test
+    fun `updateRegistrationDetails with empty username is accepted`() = runTest {
+        viewModel.updateRegistrationDetails(
+            username = "",
+            email = "e@e.com",
+            password = "p",
+            confirmPassword = "p"
+        )
+        assertEquals("", viewModel.setupState.value.username)
+        assertEquals("e@e.com", viewModel.setupState.value.email)
+    }
 }

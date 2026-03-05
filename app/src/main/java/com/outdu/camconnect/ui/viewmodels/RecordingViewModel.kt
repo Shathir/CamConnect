@@ -71,6 +71,9 @@ class RecordingViewModel : ViewModel() {
                     ServiceEvent.StoppedLowStorage -> {
                         _uiEvents.tryEmit(RecordingUiEvent.LowStorageStoppedRecording)
                     }
+                    is ServiceEvent.RecordingStopped -> {
+                        // Normal stop; no low-storage UI event
+                    }
                 }
             }
         }
