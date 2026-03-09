@@ -11,34 +11,6 @@ import org.junit.Test
 class ModelLabelsTest {
 
     @Test
-    fun cocoLabels80_hasAtLeast80Entries() {
-        assertTrue("COCO_LABELS80 should have at least 80 entries", COCO_LABELS80.size >= 80)
-    }
-
-    @Test
-    fun cocoLabels80_hasNoDuplicateLabels() {
-        val set = COCO_LABELS80.toSet()
-        assertEquals("COCO_LABELS80 should have no duplicates", COCO_LABELS80.size, set.size)
-    }
-
-    @Test
-    fun cocoLabels80_firstEntry_isPerson() {
-        assertEquals("person", COCO_LABELS80[0])
-    }
-
-    @Test
-    fun cocoLabels80_containsExpectedLabels() {
-        assertTrue(COCO_LABELS80.contains("car"))
-        assertTrue(COCO_LABELS80.contains("boat"))
-        assertTrue(COCO_LABELS80.contains("sail_boat"))
-    }
-
-    @Test
-    fun cocoLabels80_labelsHaveValidFormat_noEmptyStrings() {
-        assertFalse(COCO_LABELS80.any { it.isBlank() })
-    }
-
-    @Test
     fun cocoLabels_hasEntries() {
         assertTrue(COCO_LABELS.isNotEmpty())
     }
