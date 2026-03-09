@@ -52,6 +52,10 @@ class CameraLayoutViewModel : ViewModel() {
     private val _currentOrientationMode = mutableStateOf(OrientationMode.NORMAL)
     val currentOrientationMode: State<OrientationMode> = _currentOrientationMode
 
+    // Video Frequency (maps to VIDEO_FREQUENCY)
+    private val _currentVideoFrequency = mutableStateOf(MotocamAPIHelper.VIDEO_FREQUENCY.HZ_60)
+    val currentVideoFrequency: State<MotocamAPIHelper.VIDEO_FREQUENCY> = _currentVideoFrequency
+
     // Track if there are unsaved changes
     private val _hasUnsavedChanges = mutableStateOf(false)
     val hasUnsavedChanges: State<Boolean> = _hasUnsavedChanges
@@ -61,6 +65,7 @@ class CameraLayoutViewModel : ViewModel() {
     private var initialVisionMode = VisionMode.VISION
     private var initialCameraMode = CameraMode.OFF
     private var initialOrientationMode = OrientationMode.NORMAL
+    private var initialVideoFrequency = MotocamAPIHelper.VIDEO_FREQUENCY.HZ_60
 
     // Add stream reload state
     private val _isStreamReloading = MutableStateFlow(false)
@@ -486,17 +491,23 @@ class CameraLayoutViewModel : ViewModel() {
                 Log.d(TAG, "  currentVisionMode: ${_currentVisionMode.value}")
                 Log.d(TAG, "  currentCameraMode: ${_currentCameraMode.value}")
                 Log.d(TAG, "  currentOrientationMode: ${_currentOrientationMode.value}")
+                Log.d(TAG, "  currentVideoFrequency: ${_currentVideoFrequency.value}")
                 
-                val onlyOrientationChanged = initialVisionMode == _currentVisionMode.value &&
+                val onlyOrientationOrFrequencyChanged = initialVisionMode == _currentVisionMode.value &&
                         initialCameraMode == _currentCameraMode.value &&
                         initialAutoDayNight == _isAutoDayNightEnabled.value &&
-                        initialOrientationMode != _currentOrientationMode.value
+                        (initialOrientationMode != _currentOrientationMode.value || 
+                         initialVideoFrequency != _currentVideoFrequency.value)
 
-                if (onlyOrientationChanged) {
-                    Log.d(TAG, "Only orientation changed, taking fast path")
+                if (onlyOrientationOrFrequencyChanged) {
+                    Log.d(TAG, "Only orientation or frequency changed, taking fast path")
                     _isUIInteractive.value = false
                     val orientationSuccess = applyOrientationChanges()
-                    if (orientationSuccess) {
+                    val frequencySuccess = if (initialVideoFrequency != _currentVideoFrequency.value) {
+                        applyVideoFrequencyChange()
+                    } else true
+                    
+                    if (orientationSuccess && frequencySuccess) {
                         saveInitialValues()
                         checkForChanges()
                     }
@@ -617,6 +628,29 @@ class CameraLayoutViewModel : ViewModel() {
                 }
                 apiCalls.add(orientationDeferred)
 
+                // Video Frequency
+                val videoFrequencyDeferred = async {
+                    val start = System.currentTimeMillis()
+                    Log.d(TAG, "VIDEO_FREQUENCY API Call - Setting to: ${_currentVideoFrequency.value.displayVal}")
+                    val success = suspendCancellableCoroutine<Boolean> { cont ->
+                        MotocamAPIAndroidHelper.setVideoFrequencyAsync(
+                            scope = viewModelScope,
+                            frequency = _currentVideoFrequency.value
+                        ) { result, error ->
+                            if (error != null) {
+                                Log.e(TAG, "VIDEO_FREQUENCY API Error: $error")
+                            } else {
+                                Log.d(TAG, "VIDEO_FREQUENCY API Success - Result: $result")
+                            }
+                            cont.resume(error == null)
+                        }
+                    }
+                    val end = System.currentTimeMillis()
+                    Log.d(TAG, "API TIME - VIDEO_FREQUENCY: ${end - start} ms, Success: $success")
+                    success
+                }
+                apiCalls.add(videoFrequencyDeferred)
+
                 delay(100)
                 val results = apiCalls.awaitAll()
                 val allSuccessful = results.all { it }
@@ -706,11 +740,32 @@ class CameraLayoutViewModel : ViewModel() {
         return flipSuccess && mirrorSuccess
     }
 
+    private suspend fun applyVideoFrequencyChange(): Boolean {
+        var success = false
+        
+        Log.d(TAG, "Applying video frequency change to: ${_currentVideoFrequency.value.displayVal}")
+        MotocamAPIAndroidHelper.setVideoFrequencyAsync(
+            scope = viewModelScope,
+            frequency = _currentVideoFrequency.value
+        ) { result, error ->
+            if (error != null) {
+                Log.e(TAG, "Error setting video frequency: $error")
+            } else {
+                Log.d(TAG, "Video frequency set successfully")
+                success = true
+            }
+        }
+        
+        delay(500)
+        return success
+    }
+
     private fun saveInitialValues() {
         initialAutoDayNight = _isAutoDayNightEnabled.value
         initialVisionMode = _currentVisionMode.value
         initialCameraMode = _currentCameraMode.value
         initialOrientationMode = _currentOrientationMode.value
+        initialVideoFrequency = _currentVideoFrequency.value
 
         // Commit "applied" values only when we reach a known-success point
         // (successful initial fetch or successful Apply).
@@ -726,14 +781,16 @@ class CameraLayoutViewModel : ViewModel() {
         val visionModeChanged = initialVisionMode != _currentVisionMode.value
         val cameraModeChanged = initialCameraMode != _currentCameraMode.value
         val orientationModeChanged = initialOrientationMode != _currentOrientationMode.value
+        val videoFrequencyChanged = initialVideoFrequency != _currentVideoFrequency.value
         
-        val hasChanges = autoDayNightChanged || visionModeChanged || cameraModeChanged || orientationModeChanged
+        val hasChanges = autoDayNightChanged || visionModeChanged || cameraModeChanged || orientationModeChanged || videoFrequencyChanged
         
         Log.d(TAG, "checkForChanges() - Details:")
         Log.d(TAG, "  autoDayNightChanged: $autoDayNightChanged (initial: $initialAutoDayNight, current: ${_isAutoDayNightEnabled.value})")
         Log.d(TAG, "  visionModeChanged: $visionModeChanged (initial: $initialVisionMode, current: ${_currentVisionMode.value})")
         Log.d(TAG, "  cameraModeChanged: $cameraModeChanged (initial: $initialCameraMode, current: ${_currentCameraMode.value})")
         Log.d(TAG, "  orientationModeChanged: $orientationModeChanged (initial: $initialOrientationMode, current: ${_currentOrientationMode.value})")
+        Log.d(TAG, "  videoFrequencyChanged: $videoFrequencyChanged (initial: $initialVideoFrequency, current: ${_currentVideoFrequency.value})")
         Log.d(TAG, "  RESULT hasChanges: $hasChanges")
         
         _hasUnsavedChanges.value = hasChanges
@@ -785,6 +842,11 @@ class CameraLayoutViewModel : ViewModel() {
 
     fun setOrientationMode(mode: OrientationMode) {
         _currentOrientationMode.value = mode
+        checkForChanges()
+    }
+
+    fun setVideoFrequency(frequency: MotocamAPIHelper.VIDEO_FREQUENCY) {
+        _currentVideoFrequency.value = frequency
         checkForChanges()
     }
 

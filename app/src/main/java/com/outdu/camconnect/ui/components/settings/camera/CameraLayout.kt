@@ -189,6 +189,7 @@ fun CameraLayoutContent(
     val currentVisionMode by remember { viewModel.currentVisionMode }
     val currentCameraMode by remember { viewModel.currentCameraMode }
     val currentOrientationMode by remember { viewModel.currentOrientationMode }
+    val currentVideoFrequency by remember { viewModel.currentVideoFrequency }
 
     // Settings sections
     Column(
@@ -435,6 +436,45 @@ fun CameraLayoutContent(
                             onClick = { viewModel.toggleOrientationMode(OrientationMode.MIRROR) },
                             modifier = Modifier.weight(1f),
                             iconVal = R.drawable.flip_horizontal_line
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Video Frequency",
+                        style = TextStyle(
+                            fontSize = if (deviceType == DeviceType.TABLET) 16.sp else 14.sp,
+                            lineHeight = 14.02.sp,
+                            fontFamily = FontFamily(Font(R.font.just_sans_regular)),
+                            fontWeight = FontWeight(500),
+                            color = if (isDarkTheme) Color.White else Color.Black
+                        )
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OptionButton(
+                            text = "50 Hz",
+                            isSelected = currentVideoFrequency == com.outdu.camconnect.communication.MotocamAPIHelper.VIDEO_FREQUENCY.HZ_50,
+                            onClick = { viewModel.setVideoFrequency(com.outdu.camconnect.communication.MotocamAPIHelper.VIDEO_FREQUENCY.HZ_50) },
+                            modifier = Modifier.weight(1f),
+                            iconVal = R.drawable.git_commit_line
+                        )
+                        OptionButton(
+                            text = "60 Hz",
+                            isSelected = currentVideoFrequency == com.outdu.camconnect.communication.MotocamAPIHelper.VIDEO_FREQUENCY.HZ_60,
+                            onClick = { viewModel.setVideoFrequency(com.outdu.camconnect.communication.MotocamAPIHelper.VIDEO_FREQUENCY.HZ_60) },
+                            modifier = Modifier.weight(1f),
+                            iconVal = R.drawable.git_commit_line
                         )
                     }
                 }

@@ -29,7 +29,7 @@ object CameraCommandProtocol {
 
     enum class ImageSubCommands(val value: Int) {
         ZOOM(1), ROTATION(2), IRCUTFILTER(3), IRBRIGHTNESS(4), DAYMODE(5),
-        RESOLUTION(6), MIRROR(7), FLIP(8), TILT(9), WDR(10), EIS(11), GYROREADER(12), MISC(13);
+        RESOLUTION(6), MIRROR(7), FLIP(8), TILT(9), WDR(10), EIS(11), GYROREADER(12), MISC(13), VIDEO_FREQUENCY(16);
         
         fun getVal(): Int = value
     }
@@ -53,7 +53,7 @@ object CameraCommandProtocol {
     }
 
     enum class NetworkSubCommands(val value: Int) {
-        WifiHotspot(1), WifiClient(2), WifiState(3);
+        WifiHotspot(1), WifiClient(2), WifiState(3), WifiCountryCode(7);
         
         fun getVal(): Int = value
     }
@@ -255,6 +255,88 @@ object CameraCommandProtocol {
         )
     }
 
+    fun getVideoFrequencyCmd(): IntArray {
+        return intArrayOf(
+            Header.GET.getVal(),
+            Commands.IMAGE.getVal(),
+            ImageSubCommands.VIDEO_FREQUENCY.getVal(),
+            0,
+            0
+        )
+    }
+
+    fun setVideoFrequencyCmd(frequency: Int): IntArray {
+        if (frequency !in 1..2) {
+            throw Exception("Video frequency must be 1 (50Hz) or 2 (60Hz), got: $frequency")
+        }
+        return intArrayOf(
+            Header.SET.getVal(),
+            Commands.IMAGE.getVal(),
+            ImageSubCommands.VIDEO_FREQUENCY.getVal(),
+            1,
+            frequency,
+            0
+        )
+    }
+
+    fun parseGetVideoFrequencyResponse(response: IntArray, length: Int): Int {
+        if (length < 7) throw Exception("Invalid response length: $length")
+        
+        val header = response[0]
+        val command = response[1]
+        val subCommand = response[2]
+        val dataLength = response[3]
+        
+        if (header != Header.RESPONSE.getVal()) {
+            throw Exception("Invalid header in response: $header")
+        }
+        if (command != Commands.IMAGE.getVal()) {
+            throw Exception("Invalid command in response: $command")
+        }
+        if (subCommand != ImageSubCommands.VIDEO_FREQUENCY.getVal()) {
+            throw Exception("Invalid sub command in response: $subCommand")
+        }
+        
+        val successFlag = response[4]
+        if (successFlag == 0) {
+            val frequencyVal = response[5]
+            if (frequencyVal !in 1..2) {
+                throw Exception("Invalid video frequency value: $frequencyVal")
+            }
+            return frequencyVal
+        } else {
+            val errorCode = response[5]
+            throw Exception("Get Video Frequency failed with error code: $errorCode")
+        }
+    }
+
+    fun parseSetVideoFrequencyResponse(response: IntArray, length: Int): Boolean {
+        if (length < 7) throw Exception("Invalid response length: $length")
+        
+        val header = response[0]
+        val command = response[1]
+        val subCommand = response[2]
+        val dataLength = response[3]
+        
+        if (header != Header.ACK.getVal()) {
+            throw Exception("Invalid header in response: $header")
+        }
+        if (command != Commands.IMAGE.getVal()) {
+            throw Exception("Invalid command in response: $command")
+        }
+        if (subCommand != ImageSubCommands.VIDEO_FREQUENCY.getVal()) {
+            throw Exception("Invalid sub command in response: $subCommand")
+        }
+        
+        val successFlag = response[4]
+        if (successFlag == 0) {
+            return true
+        } else {
+            val errorCode = response[5]
+            throw Exception("Set Video Frequency failed with error code: $errorCode")
+        }
+    }
+
     fun shutdownCmd(): IntArray {
         return intArrayOf(
             Header.SET.getVal(),
@@ -270,6 +352,29 @@ object CameraCommandProtocol {
             Commands.NETWORK.getVal(),
             NetworkSubCommands.WifiState.getVal(),
             0
+        )
+    }
+
+    fun getWifiCountryCodeCmd(): IntArray {
+        return intArrayOf(
+            Header.GET.getVal(),
+            Commands.NETWORK.getVal(),
+            NetworkSubCommands.WifiCountryCode.getVal(),
+            0
+        )
+    }
+
+    @Throws(Exception::class)
+    fun setWifiCountryCodeCmd(countryCode: String): IntArray {
+        require(countryCode.length == 2) { "Country code must be 2 characters" }
+        return intArrayOf(
+            Header.SET.getVal(),
+            Commands.NETWORK.getVal(),
+            NetworkSubCommands.WifiCountryCode.getVal(),
+            3,
+            2,
+            countryCode[0].code,
+            countryCode[1].code
         )
     }
 
@@ -347,6 +452,46 @@ object CameraCommandProtocol {
         val stateValue = response[3]
         return WifiState.values().find { it.value == stateValue } 
             ?: throw Exception("Unknown WiFi state value: $stateValue")
+    }
+
+    @Throws(Exception::class)
+    fun getWifiCountryCodeCmdResponseParse(response: IntArray, length: Int): String {
+        if (length < 8) {
+            throw Exception("Invalid response length for WiFi country code: $length")
+        }
+        
+        if (response[0] != Header.RESPONSE.getVal()) {
+            throw Exception("Invalid response header: ${response[0]}")
+        }
+        
+        if (response[1] != Commands.NETWORK.getVal()) {
+            throw Exception("Invalid command in response: ${response[1]}")
+        }
+        
+        if (response[2] != NetworkSubCommands.WifiCountryCode.getVal()) {
+            throw Exception("Invalid subcommand in response: ${response[2]}")
+        }
+        
+        val dataLength = response[3]
+        val successFlag = response[4]
+        
+        if (successFlag != 0) {
+            val errorCode = response[5]
+            throw Exception("Get WiFi Country Code failed with error code: $errorCode")
+        }
+        
+        val codeLength = response[5]
+        if (codeLength != 2) {
+            throw Exception("Invalid country code length: $codeLength")
+        }
+        
+        val countryCode = String(charArrayOf(response[6].toChar(), response[7].toChar()))
+        return countryCode
+    }
+
+    @Throws(Exception::class)
+    fun setWifiCountryCodeCmdResponseParse(response: IntArray, length: Int): Boolean {
+        return parseSetCommandResponse(response, length, Commands.NETWORK.getVal(), NetworkSubCommands.WifiCountryCode.getVal())
     }
 
     // Helper methods for response parsing

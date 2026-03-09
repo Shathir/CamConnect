@@ -69,7 +69,7 @@ public class MotocamAPIHelper {
     }
 
     public enum NetworkSubCommands {
-        WifiHotspot(1), WifiClient(2), WifiState(3), Ethernet(4), Onvif(5), Ethernet_dhcp(6);
+        WifiHotspot(1), WifiClient(2), WifiState(3), Ethernet(4), Onvif(5), Ethernet_dhcp(6), WifiCountryCode(7);
         private final int val;
         NetworkSubCommands(int i) {
             this.val = i;
@@ -103,7 +103,7 @@ public class MotocamAPIHelper {
 
     public enum ImageSubCommands {
         ZOOM(1), ROTATION(2), IRCUTFILTER(3), IRBRIGHTNESS(4), DAYMODE(5),
-        RESOLUTION(6), MIRROR(7), FLIP(8), TILT(9), WDR(10), EIS(11), GYROREADER(12), MISC(13);
+        RESOLUTION(6), MIRROR(7), FLIP(8), TILT(9), WDR(10), EIS(11), GYROREADER(12), MISC(13), VIDEO_FREQUENCY(16);
         private final int val;
         ImageSubCommands(int i) {
             this.val = i;
@@ -584,6 +584,39 @@ public class MotocamAPIHelper {
         }
         public static String getKey() {
             return "GYROREADER";
+        }
+    };
+
+    public enum VIDEO_FREQUENCY {
+        HZ_50(1, "50Hz"), HZ_60(2, "60Hz");
+        private final int val;
+        private final String displayVal;
+        VIDEO_FREQUENCY(int i, String s) {
+            this.val = i;
+            this.displayVal = s;
+        }
+        public int getVal() {
+            return this.val;
+        }
+        public String getDisplayVal() {
+            return this.displayVal;
+        }
+        public static VIDEO_FREQUENCY get(int v) {
+            switch (v){
+                case 1:return HZ_50;
+                case 2:return HZ_60;
+                default:return null;
+            }
+        }
+        public static VIDEO_FREQUENCY get(String v) {
+            switch (v){
+                case "50Hz":return HZ_50;
+                case "60Hz":return HZ_60;
+                default:return null;
+            }
+        }
+        public static String getKey() {
+            return "VIDEO_FREQUENCY";
         }
     };
 
@@ -1423,6 +1456,59 @@ public class MotocamAPIHelper {
         return cmd;
     }
 
+    public static int[] setVideoFrequencyCmd(String frequency) throws Exception {
+        int cmd[] = new int[6];
+        cmd[0] = Header.SET.getVal();
+        cmd[1] = Commands.IMAGE.getVal();
+        cmd[2] = ImageSubCommands.VIDEO_FREQUENCY.getVal();
+        cmd[3] = 1;
+        VIDEO_FREQUENCY freq = VIDEO_FREQUENCY.get(frequency);
+        if(freq == null)
+            throw new Exception("Invalid video frequency val");
+        cmd[4] = freq.getVal();
+        cmd[5] = 0;
+        return cmd;
+    }
+
+    public static boolean setVideoFrequencyCmdResponseParse(int response[], int length) throws Exception {
+        return setCmdResponseParse(response, length, Commands.IMAGE.getVal(), ImageSubCommands.VIDEO_FREQUENCY.getVal());
+    }
+
+    public static int[] getVideoFrequencyCmd() throws Exception {
+        return getCmd(Commands.IMAGE.getVal(), ImageSubCommands.VIDEO_FREQUENCY.getVal());
+    }
+
+    public static VIDEO_FREQUENCY getVideoFrequencyCmdResponseParse(int response[], int length) throws Exception {
+        if(length < 7) throw new Exception("Invalid response length");
+        int header = response[0];
+        int command = response[1];
+        int subCommand = response[2];
+        int dataLength = response[3];
+
+        if(header != Header.RESPONSE.getVal()) {
+            throw new Exception("Invalid header in response");
+        }
+        if(command != Commands.IMAGE.getVal()) {
+            throw new Exception("Invalid command in response");
+        }
+        if(subCommand != ImageSubCommands.VIDEO_FREQUENCY.getVal()) {
+            throw new Exception("Invalid sub command in response");
+        }
+
+        int s_or_e = response[4];
+        if(s_or_e == 0) {
+            int freq_val = response[5];
+            VIDEO_FREQUENCY freq = VIDEO_FREQUENCY.get(freq_val);
+            if(freq == null) {
+                throw new Exception("Invalid video frequency value: " + freq_val);
+            }
+            return freq;
+        } else {
+            int errorCode = response[5];
+            throw new Exception("Get Video Frequency failed with error code: " + errorCode);
+        }
+    }
+
     public static boolean setImgDayModeCmdResponseParse(int response[], int length) throws Exception {
         return setCmdResponseParse(response, length, Commands.IMAGE.getVal(), ImageSubCommands.DAYMODE.getVal());
     }
@@ -1607,6 +1693,63 @@ public class MotocamAPIHelper {
 
     public static int[] getWifiStateCmd() throws Exception {
         return getCmd(Commands.NETWORK.getVal(), NetworkSubCommands.WifiState.getVal());
+    }
+
+    public static int[] getWifiCountryCodeCmd() throws Exception {
+        return getCmd(Commands.NETWORK.getVal(), NetworkSubCommands.WifiCountryCode.getVal());
+    }
+
+    public static int[] setWifiCountryCodeCmd(String countryCode) throws Exception {
+        if (countryCode == null || countryCode.length() != 2) {
+            throw new Exception("Country code must be exactly 2 characters");
+        }
+        
+        int cmd[] = new int[8];
+        cmd[0] = Header.SET.getVal();
+        cmd[1] = Commands.NETWORK.getVal();
+        cmd[2] = NetworkSubCommands.WifiCountryCode.getVal();
+        cmd[3] = 3;
+        cmd[4] = 2;
+        cmd[5] = (int) countryCode.charAt(0);
+        cmd[6] = (int) countryCode.charAt(1);
+        cmd[7] = 0;
+        return cmd;
+    }
+
+    public static String getWifiCountryCodeCmdResponseParse(int response[], int length) throws Exception {
+        if(length < 8) throw new Exception("Invalid response length");
+        int header = response[0];
+        int command = response[1];
+        int subCommand = response[2];
+        int dataLength = response[3];
+
+        if(header != Header.RESPONSE.getVal()) {
+            throw new Exception("Invalid header in response");
+        }
+        if(command != Commands.NETWORK.getVal()) {
+            throw new Exception("Invalid command in response");
+        }
+        if(subCommand != NetworkSubCommands.WifiCountryCode.getVal()) {
+            throw new Exception("Invalid sub command in response");
+        }
+
+        int s_or_e = response[4];
+        if(s_or_e == 0) {
+            int codeLength = response[5];
+            if(codeLength != 2) {
+                throw new Exception("Invalid country code length: " + codeLength);
+            }
+            char char1 = (char) response[6];
+            char char2 = (char) response[7];
+            return String.valueOf(char1) + String.valueOf(char2);
+        } else {
+            int errorCode = response[5];
+            throw new Exception("Get WiFi Country Code failed with error code: " + errorCode);
+        }
+    }
+
+    public static boolean setWifiCountryCodeCmdResponseParse(int response[], int length) throws Exception {
+        return setCmdResponseParse(response, length, Commands.NETWORK.getVal(), NetworkSubCommands.WifiCountryCode.getVal());
     }
 
     public static WifiState getWifiStateCmdResponseParse(int response[], int length) throws Exception {

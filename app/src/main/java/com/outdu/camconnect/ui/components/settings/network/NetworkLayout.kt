@@ -1,5 +1,6 @@
 package com.outdu.camconnect.ui.components.settings.network
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -47,6 +48,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import android.content.Context
+import android.telephony.TelephonyManager
+import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.outdu.camconnect.R
@@ -68,6 +72,8 @@ import com.outdu.camconnect.SetupActivity
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import com.outdu.camconnect.ui.components.settings.SearchableCountryDropdown
 
 
 @Composable
@@ -86,6 +92,7 @@ fun NetworkLayout() {
             networkConfigurationViewModel = networkConfigurationViewModel,
             onModeDetermined = { mode -> deviceMode = mode }
         )
+        networkConfigurationViewModel.loadWifiCountryCode()
     }
 
     Column(
@@ -100,6 +107,10 @@ fun NetworkLayout() {
         ModeButtonRow(
             deviceMode = deviceMode,
             onModeChange = { deviceMode = it }
+        )
+
+        GeneralSettingsSection(
+            networkConfigurationViewModel = networkConfigurationViewModel
         )
 
         // Use key to help Compose track state properly and avoid unnecessary recomposition
@@ -198,6 +209,119 @@ private fun getModeButtonBackgroundColor(isSelected: Boolean, isDarkTheme: Boole
         isSelected && !isDarkTheme -> StravionBlue
         !isSelected && isDarkTheme -> Color(0xFF333333)
         else -> Color(0xFFFFFFFF)
+    }
+}
+
+@Composable
+private fun GeneralSettingsSection(
+    networkConfigurationViewModel: NetworkConfigurationViewModel
+) {
+    val context = LocalContext.current
+    val countryCode by networkConfigurationViewModel.wifiCountryCodeState.collectAsStateWithLifecycle()
+    var showSaveButton by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val isDarkTheme = camConnectIsDarkTheme()
+    val deviceType = rememberDeviceType()
+    
+    val currentLocationText = remember {
+        val telephony = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+        val countryIso = telephony?.networkCountryIso?.takeIf { it.isNotEmpty() }
+        if (countryIso != null) {
+            Locale("", countryIso).displayCountry.takeIf { it.isNotEmpty() } ?: countryIso.uppercase()
+        } else {
+            "—"
+        }
+    }
+    
+    val titleTextStyle = TextStyle(
+        fontSize = if (deviceType == DeviceType.TABLET) 24.sp else 14.sp,
+        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily(Font(R.font.arial_regular)),
+        color = if (isDarkTheme) Color.White else Color.Black
+    )
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "General WiFi Settings",
+            style = titleTextStyle.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = if (deviceType == DeviceType.TABLET) 26.sp else 16.sp
+            )
+        )
+        
+        Text(
+            text = "Current location: $currentLocationText",
+            style = titleTextStyle.copy(
+                fontWeight = FontWeight.Normal,
+                fontSize = if (deviceType == DeviceType.TABLET) 20.sp else 14.sp
+            )
+        )
+        
+        SearchableCountryDropdown(
+            selectedCountryCode = countryCode,
+            onCountrySelected = { 
+                networkConfigurationViewModel.updateWifiCountryCode(it)
+                showSaveButton = true
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        if (showSaveButton) {
+            ActionButton(
+                text = if (isSaving) "Saving..." else "Save Country Code"
+            ) {
+                if (!isSaving) {
+                    isSaving = true
+                    networkConfigurationViewModel.saveWifiCountryCode(
+                        onSuccess = {
+                            isSaving = false
+                            showSaveButton = false
+                            showSuccessDialog = true
+                        },
+                        onError = { error ->
+                            isSaving = false
+                            Log.e("GeneralSettings", "Failed to save country code: $error")
+                        }
+                    )
+                }
+            }
+        }
+    }
+    
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { showSuccessDialog = false },
+            title = {
+                Text(
+                    text = "Country Code Updated",
+                    fontFamily = FontFamily(Font(R.font.arial_regular)),
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "WiFi country code has been successfully updated. Please rehost the hostapd (restart WiFi hotspot) for the changes to take effect.",
+                    fontFamily = FontFamily(Font(R.font.arial_regular))
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showSuccessDialog = false }) {
+                    Text(
+                        text = "OK",
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
+                        color = StravionBlue
+                    )
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 }
 

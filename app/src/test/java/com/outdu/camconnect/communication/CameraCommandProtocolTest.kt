@@ -731,4 +731,145 @@ class CameraCommandProtocolTest {
             }
         }
     }
+
+    @Test
+    fun `test getWifiCountryCodeCmd builds correct command`() {
+        val command = CameraCommandProtocol.getWifiCountryCodeCmd()
+        
+        assertEquals("Command should have 4 elements", 4, command.size)
+        assertEquals("Header should be GET", CameraCommandProtocol.Header.GET.getVal(), command[0])
+        assertEquals("Command should be NETWORK", CameraCommandProtocol.Commands.NETWORK.getVal(), command[1])
+        assertEquals("SubCommand should be WifiCountryCode", CameraCommandProtocol.NetworkSubCommands.WifiCountryCode.getVal(), command[2])
+        assertEquals("Data length should be 0", 0, command[3])
+    }
+
+    @Test
+    fun `test setWifiCountryCodeCmd builds correct command with valid country code`() {
+        val command = CameraCommandProtocol.setWifiCountryCodeCmd("US")
+        
+        assertEquals("Command should have 7 elements", 7, command.size)
+        assertEquals("Header should be SET", CameraCommandProtocol.Header.SET.getVal(), command[0])
+        assertEquals("Command should be NETWORK", CameraCommandProtocol.Commands.NETWORK.getVal(), command[1])
+        assertEquals("SubCommand should be WifiCountryCode", CameraCommandProtocol.NetworkSubCommands.WifiCountryCode.getVal(), command[2])
+        assertEquals("Data length should be 3", 3, command[3])
+        assertEquals("Country code length should be 2", 2, command[4])
+        assertEquals("First character should be U", 'U'.code, command[5])
+        assertEquals("Second character should be S", 'S'.code, command[6])
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `test setWifiCountryCodeCmd throws exception for invalid length`() {
+        CameraCommandProtocol.setWifiCountryCodeCmd("USA")
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `test setWifiCountryCodeCmd throws exception for single character`() {
+        CameraCommandProtocol.setWifiCountryCodeCmd("U")
+    }
+
+    @Test
+    fun `test getWifiCountryCodeCmdResponseParse with success response`() {
+        val response = intArrayOf(
+            CameraCommandProtocol.Header.RESPONSE.getVal(),
+            CameraCommandProtocol.Commands.NETWORK.getVal(),
+            CameraCommandProtocol.NetworkSubCommands.WifiCountryCode.getVal(),
+            3,
+            0,
+            2,
+            'I'.code,
+            'N'.code
+        )
+        
+        val countryCode = CameraCommandProtocol.getWifiCountryCodeCmdResponseParse(response, 8)
+        assertEquals("Country code should be IN", "IN", countryCode)
+    }
+
+    @Test
+    fun `test getWifiCountryCodeCmdResponseParse with different country codes`() {
+        val testCases = listOf("US", "GB", "IN", "DE", "FR", "JP", "AU", "CA")
+        
+        testCases.forEach { expectedCode ->
+            val response = intArrayOf(
+                CameraCommandProtocol.Header.RESPONSE.getVal(),
+                CameraCommandProtocol.Commands.NETWORK.getVal(),
+                CameraCommandProtocol.NetworkSubCommands.WifiCountryCode.getVal(),
+                3,
+                0,
+                2,
+                expectedCode[0].code,
+                expectedCode[1].code
+            )
+            
+            val countryCode = CameraCommandProtocol.getWifiCountryCodeCmdResponseParse(response, 8)
+            assertEquals("Country code should be $expectedCode", expectedCode, countryCode)
+        }
+    }
+
+    @Test(expected = Exception::class)
+    fun `test getWifiCountryCodeCmdResponseParse throws exception for error response`() {
+        val response = intArrayOf(
+            CameraCommandProtocol.Header.RESPONSE.getVal(),
+            CameraCommandProtocol.Commands.NETWORK.getVal(),
+            CameraCommandProtocol.NetworkSubCommands.WifiCountryCode.getVal(),
+            2,
+            1,
+            -5
+        )
+        
+        CameraCommandProtocol.getWifiCountryCodeCmdResponseParse(response, 6)
+    }
+
+    @Test(expected = Exception::class)
+    fun `test getWifiCountryCodeCmdResponseParse throws exception for invalid length`() {
+        val response = intArrayOf(
+            CameraCommandProtocol.Header.RESPONSE.getVal(),
+            CameraCommandProtocol.Commands.NETWORK.getVal(),
+            CameraCommandProtocol.NetworkSubCommands.WifiCountryCode.getVal(),
+            2
+        )
+        
+        CameraCommandProtocol.getWifiCountryCodeCmdResponseParse(response, 4)
+    }
+
+    @Test(expected = Exception::class)
+    fun `test getWifiCountryCodeCmdResponseParse throws exception for invalid country code length`() {
+        val response = intArrayOf(
+            CameraCommandProtocol.Header.RESPONSE.getVal(),
+            CameraCommandProtocol.Commands.NETWORK.getVal(),
+            CameraCommandProtocol.NetworkSubCommands.WifiCountryCode.getVal(),
+            4,
+            0,
+            3,
+            'U'.code,
+            'S'.code,
+            'A'.code
+        )
+        
+        CameraCommandProtocol.getWifiCountryCodeCmdResponseParse(response, 9)
+    }
+
+    @Test
+    fun `test setWifiCountryCodeCmdResponseParse with success response`() {
+        val response = intArrayOf(
+            CameraCommandProtocol.Header.ACK.getVal(),
+            CameraCommandProtocol.Commands.NETWORK.getVal(),
+            CameraCommandProtocol.NetworkSubCommands.WifiCountryCode.getVal(),
+            1
+        )
+        
+        val result = CameraCommandProtocol.setWifiCountryCodeCmdResponseParse(response, 4)
+        assertTrue("Should return true for success response", result)
+    }
+
+    @Test(expected = Exception::class)
+    fun `test setWifiCountryCodeCmdResponseParse throws exception for invalid header`() {
+        val response = intArrayOf(
+            CameraCommandProtocol.Header.RESPONSE.getVal(),
+            CameraCommandProtocol.Commands.NETWORK.getVal(),
+            CameraCommandProtocol.NetworkSubCommands.WifiCountryCode.getVal(),
+            1
+        )
+        
+        CameraCommandProtocol.setWifiCountryCodeCmdResponseParse(response, 4)
+    }
 }

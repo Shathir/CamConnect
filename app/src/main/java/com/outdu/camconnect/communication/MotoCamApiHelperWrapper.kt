@@ -243,6 +243,16 @@ object MotocamAPIHelperWrapper {
         MotocamAPIHelper::setAudioMicCmdResponseParse
     )
 
+    suspend fun getVideoFrequency() = sendCommand(
+        MotocamAPIHelper.getVideoFrequencyCmd(),
+        MotocamAPIHelper::getVideoFrequencyCmdResponseParse
+    )
+
+    suspend fun setVideoFrequency(frequency: MotocamAPIHelper.VIDEO_FREQUENCY) = sendCommand(
+        MotocamAPIHelper.setVideoFrequencyCmd(frequency.displayVal),
+        MotocamAPIHelper::setVideoFrequencyCmdResponseParse
+    )
+
     suspend fun setWifiHotspot(
         ssid: String, encryptionType: String, key: String, ip: String, mask: String
     ) = sendCommand(
@@ -260,6 +270,16 @@ object MotocamAPIHelperWrapper {
     suspend fun getWifiState() = sendCommand(
         MotocamAPIHelper.getWifiStateCmd(),
         MotocamAPIHelper::getWifiStateCmdResponseParse
+    )
+
+    suspend fun getWifiCountryCode() = sendCommand(
+        MotocamAPIHelper.getWifiCountryCodeCmd(),
+        MotocamAPIHelper::getWifiCountryCodeCmdResponseParse
+    )
+
+    suspend fun setWifiCountryCode(countryCode: String) = sendCommand(
+        MotocamAPIHelper.setWifiCountryCodeCmd(countryCode),
+        MotocamAPIHelper::setWifiCountryCodeCmdResponseParse
     )
 
     suspend fun getWifiHotspotConfig() = sendCommand(

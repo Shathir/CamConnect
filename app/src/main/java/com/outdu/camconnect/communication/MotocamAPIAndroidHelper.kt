@@ -308,6 +308,37 @@ object MotocamAPIAndroidHelper {
         }
     }
 
+    fun getVideoFrequencyAsync(
+        scope: CoroutineScope,
+        callback: (MotocamAPIHelper.VIDEO_FREQUENCY?, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = MotocamAPIHelperWrapper.getVideoFrequency()
+                callback(result, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "getVideoFrequencyAsync failed", e)
+                callback(null, e.message)
+            }
+        }
+    }
+
+    fun setVideoFrequencyAsync(
+        scope: CoroutineScope,
+        frequency: MotocamAPIHelper.VIDEO_FREQUENCY,
+        callback: (Boolean, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = MotocamAPIHelperWrapper.setVideoFrequency(frequency)
+                callback(result, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "setVideoFrequencyAsync failed", e)
+                callback(false, e.message)
+            }
+        }
+    }
+
     fun setDefaultToCurrentAsync(
         scope: CoroutineScope,
         callback: (Boolean, String?) -> Unit
@@ -461,6 +492,37 @@ object MotocamAPIAndroidHelper {
             } catch (e: Exception) {
                 Log.e(TAG, "getWifiClientConfigAsync failed", e)
                 callback(null, e.message)
+            }
+        }
+    }
+
+    fun getWifiCountryCodeAsync(
+        scope: CoroutineScope,
+        callback: (String?, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = MotocamAPIHelperWrapper.getWifiCountryCode()
+                callback(result, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "getWifiCountryCodeAsync failed", e)
+                callback(null, e.message)
+            }
+        }
+    }
+
+    fun setWifiCountryCodeAsync(
+        scope: CoroutineScope,
+        countryCode: String,
+        callback: (Boolean, String?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = MotocamAPIHelperWrapper.setWifiCountryCode(countryCode)
+                callback(result, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "setWifiCountryCodeAsync failed", e)
+                callback(false, e.message)
             }
         }
     }

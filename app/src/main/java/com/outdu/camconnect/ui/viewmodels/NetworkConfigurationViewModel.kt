@@ -31,6 +31,9 @@ class NetworkConfigurationViewModel: ViewModel() {
     private val _wifiState = MutableStateFlow(WifiConfiguration())
     val wifiState: StateFlow<WifiConfiguration> = _wifiState.asStateFlow()
 
+    private val _wifiCountryCodeState = MutableStateFlow("US")
+    val wifiCountryCodeState: StateFlow<String> = _wifiCountryCodeState.asStateFlow()
+
     fun updateHotspotSSID(ssid: String){
         _hotspotState.value = _hotspotState.value.copy(hotspot_ssid = ssid)
     }
@@ -207,6 +210,42 @@ class NetworkConfigurationViewModel: ViewModel() {
                         dynamicIpEnabled = isDynamicIp
                     )
                 }
+            }
+        }
+    }
+
+    fun updateWifiCountryCode(countryCode: String) {
+        _wifiCountryCodeState.value = countryCode
+    }
+
+    fun loadWifiCountryCode() {
+        MotocamAPIAndroidHelper.getWifiCountryCodeAsync(viewModelScope) { countryCode, error ->
+            if (error != null) {
+                Log.e("NetworkConfigViewModel", "Error loading WiFi country code: $error")
+                return@getWifiCountryCodeAsync
+            }
+            
+            countryCode?.let {
+                _wifiCountryCodeState.value = it
+                Log.i("NetworkConfigViewModel", "Loaded WiFi country code: $it")
+            }
+        }
+    }
+
+    fun saveWifiCountryCode(
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        MotocamAPIAndroidHelper.setWifiCountryCodeAsync(
+            scope = viewModelScope,
+            countryCode = _wifiCountryCodeState.value
+        ) { success, error ->
+            if (success) {
+                Log.i("NetworkConfigViewModel", "WiFi country code saved successfully: ${_wifiCountryCodeState.value}")
+                onSuccess()
+            } else {
+                Log.e("NetworkConfigViewModel", "Failed to save WiFi country code: $error")
+                onError(error ?: "Failed to save WiFi country code")
             }
         }
     }

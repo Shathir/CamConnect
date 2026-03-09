@@ -446,6 +446,68 @@ class CameraApiManager private constructor() {
             Result.failure(DeviceException.CommandException("WiFi state query failed", e))
         }
     }
+
+    suspend fun getWifiCountryCode(): Result<String> {
+        Log.i(TAG, "Getting WiFi country code")
+        
+        return try {
+            val client = getOrCreateClient(getCurrentDeviceIP())
+            
+            if (!client.isConnected()) {
+                val connectResult = connectToDevice(getCurrentDeviceIP())
+                if (connectResult.isFailure) {
+                    return Result.failure(connectResult.exceptionOrNull() ?: Exception("Connection failed"))
+                }
+            }
+            
+            val command = CameraCommandProtocol.getWifiCountryCodeCmd()
+            val response = IntArray(MAX_BYTES)
+            val result = client.sendCommand(command, response)
+            
+            if (result.isSuccess) {
+                val bytesReceived = result.getOrThrow()
+                val countryCode = CameraCommandProtocol.getWifiCountryCodeCmdResponseParse(response, bytesReceived)
+                Log.i(TAG, "WiFi country code: $countryCode")
+                Result.success(countryCode)
+            } else {
+                Result.failure(Exception("Failed to get WiFi country code: ${result.exceptionOrNull()?.message}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "WiFi country code query failed", e)
+            Result.failure(DeviceException.CommandException("WiFi country code query failed", e))
+        }
+    }
+
+    suspend fun setWifiCountryCode(countryCode: String): Result<Boolean> {
+        Log.i(TAG, "Setting WiFi country code to: $countryCode")
+        
+        return try {
+            val client = getOrCreateClient(getCurrentDeviceIP())
+            
+            if (!client.isConnected()) {
+                val connectResult = connectToDevice(getCurrentDeviceIP())
+                if (connectResult.isFailure) {
+                    return Result.failure(connectResult.exceptionOrNull() ?: Exception("Connection failed"))
+                }
+            }
+            
+            val command = CameraCommandProtocol.setWifiCountryCodeCmd(countryCode)
+            val response = IntArray(MAX_BYTES)
+            val result = client.sendCommand(command, response)
+            
+            if (result.isSuccess) {
+                val bytesReceived = result.getOrThrow()
+                val success = CameraCommandProtocol.setWifiCountryCodeCmdResponseParse(response, bytesReceived)
+                Log.i(TAG, "WiFi country code set result: $success")
+                Result.success(success)
+            } else {
+                Result.failure(Exception("Failed to set WiFi country code: ${result.exceptionOrNull()?.message}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "WiFi country code set failed", e)
+            Result.failure(DeviceException.CommandException("WiFi country code set failed", e))
+        }
+    }
     
     // Health check and diagnostics
     
