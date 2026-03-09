@@ -25,6 +25,11 @@ data class DeviceSpecs(
     val gpuVendor: String
 )
 
+data class PerformanceInfo(
+    val stars: Int,
+    val message: String
+)
+
 fun getDeviceSpecs(context: Context): DeviceSpecs {
     Log.d("SpecProfiler", "Getting device specs...")
     val cpuName = readCpuName()
@@ -465,16 +470,28 @@ fun classifyPerformance(score: Int): PerformanceTier {
     }
 }
 
-fun getPerformanceMessage(tier: PerformanceTier): String {
+fun getPerformanceInfo(tier: PerformanceTier): PerformanceInfo {
     return when (tier) {
-        PerformanceTier.HIGH ->
-                    "Your device is well-equipped for high-resolution streaming and on-device AI. Expect smooth performance with ~10 FPS AI processing."
-        PerformanceTier.MEDIUM ->
-            "Your device can handle moderate AI workloads reliably. Heavy operations may reduce responsiveness. Expected AI FPS: ~7–8 FPS."
-        PerformanceTier.LOW ->
-            "Your device may struggle with continuous AI processing.You may notice frame drops and increased power usage. Expected AI FPS: ~4–5 FPS."
-        PerformanceTier.CRITICAL ->
-            "Your device’s hardware falls below the recommended level for smooth AI-assisted streaming.Performance may be degraded. Expected AI FPS: ~3 FPS."
+
+        PerformanceTier.HIGH -> PerformanceInfo(
+            stars = 4,
+            message = "Your device offers excellent performance for AI-assisted streaming. You can expect a smooth and responsive experience in most situations."
+        )
+
+        PerformanceTier.MEDIUM -> PerformanceInfo(
+            stars = 3,
+            message = "Your device provides good performance for AI-assisted streaming. The experience should remain smooth for everyday use, though demanding tasks may occasionally slow things down."
+        )
+
+        PerformanceTier.LOW -> PerformanceInfo(
+            stars = 2,
+            message = "Your device can run AI-assisted streaming, but performance may be limited. You might notice occasional delays or reduced smoothness during heavier use."
+        )
+
+        PerformanceTier.CRITICAL -> PerformanceInfo(
+            stars = 1,
+            message = "Your device is below the recommended level for AI-assisted streaming. The experience may feel slower or less responsive."
+        )
     }
 }
 

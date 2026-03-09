@@ -9,7 +9,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +37,6 @@ import com.outdu.camconnect.R
 import com.outdu.camconnect.profiler.classifyPerformance
 import com.outdu.camconnect.profiler.estimatePerformanceScore
 import com.outdu.camconnect.profiler.getDeviceSpecs
-import com.outdu.camconnect.profiler.getPerformanceMessage
 import com.outdu.camconnect.profiler.PerformanceTier
 import com.outdu.camconnect.services.OnvifDevice
 import com.outdu.camconnect.viewmodels.ViewerFlowViewModel
@@ -44,6 +45,8 @@ import com.outdu.camconnect.ui.theme.AppColors.StravionBlue
 import com.outdu.camconnect.utils.DeviceType
 import com.outdu.camconnect.utils.rememberDeviceType
 import android.util.Log
+import androidx.compose.ui.draw.shadow
+import com.outdu.camconnect.profiler.getPerformanceInfo
 
 
 /**
@@ -338,34 +341,75 @@ private fun StartStreamingSection(
         val specs = getDeviceSpecs(LocalContext.current)
         val score = estimatePerformanceScore(specs)
         val tier = classifyPerformance(score)
-        val message = getPerformanceMessage(tier)
+        val metricInfo = getPerformanceInfo(tier)
 
         Log.d("ViewerFlow1", "Performance score: $score")
         Log.d("ViewerFlow1", "Performance tier: $tier")
-        Log.d("ViewerFlow1", "Performance message: $message")
+        Log.d("ViewerFlow1", "Performance info: $metricInfo")
 
         var showMessage by remember { mutableStateOf(false) }
-        LaunchedEffect(message) {
+        LaunchedEffect(metricInfo) {
             showMessage = true
         }
 
         if(showMessage) {
-            val textColor = when (tier) {
-                PerformanceTier.LOW, PerformanceTier.CRITICAL -> Color(0xFFFF3B30) // Red
-                else -> Color(0xFF1A1A1C) // Black
+            val messageColor = when (metricInfo.stars) {
+                4 -> Color(0xFF34C759)   // Green
+                3 -> Color(0xFFFF9500)  // Orange
+                2, 1 -> Color(0xFFFF3B30) // Red
+                else -> Color(0xFF1A1A1C) // Default black
             }
-            
-            Text(
-                text = message,
-                style = TextStyle(
-                    fontSize = 16.sp,
-                    fontFamily = FontFamily(Font(R.font.arial_regular)),
-                    fontWeight = FontWeight(700),
-                    color = textColor
-                ),
+            val starColor = Color(0xFFFFD700) // Golden
+
+            Column(
                 modifier = Modifier.fillMaxWidth(0.8f),
-                textAlign = TextAlign.Center
-            )
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Device rating :",
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontFamily = FontFamily(Font(R.font.arial_regular)),
+                            fontWeight = FontWeight(600),
+                            color = Color(0xFF1A1A1C)
+                        )
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.shadow(
+                            elevation = 6.dp,
+                            shape = RoundedCornerShape(50),
+                            spotColor = starColor.copy(alpha = 0.5f),
+                            ambientColor = starColor.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        repeat(5) { index ->
+                            Icon(
+                                imageVector = if (index < metricInfo.stars) Icons.Default.Star else Icons.Outlined.StarBorder,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = starColor
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = metricInfo.message,
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontFamily = FontFamily(Font(R.font.arial_regular)),
+                        fontWeight = FontWeight(700),
+                        color = messageColor
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
         }
 
         

@@ -68,15 +68,6 @@ fun OtaLayout() {
 
     LaunchedEffect(Unit) {
 
-        val specs = getDeviceSpecs(context)
-        val score = estimatePerformanceScore(specs)
-        val tier = classifyPerformance(score)
-        val message = getPerformanceMessage(tier)
-
-        Log.d("Hardware Profiler", specs.toString())
-        Log.d("Hardware Profiler", "Score: $score, Tier: ${tier.label}")
-        Log.w("Hardware Profiler", message)
-
         // Api call to get firmware version
         fetchFirmwareVersion(
             scope = scope,
