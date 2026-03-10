@@ -17,7 +17,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Base64
 import com.outdu.camconnect.auth.SessionManager
+import com.outdu.camconnect.auth.InvalidSessionException
 import java.security.MessageDigest
+import io.ktor.client.statement.*
 
 class MotocamSocketClient() {
 
@@ -158,7 +160,8 @@ class MotocamSocketClient() {
         val url = "http://$cameraIp:80/api/motocam_api"
 
         try {
-            val responseText: String = client.post(url) {
+            // Get response first to check status code
+            val response: HttpResponse = client.post(url) {
                 contentType(ContentType.Text.Plain)
                 setBody(hexString)
 
@@ -166,8 +169,16 @@ class MotocamSocketClient() {
                     append(HttpHeaders.ContentType, "application/octet-stream")
                     append(HttpHeaders.Cookie, getSessionCookie())
                 }
-
-            }.body()
+            }
+            
+            // Check for 401 Unauthorized (session expired)
+            if (response.status == HttpStatusCode.Unauthorized) {
+                Log.w(TAG, "Received 401 Unauthorized - session expired")
+                SessionManager.notifySessionExpired()
+                throw InvalidSessionException("Session expired")
+            }
+            
+            val responseText: String = response.body()
 
             Log.i("MotocamSocketClient", "responseText: $responseText")
             val responseBytes = parseHexStringToByteArray(responseText)
@@ -181,6 +192,9 @@ class MotocamSocketClient() {
             Log.i("MotocamSocketClient", "responseBytesHex: ${formatToHexString(responseBytes)}")
             Log.i("MotocamSocketClient", "res after conversion: ${res.sliceArray(0..minOf(responseBytes.size-1, res.size-1)).contentToString()}")
             return@withContext responseBytes.size
+        } catch (e: InvalidSessionException) {
+            // Re-throw session exceptions as-is
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "sendCmd failed", e)
             throw e
@@ -240,6 +254,13 @@ class MotocamSocketClient() {
                 }
             }
 
+            // Check for 401 Unauthorized (session expired)
+            if (response.status == HttpStatusCode.Unauthorized) {
+                Log.w(TAG, "Received 401 Unauthorized - session expired")
+                SessionManager.notifySessionExpired()
+                throw InvalidSessionException("Session expired")
+            }
+
             val ok = response.status.isSuccess()
             Log.d(TAG, "upload response status=${response.status}")
             
@@ -255,6 +276,9 @@ class MotocamSocketClient() {
                 Log.w(TAG, "uploadFile failed: status=${response.status}")
             }
             return@withContext ok
+        } catch (e: InvalidSessionException) {
+            // Re-throw session exceptions as-is
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "uploadFile exception", e)
             throw e

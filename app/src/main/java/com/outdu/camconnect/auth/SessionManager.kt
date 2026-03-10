@@ -15,6 +15,9 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.atomic.AtomicInteger
 import com.outdu.camconnect.communication.CameraCommandProtocol
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 /**
  * Singleton class for managing user authentication and session tokens
@@ -56,6 +59,10 @@ object SessionManager {
     @Volatile private var isInitialized = false
     private val pinAttempts = AtomicInteger(0)
     private var sharedPreferences: SharedPreferences? = null
+    
+    // Session expired event flow
+    private val _sessionExpiredEvents = MutableSharedFlow<Unit>(replay = 0, extraBufferCapacity = 1)
+    val sessionExpiredEvents: SharedFlow<Unit> = _sessionExpiredEvents.asSharedFlow()
     
     /**
      * Request/Response models for login API
@@ -364,6 +371,15 @@ object SessionManager {
      */
     fun isAuthenticated(): Boolean {
         return getSessionToken() != null
+    }
+    
+    /**
+     * Notify that the session has expired (called from API layer when 401 is received)
+     * This emits an event that the UI can observe to show a session expired dialog
+     */
+    suspend fun notifySessionExpired() {
+        Log.w(TAG, "Session expired notification triggered")
+        _sessionExpiredEvents.emit(Unit)
     }
     
     /**

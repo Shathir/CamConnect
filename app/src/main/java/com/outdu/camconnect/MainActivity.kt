@@ -18,6 +18,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.outdu.camconnect.ui.layouts.AdaptiveStreamLayout
@@ -447,6 +451,9 @@ class MainActivity : ComponentActivity() {
         var retryAttempt by remember { mutableStateOf(0) }
         val loadingStartTime = remember { System.currentTimeMillis() }
         
+        // Session expired dialog state
+        var showSessionExpiredDialog by remember { mutableStateOf(false) }
+        
         // Capture context and assets early
         val context = LocalContext.current
         val assetManager = remember { context.assets }
@@ -462,6 +469,14 @@ class MainActivity : ComponentActivity() {
             } catch (e: Exception) {
                 Log.e("MainActivity", "Failed to load configuration, using default", e)
                 CameraConfigurationManager.getModelVersion()
+            }
+        }
+        
+        // Observe session expired events
+        LaunchedEffect(Unit) {
+            SessionManager.sessionExpiredEvents.collectLatest {
+                Log.w("MainActivity", "Session expired event received")
+                showSessionExpiredDialog = true
             }
         }
         
@@ -582,6 +597,31 @@ class MainActivity : ComponentActivity() {
                         Log.i("MainActivity", "Running in skip mode - AI features disabled")
                     }
                 }
+            }
+            
+            // Session expired dialog
+            if (showSessionExpiredDialog) {
+                AlertDialog(
+                    onDismissRequest = {
+                        // Non-cancelable - user must tap the button
+                    },
+                    title = {
+                        Text("Session Expired")
+                    },
+                    text = {
+                        Text("Your session has expired. Please log in again.")
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showSessionExpiredDialog = false
+                                handleLogout()
+                            }
+                        ) {
+                            Text("Log in again")
+                        }
+                    }
+                )
             }
         }
     }
